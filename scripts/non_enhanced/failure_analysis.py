@@ -6,6 +6,8 @@ Failure analysis for tau2-bench failures.
 import sys
 from pathlib import Path
 import pandas as pd
+import argparse
+import plotly.express as px
 
 from tau2.data_model.simulation import Results
 from tau2.metrics.break_down_metrics import result_reward_analysis, result_reward_actions_analysis
@@ -184,6 +186,55 @@ def identify_root_causes(results: Results):
     except:
         print(f"  (Could not analyze individual action failure rates)")
 
+def plot_task_complexity_impact(reward_df: pd.DataFrame, output_dir: Path):
+    """Plot how task complexity affects success rates."""
+    print("\n📊 Plotting complexity vs success analysis")
+    complexity_analysis = reward_df.groupby('num_write_action').agg(
+        success_rate=('success', 'mean'),
+        count=('success', 'size')
+    ).reset_index()
+
+    fig = px.bar(
+        complexity_analysis,
+        x='num_write_action',
+        y='success_rate',
+        title='Success Rate by Number of Write Actions',
+        labels={'num_write_action': 'Number of Write Actions', 'success_rate': 'Success Rate'},
+        text='success_rate',
+        hover_data=['count']
+    )
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    plot_path = output_dir / "task_complexity_impact.html"
+    fig.write_html(plot_path)
+    print(f"  -> Saved plot to {plot_path}")
+
+
+def plot_root_causes(failed_df: pd.DataFrame, output_dir: Path):
+    """Plot the primary failure modes."""
+    print("\n📊 Plotting root cause analysis")
+    if len(failed_df) == 0:
+        print("  -> No failures to plot.")
+        return
+
+    failure_modes = {
+        'Communication': len(failed_df[failed_df['communication'] == False]),
+        'Database': len(failed_df[failed_df['database'] == False]),
+        'Action Execution': len(failed_df[failed_df['num_correct_write_action'] < failed_df['num_write_action']])
+    }
+
+    failure_df = pd.DataFrame(failure_modes.items(), columns=['Failure Mode', 'Count'])
+
+    fig = px.pie(
+        failure_df,
+        values='Count',
+        names='Failure Mode',
+        title='Primary Failure Modes',
+    )
+    plot_path = output_dir / "failure_root_causes.html"
+    fig.write_html(plot_path)
+    print(f"  -> Saved plot to {plot_path}")
+
+
 def load_results(results_path: str) -> Results:
     """Load results from JSON file."""
     path = Path(results_path)
@@ -204,12 +255,15 @@ def load_results(results_path: str) -> Results:
     return Results.load(path)
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python failure_analysis.py <results.json>")
-        sys.exit(1)
-    
-    results = load_results(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Failure analysis for tau2-bench failures.")
+    parser.add_argument("results_path", help="Path to results.json file")
+    parser.add_argument("--plots", action="store_true", help="Generate and save plots")
+    args = parser.parse_args()
 
+    results = load_results(args.results_path)
+
+    output_dir = Path("analysis_plots")
+    output_dir.mkdir(exist_ok=True)
 
     # High-level analysis
     identify_root_causes(results)
@@ -234,6 +288,12 @@ def main():
             analyze_action_patterns(results, worst_action)
     except:
         pass
+
+    # Generate plots if requested
+    if args.plots:
+        failed_df = reward_df[reward_df['success'] == False]
+        plot_task_complexity_impact(reward_df, output_dir)
+        plot_root_causes(failed_df, output_dir)
 
     print(f"\n✅ Root cause analysis complete!")
 

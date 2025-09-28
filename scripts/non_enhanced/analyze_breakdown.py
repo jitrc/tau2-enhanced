@@ -18,6 +18,7 @@ from typing import Optional
 
 import pandas as pd
 import numpy as np
+import plotly.express as px
 
 # Add src to path for imports
 sys.path.append('src')
@@ -26,6 +27,157 @@ from tau2.data_model.simulation import Results
 from tau2.metrics.break_down_metrics import result_reward_analysis, result_reward_actions_analysis
 from tau2.metrics.agent_metrics import compute_metrics
 from tau2.utils import DATA_DIR
+
+
+def plot_basic_summary(df: pd.DataFrame, output_dir: Path):
+    """Plot basic summary statistics."""
+    print("\n📊 Plotting basic summary")
+    success_rates = {}
+    if 'success' in df.columns:
+        success_rates['Overall'] = df['success'].mean()
+    if 'communication' in df.columns:
+        success_rates['Communication'] = df['communication'].mean()
+    if 'environment' in df.columns:
+        success_rates['Environment'] = df['environment'].mean()
+    if 'database' in df.columns:
+        success_rates['Database'] = df['database'].mean()
+
+    if not success_rates:
+        print("  -> No success rate data to plot.")
+        return
+
+    summary_df = pd.DataFrame(success_rates.items(), columns=['Metric', 'Rate'])
+    fig = px.bar(summary_df, x='Metric', y='Rate', title='Success Rates', text='Rate')
+    fig.update_traces(texttemplate='%{text:.2%}', textposition='outside')
+    fig.update_yaxes(range=[0, 1])
+    plot_path = output_dir / "basic_summary_success_rates.html"
+    fig.write_html(plot_path)
+    print(f"  -> Saved plot to {plot_path}")
+
+
+def plot_action_analysis(df: pd.DataFrame, output_dir: Path):
+    """Plot write action performance."""
+    print("\n📊 Plotting action analysis")
+    if 'num_write_action' not in df.columns:
+        print("  -> No write action data to plot.")
+        return
+
+    action_complexity = df.groupby('num_write_action')['success'].agg(['count', 'mean']).round(3).reset_index()
+    action_complexity.columns = ['num_write_action', 'Count', 'Success_Rate']
+
+    fig = px.bar(
+        action_complexity,
+        x='num_write_action',
+        y='Success_Rate',
+        title='Success Rate by Action Complexity',
+        labels={'num_write_action': 'Number of Write Actions', 'Success_Rate': 'Success Rate'},
+        text='Success_Rate',
+        hover_data=['Count']
+    )
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    plot_path = output_dir / "action_complexity_success_rate.html"
+    fig.write_html(plot_path)
+    print(f"  -> Saved plot to {plot_path}")
+
+
+def plot_task_breakdown(df: pd.DataFrame, output_dir: Path):
+    """Plot performance by individual tasks."""
+    print("\n📊 Plotting task-by-task breakdown")
+    task_summary = df.groupby('task_id').agg(success_rate=('success', 'mean')).reset_index()
+    task_summary = task_summary.sort_values('success_rate', ascending=False)
+
+    fig = px.bar(
+        task_summary,
+        x='task_id',
+        y='success_rate',
+        title='Success Rate by Task',
+        labels={'task_id': 'Task ID', 'success_rate': 'Success Rate'},
+        text='success_rate'
+    )
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    fig.update_xaxes(categoryorder='total descending')
+    plot_path = output_dir / "task_breakdown_success_rate.html"
+    fig.write_html(plot_path)
+    print(f"  -> Saved plot to {plot_path}")
+
+
+def plot_failure_analysis(df: pd.DataFrame, output_dir: Path):
+    """Plot failure patterns."""
+    print("\n📊 Plotting failure analysis")
+    failed_tasks = df[df['success'] == False]
+    if len(failed_tasks) == 0:
+        print("  -> No failures to plot.")
+        return
+
+    failure_modes = {}
+    if 'communication' in df.columns:
+        failure_modes['Communication'] = len(failed_tasks[failed_tasks['communication'] == False])
+    if 'environment' in df.columns:
+        failure_modes['Environment'] = len(failed_tasks[failed_tasks['environment'] == False])
+    if 'database' in df.columns:
+        failure_modes['Database'] = len(failed_tasks[failed_tasks['database'] == False])
+    if 'num_write_action' in df.columns:
+        failure_modes['Action Execution'] = len(failed_tasks[failed_tasks['num_correct_write_action'] < failed_tasks['num_write_action']])
+
+    if not failure_modes:
+        print("  -> No failure data to plot.")
+        return
+
+    failure_df = pd.DataFrame(failure_modes.items(), columns=['Failure Mode', 'Count'])
+    fig = px.pie(failure_df, values='Count', names='Failure Mode', title='Failure Breakdown by Component')
+    plot_path = output_dir / "failure_breakdown.html"
+    fig.write_html(plot_path)
+    print(f"  -> Saved plot to {plot_path}")
+
+
+def plot_action_details_analysis(action_df: Optional[pd.DataFrame], output_dir: Path):
+    """Plot detailed action performance."""
+    print("\n📊 Plotting detailed action analysis")
+    if action_df is None or len(action_df) == 0:
+        print("  -> No detailed action data to plot.")
+        return
+
+    action_accuracy = action_df.groupby('action_name')['action_match'].agg(['count', 'mean']).round(3).reset_index()
+    action_accuracy.columns = ['action_name', 'Count', 'Accuracy']
+    action_accuracy = action_accuracy.sort_values('Accuracy', ascending=False)
+
+    fig = px.bar(
+        action_accuracy,
+        x='action_name',
+        y='Accuracy',
+        title='Action Accuracy by Type',
+        labels={'action_name': 'Action Name', 'Accuracy': 'Accuracy'},
+        text='Accuracy',
+        hover_data=['Count']
+    )
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+    plot_path = output_dir / "action_details_accuracy.html"
+    fig.write_html(plot_path)
+    print(f"  -> Saved plot to {plot_path}")
+
+
+def plot_trial_consistency_analysis(df: pd.DataFrame, output_dir: Path):
+    """Plot consistency across trials."""
+    print("\n📊 Plotting trial consistency analysis")
+    if 'trial' not in df.columns:
+        print("  -> No trial data to plot.")
+        return
+
+    trial_stats = df.groupby('trial')['success'].agg(['count', 'mean']).round(3).reset_index()
+    trial_stats.columns = ['trial', 'Count', 'Success_Rate']
+
+    fig = px.line(
+        trial_stats,
+        x='trial',
+        y='Success_Rate',
+        title='Performance by Trial',
+        markers=True,
+        labels={'trial': 'Trial Number', 'Success_Rate': 'Success Rate'}
+    )
+    fig.update_yaxes(range=[0, 1])
+    plot_path = output_dir / "trial_consistency.html"
+    fig.write_html(plot_path)
+    print(f"  -> Saved plot to {plot_path}")
 
 
 def load_results(results_path: str) -> Results:
@@ -260,8 +412,12 @@ def main():
     parser.add_argument("--export-csv", action="store_true", help="Export analysis to CSV files")
     parser.add_argument("--task-details", action="store_true", help="Show detailed per-task analysis")
     parser.add_argument("--action-details", action="store_true", help="Show detailed action analysis")
+    parser.add_argument("--plots", action="store_true", help="Generate and save plots")
 
     args = parser.parse_args()
+
+    output_dir = Path("analysis_plots")
+    output_dir.mkdir(exist_ok=True)
 
     try:
         # Load results
@@ -288,6 +444,17 @@ def main():
 
         if args.action_details:
             action_details_analysis(action_df)
+
+        # Generate plots if requested
+        if args.plots:
+            plot_basic_summary(reward_df, output_dir)
+            plot_action_analysis(reward_df, output_dir)
+            plot_failure_analysis(reward_df, output_dir)
+            plot_trial_consistency_analysis(reward_df, output_dir)
+            if args.task_details:
+                plot_task_breakdown(reward_df, output_dir)
+            if args.action_details:
+                plot_action_details_analysis(action_df, output_dir)
 
         # Standard metrics for comparison
         print("\n🏆 STANDARD METRICS (for comparison)")
