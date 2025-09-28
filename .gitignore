@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.venv/
+venv/
+.env
+
+# IDE
+.vscode/
+
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Results
+results/
+analysis_plots/

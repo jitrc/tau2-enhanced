@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""
+tau2-enhanced wrapper script that ensures enhanced domains are loaded before running tau2 CLI.
+"""
+
+import sys
+import subprocess
+
+def main():
+    # Import tau2_enhanced first to register enhanced domains
+    try:
+        import tau2_enhanced
+        print("✅ tau2-enhanced domains loaded successfully")
+    except ImportError as e:
+        print(f"❌ Failed to load tau2-enhanced: {e}")
+        sys.exit(1)
+
+    # Now run tau2 with the same arguments
+    from tau2.cli import main as tau2_main
+    tau2_main()
+
+if __name__ == "__main__":
+    main()
