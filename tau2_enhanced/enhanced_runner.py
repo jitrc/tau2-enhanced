@@ -3,12 +3,16 @@
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import json
+from loguru import logger
 
 from tau2.data_model.simulation import Results
 from tau2.data_model.tasks import Task
 from tau2.run import run_tasks
 from tau2.registry import registry
 from tau2.utils.utils import get_now
+from tau2.utils import llm_utils
+from tau2.data_model.message import AssistantMessage, ToolCall
 
 from tau2_enhanced.data_model.enhanced_simulation import (
     EnhancedResults,
@@ -94,8 +98,43 @@ class EnhancedRunner:
 
             return wrapped_constructor
 
-        # Apply monkey patch
+        # Monkey patch the generate function to handle empty responses
+        original_generate = llm_utils.generate
+
+        def patched_generate(model, messages, tools=None, tool_choice=None, **kwargs):
+            """
+            Patched generate function that handles empty LLM responses gracefully.
+            """
+            try:
+                result = original_generate(model, messages, tools, tool_choice, **kwargs)
+
+                # Check if the result has neither content nor tool calls
+                has_content = (result.content is not None and
+                             isinstance(result.content, str) and
+                             result.content.strip() != "")
+                has_tool_calls = result.tool_calls is not None
+
+                if not has_content and not has_tool_calls:
+                    logger.warning(f"LLM {model} returned empty response, providing fallback content")
+                    # Create a new AssistantMessage with fallback content
+                    result = AssistantMessage(
+                        role="assistant",
+                        content="[Assistant did not provide a response]",
+                        tool_calls=None,
+                        cost=result.cost,
+                        usage=result.usage,
+                        raw_data=result.raw_data,
+                    )
+
+                return result
+
+            except Exception as e:
+                logger.error(f"Error in generate function: {e}")
+                raise
+
+        # Apply monkey patches
         registry.get_env_constructor = patched_get_env_constructor
+        llm_utils.generate = patched_generate
 
         try:
             # Run the original tasks
@@ -118,8 +157,9 @@ class EnhancedRunner:
             )
 
         finally:
-            # Restore original function
+            # Restore original functions
             registry.get_env_constructor = original_get_env_constructor
+            llm_utils.generate = original_generate
 
         # Convert to enhanced results
         enhanced_results = convert_to_enhanced_results(results)
