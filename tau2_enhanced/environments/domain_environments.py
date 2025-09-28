@@ -1,21 +1,27 @@
-from tau2.registry import registry
-from tau2_enhanced.environments.logging_environment import LoggingEnvironment
-from tau2.domains.airline.environment import get_tasks as airline_domain_get_tasks
+"""
+Enhanced domain environments using the automatic registration system.
 
-def get_enhanced_airline_environment(db=None, solo_mode=False):
-    from tau2.domains.airline.environment import get_environment
-    original_env = get_environment(db=db, solo_mode=solo_mode)
-    return LoggingEnvironment(
-        domain_name=original_env.domain_name,
-        policy=original_env.policy,
-        tools=original_env.tools,
-        user_tools=original_env.user_tools
-    )
+This module imports and registers all available enhanced domains automatically.
+"""
 
-def register_enhanced_domains():
-    """Register enhanced domains with the tau2 registry"""
-    registry.register_domain(get_enhanced_airline_environment, "airline_enhanced")
-    registry.register_tasks(airline_domain_get_tasks, "airline_enhanced")
+from loguru import logger
+from tau2_enhanced.domain_registration import (
+    register_all_enhanced_domains,
+    get_enhanced_domains_info,
+    is_enhanced_domain
+)
 
-# Register the domains when this module is imported
-register_enhanced_domains()
+# Automatically register all available enhanced domains
+try:
+    registered_domains = register_all_enhanced_domains()
+    logger.info(f"Domain environments module loaded. Enhanced domains available: {list(registered_domains.values())}")
+except Exception as e:
+    logger.error(f"Error registering enhanced domains: {e}")
+    registered_domains = {}
+
+# Export useful functions and data for external use
+__all__ = [
+    'registered_domains',
+    'get_enhanced_domains_info',
+    'is_enhanced_domain'
+]
