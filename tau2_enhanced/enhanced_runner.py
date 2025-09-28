@@ -182,7 +182,7 @@ class EnhancedRunner:
         for env in self._environment_instances:
             if hasattr(env, 'get_enhanced_logs'):
                 enhanced_logs = env.get_enhanced_logs()
-                all_execution_logs.extend(enhanced_logs.get('execution_logs', []))
+                all_execution_logs.extend(enhanced_logs.get('execution_events', []))
                 all_state_snapshots.extend(enhanced_logs.get('state_snapshots', []))
 
         # Apply enhanced logs to simulations

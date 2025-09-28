@@ -10,7 +10,28 @@ from tau2_enhanced.environments.domain_environments import *
 # Import enhanced runner components
 from .enhanced_runner import EnhancedRunner, run_enhanced_simulation
 
+# Import logging components for direct access
+from .logging import (
+    ExecutionLogger,
+    StateTracker,
+    ToolExecutionEvent,
+    StateChangeEvent,
+    ContextReductionEvent,
+    LogLevel
+)
+
 __all__ = [
+    # Enhanced runner
     'EnhancedRunner',
-    'run_enhanced_simulation'
+    'run_enhanced_simulation',
+
+    # Structured logging
+    'ExecutionLogger',
+    'StateTracker',
+
+    # Event types
+    'ToolExecutionEvent',
+    'StateChangeEvent',
+    'ContextReductionEvent',
+    'LogLevel'
 ]

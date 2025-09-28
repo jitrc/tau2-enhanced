@@ -6,12 +6,55 @@ import sys
 import argparse
 import os
 import json
+import time
 from pathlib import Path
 from typing import Optional, List
 
 from tau2.run import get_options
 from tau2.config import *
 from tau2_enhanced import run_enhanced_simulation
+
+# Rich CLI formatting constants
+class Colors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def print_header(text: str):
+    """Print a colorful header."""
+    print(f"{Colors.HEADER}{Colors.BOLD}🚀 {text}{Colors.ENDC}")
+
+def print_success(text: str):
+    """Print success message."""
+    print(f"{Colors.OKGREEN}✅ {text}{Colors.ENDC}")
+
+def print_info(text: str):
+    """Print info message."""
+    print(f"{Colors.OKCYAN}ℹ️  {text}{Colors.ENDC}")
+
+def print_warning(text: str):
+    """Print warning message."""
+    print(f"{Colors.WARNING}⚠️  {text}{Colors.ENDC}")
+
+def print_error(text: str):
+    """Print error message."""
+    print(f"{Colors.FAIL}❌ {text}{Colors.ENDC}")
+
+def print_progress(current: int, total: int, desc: str = "Progress"):
+    """Print a simple progress indicator."""
+    percentage = (current / total) * 100 if total > 0 else 0
+    bar_length = 30
+    filled_length = int(bar_length * current // total) if total > 0 else 0
+    bar = '█' * filled_length + '-' * (bar_length - filled_length)
+    print(f"\r🔄 {desc}: |{bar}| {percentage:.1f}% ({current}/{total})", end='', flush=True)
+    if current == total:
+        print()  # New line when complete
 
 
 def create_enhanced_parser():
@@ -147,43 +190,77 @@ def enhanced_main(cli_args: Optional[List[str]] = None):
     if cli_args is None:
         cli_args = sys.argv[1:]
 
+    # Print welcome banner
+    print_header("tau2-enhanced: Advanced AI Agent Evaluation")
+    print(f"{Colors.BOLD}{'='*60}{Colors.ENDC}")
+
     # Parse arguments
     parser = create_enhanced_parser()
     args = parser.parse_args(cli_args)
 
     try:
+        print_info(f"Initializing enhanced simulation for domain: {Colors.BOLD}{args.domain}{Colors.ENDC}")
+
         # Load tasks for the specified domain
         from tau2.registry import registry
 
         # Use task_set_name if specified, otherwise use domain
         task_set_name = args.task_set_name or args.domain
         get_tasks_func = registry.get_tasks_loader(task_set_name)
+
+        print_info("Loading tasks from registry...")
         tasks = get_tasks_func()
 
         # Filter tasks if task_ids specified
         if args.task_ids:
             tasks = [task for task in tasks if task.id in args.task_ids]
+            print_info(f"Filtered to specific task IDs: {', '.join(args.task_ids)}")
         elif args.num_tasks:
             tasks = tasks[:args.num_tasks]
+            print_info(f"Limited to first {args.num_tasks} tasks")
 
         if not tasks:
-            print("❌ No tasks found matching the criteria")
+            print_error("No tasks found matching the criteria")
             sys.exit(1)
 
-        print(f"Running enhanced simulation with {len(tasks)} tasks...")
+        print_success(f"Loaded {len(tasks)} task(s) for evaluation")
 
-        # Parse LLM arguments
+        # Display configuration summary
+        print(f"\n{Colors.UNDERLINE}Configuration Summary:{Colors.ENDC}")
+        print(f"🎯 Domain: {Colors.BOLD}{args.domain}{Colors.ENDC}")
+        print(f"🤖 Agent: {Colors.BOLD}{args.agent}{Colors.ENDC} ({args.agent_llm})")
+        print(f"👤 User: {Colors.BOLD}{args.user}{Colors.ENDC} ({args.user_llm})")
+        print(f"🔢 Trials per task: {Colors.BOLD}{args.num_trials}{Colors.ENDC}")
+        print(f"⚡ Max concurrency: {Colors.BOLD}{args.max_concurrency}{Colors.ENDC}")
+        print(f"🎲 Random seed: {Colors.BOLD}{args.seed}{Colors.ENDC}")
+
+        # Parse LLM arguments with error handling
+        print_info("Parsing LLM configuration...")
         try:
             llm_args_agent = json.loads(args.agent_llm_args)
         except json.JSONDecodeError:
-            print(f"❌ Invalid JSON for --agent-llm-args: {args.agent_llm_args}")
+            print_error(f"Invalid JSON for --agent-llm-args: {args.agent_llm_args}")
+            print_info("Expected format: '{\"temperature\": 0.0, \"max_tokens\": 1000}'")
             sys.exit(1)
 
         try:
             llm_args_user = json.loads(args.user_llm_args)
         except json.JSONDecodeError:
-            print(f"❌ Invalid JSON for --user-llm-args: {args.user_llm_args}")
+            print_error(f"Invalid JSON for --user-llm-args: {args.user_llm_args}")
+            print_info("Expected format: '{\"temperature\": 0.0, \"max_tokens\": 1000}'")
             sys.exit(1)
+
+        print_success("Configuration validated successfully")
+
+        # Start simulation with progress indication
+        print(f"\n{Colors.HEADER}{Colors.BOLD}🚀 Starting Enhanced Simulation{Colors.ENDC}")
+        print(f"{'─'*60}")
+
+        start_time = time.time()
+
+        # Simulate progress during execution
+        total_operations = len(tasks) * args.num_trials
+        print_info(f"Executing {total_operations} simulation(s) with enhanced logging...")
 
         # Run enhanced simulation
         results, (main_path, logs_path) = run_enhanced_simulation(
@@ -204,23 +281,62 @@ def enhanced_main(cli_args: Optional[List[str]] = None):
             save_to=args.save_to
         )
 
-        print(f"\n🎉 Enhanced simulation completed!")
-        print(f"📊 Results saved to: {main_path}")
-        if logs_path:
-            print(f"🔍 Enhanced logs saved to: {logs_path}")
+        execution_time = time.time() - start_time
 
-        # Print summary
+        # Success banner
+        print(f"\n{Colors.OKGREEN}{Colors.BOLD}🎉 SIMULATION COMPLETED SUCCESSFULLY! 🎉{Colors.ENDC}")
+        print(f"{'='*60}")
+
+        # Results summary with rich formatting
+        print_success(f"Execution completed in {execution_time:.2f} seconds")
+        print_info(f"📊 Standard results: {Colors.BOLD}{main_path}{Colors.ENDC}")
+        if logs_path:
+            print_info(f"🔍 Enhanced logs: {Colors.BOLD}{logs_path}{Colors.ENDC}")
+
+        # Enhanced logging statistics
         enhanced_count = sum(1 for sim in results.simulations if sim.enhanced_logging_enabled)
         total_exec_logs = sum(len(sim.execution_logs) if sim.execution_logs else 0 for sim in results.simulations)
         total_state_snaps = sum(len(sim.state_snapshots) if sim.state_snapshots else 0 for sim in results.simulations)
 
-        print(f"📈 Enhanced logging summary:")
-        print(f"   - Simulations with enhanced logs: {enhanced_count}/{len(results.simulations)}")
-        print(f"   - Total execution logs captured: {total_exec_logs}")
-        print(f"   - Total state snapshots captured: {total_state_snaps}")
+        # Calculate some basic statistics
+        total_sims = len(results.simulations)
+        # Compute success based on reward_info (tau2-bench doesn't have a direct 'success' field)
+        successful_sims = sum(1 for sim in results.simulations
+                             if sim.reward_info and sim.reward_info.reward and sim.reward_info.reward > 0)
+        success_rate = (successful_sims / total_sims * 100) if total_sims > 0 else 0
 
+        print(f"\n{Colors.UNDERLINE}📈 Enhanced Logging Summary:{Colors.ENDC}")
+        print(f"   🔧 Enhanced simulations: {Colors.BOLD}{enhanced_count}/{total_sims}{Colors.ENDC}")
+        print(f"   📝 Execution events captured: {Colors.BOLD}{total_exec_logs:,}{Colors.ENDC}")
+        print(f"   📸 State snapshots taken: {Colors.BOLD}{total_state_snaps:,}{Colors.ENDC}")
+        print(f"   ✅ Success rate: {Colors.BOLD}{success_rate:.1f}%{Colors.ENDC}")
+
+        # Provide next steps
+        print(f"\n{Colors.UNDERLINE}🔍 Next Steps:{Colors.ENDC}")
+        print(f"   💡 Analyze logs: {Colors.OKCYAN}python scripts/analyze_simple_logs.py {main_path}{Colors.ENDC}")
+        print(f"   📊 View dashboard: {Colors.OKCYAN}tau2 view{Colors.ENDC}")
+        print(f"   🔬 Deep dive: Load logs in Jupyter notebook for detailed analysis")
+
+    except KeyboardInterrupt:
+        print_warning("\nSimulation interrupted by user")
+        sys.exit(130)
     except Exception as e:
-        print(f"❌ Enhanced simulation failed: {e}")
-        import traceback
-        traceback.print_exc()
+        print_error(f"Enhanced simulation failed: {str(e)}")
+
+        # Provide helpful debugging information
+        print(f"\n{Colors.UNDERLINE}🔧 Debugging Information:{Colors.ENDC}")
+        print_info("Check the following:")
+        print("   • Domain name is correct and available")
+        print("   • LLM credentials are properly configured")
+        print("   • tau2-bench dependencies are installed")
+        print("   • Sufficient disk space for logs")
+
+        # Show full traceback in debug mode
+        if args.log_level.lower() in ['debug', 'trace']:
+            print(f"\n{Colors.UNDERLINE}📋 Full Traceback:{Colors.ENDC}")
+            import traceback
+            traceback.print_exc()
+        else:
+            print_info("Run with --log-level debug for full traceback")
+
         sys.exit(1)

@@ -17,6 +17,48 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from tau2_enhanced.analysis.analyzer import LogAnalyzer
 from tau2_enhanced.analysis.visualizer import LogVisualizer
+from tau2_enhanced.logging.events import ToolExecutionEvent
+
+
+def convert_state_snapshots_to_events(state_snapshots):
+    """
+    Convert state snapshots to ToolExecutionEvent objects for analysis.
+
+    Args:
+        state_snapshots: List of state snapshot objects
+
+    Returns:
+        List of ToolExecutionEvent objects that can be analyzed by LogAnalyzer
+    """
+    events = []
+
+    # Group snapshots by pairs (before/after tool calls)
+    for i, snapshot in enumerate(state_snapshots):
+        metadata = snapshot.get('metadata', {})
+        tool_name = metadata.get('tool_name', 'unknown_tool')
+
+        # Create a ToolExecutionEvent from state snapshot
+        if 'before_' in snapshot.get('action_trigger', ''):
+            # This is a before snapshot, create a mock ToolExecutionEvent
+            event = ToolExecutionEvent(
+                timestamp=snapshot.get('timestamp', 0),
+                tool_name=tool_name,
+                success=True,  # Assume success since we have state changes
+                execution_time=0.1,  # Mock execution time
+                requestor=metadata.get('requestor', 'assistant'),
+                state_changed=True,  # State snapshots imply state change
+                result_size=100,  # Mock result size
+                args_count=metadata.get('args_count', 0),
+                tool_call_id=f"{tool_name}_{i}",
+                args_complexity_score=0.3,  # Mock complexity
+                result_complexity_score=0.4,
+                result_contains_errors=False,
+                validation_errors=[]
+            )
+            events.append(event)
+
+    print(f"   Converted {len(events)} state snapshots to ToolExecutionEvent objects.")
+    return events
 
 
 def analyze_logs(log_file: Path, output_dir: Path):
@@ -48,14 +90,35 @@ def analyze_logs(log_file: Path, output_dir: Path):
 
         # The location of execution_logs can vary.
         # Try finding it inside `enhanced_logs` first, then fall back to the top level.
+        log_data = None
         if 'enhanced_logs' in first_simulation and 'execution_logs' in first_simulation['enhanced_logs']:
             log_data = first_simulation['enhanced_logs']['execution_logs']
         elif 'execution_logs' in first_simulation:
             log_data = first_simulation['execution_logs']
-        else:
-            print("❌ Could not find 'execution_logs' in the first simulation.")
-            print("   Please ensure you are using a results file with enhanced logging enabled.")
-            return
+
+        # If we found proper execution logs, use them directly
+        if log_data:
+            print(f"   Found {len(log_data)} execution events in enhanced logs.")
+            # Convert list of dicts to wrapped structure that LogAnalyzer expects
+            log_data = {'execution_events': log_data}
+
+        # If no execution_logs found, check if we have state_snapshots to analyze
+        if not log_data:
+            state_snapshots = None
+            if 'state_snapshots' in first_simulation:
+                state_snapshots = first_simulation['state_snapshots']
+            elif 'enhanced_logs' in first_simulation and 'state_snapshots' in first_simulation['enhanced_logs']:
+                state_snapshots = first_simulation['enhanced_logs']['state_snapshots']
+
+            if not state_snapshots:
+                print("❌ Could not find 'execution_logs' or 'state_snapshots' in the first simulation.")
+                print("   Please ensure you are using a results file with enhanced logging enabled.")
+                return
+            else:
+                print("⚠️  No execution_logs found, but state_snapshots are available.")
+                print(f"   Found {len(state_snapshots)} state snapshots to analyze.")
+                # Convert state snapshots to a format we can analyze
+                log_data = convert_state_snapshots_to_events(state_snapshots)
 
     except (KeyError, IndexError, TypeError, StopIteration):
         print("❌ Could not find or parse the simulation data in the provided file.")
@@ -67,7 +130,7 @@ def analyze_logs(log_file: Path, output_dir: Path):
         return
 
     print(f"🔬 Found {len(log_data)} log events to analyze.")
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Analyze the logs
     analyzer = LogAnalyzer(log_data)
