@@ -106,6 +106,16 @@ def analyze_logs(log_file: Path, output_dir: Path):
     else:
         print("  🤷 No state change data available to analyze.")
 
+    print("\n" + "="*50)
+    print("🔗 TOOL SEQUENCE ANALYSIS")
+    print("="*50)
+    sequence_analysis = analyzer.get_tool_sequence_analysis()
+    if not sequence_analysis.empty:
+        print("  Top 10 most common tool transitions:")
+        print(sequence_analysis.head(10).to_string(index=False))
+    else:
+        print("  🤷 Not enough data to analyze tool sequences.")
+
     # 2. Visualize the results
     print("\n" + "="*50)
     print("📈 GENERATING VISUALIZATIONS")
@@ -130,6 +140,12 @@ def analyze_logs(log_file: Path, output_dir: Path):
         state_change_path = output_dir / "state_change_analysis.html"
         state_change_fig.write_html(state_change_path)
         print(f"  ✅ State change analysis plot saved to: {state_change_path}")
+
+        # Tool Flow Sankey
+        sankey_fig = visualizer.create_tool_flow_sankey()
+        sankey_path = output_dir / "tool_flow_sankey.html"
+        sankey_fig.write_html(sankey_path)
+        print(f"  ✅ Tool flow Sankey diagram saved to: {sankey_path}")
 
         # Bottleneck Plot
         bottleneck_fig = visualizer.create_performance_bottleneck_plot()

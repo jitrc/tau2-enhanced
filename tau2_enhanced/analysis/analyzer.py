@@ -34,10 +34,10 @@ class LogAnalyzer:
         """
         df = pd.DataFrame(log_data)
 
-        # Extract tool name from tool_call_id
+        # Extract tool name from tool_call_id by removing the trailing _<number>
         if 'tool_call_id' in df.columns:
             df['tool_name'] = df['tool_call_id'].apply(
-                lambda x: x.split('_')[0] if isinstance(x, str) else 'unknown'
+                lambda x: '_'.join(x.split('_')[:-1]) if isinstance(x, str) and x.split('_')[-1].isdigit() else x
             )
         else:
             df['tool_name'] = 'unknown'
@@ -162,6 +162,37 @@ class LogAnalyzer:
         )
 
         return state_analysis
+
+    def get_tool_sequence_analysis(self) -> pd.DataFrame:
+        """
+        Analyzes the sequence of tool calls to find common transitions.
+
+        Returns:
+            A pandas DataFrame showing the frequency of tool transitions (bigrams).
+        """
+        if self.df.empty or len(self.df) < 2:
+            return pd.DataFrame()
+
+        tool_sequence = self.df['tool_name'].tolist()
+        
+        # Create bigrams (pairs of consecutive tool calls)
+        bigrams = list(zip(tool_sequence[:-1], tool_sequence[1:]))
+        
+        if not bigrams:
+            return pd.DataFrame()
+
+        # Count the frequency of each bigram
+        bigram_counts = pd.Series(bigrams).value_counts().reset_index()
+        bigram_counts.columns = ['transition', 'count']
+        
+        # Split the transition tuple into source and target columns
+        bigram_counts[['source', 'target']] = pd.DataFrame(
+            bigram_counts['transition'].tolist(), index=bigram_counts.index
+        )
+        
+        return bigram_counts[['source', 'target', 'count']].sort_values(
+            'count', ascending=False
+        )
 
     def identify_bottlenecks(self, time_threshold: float = 1.0) -> pd.DataFrame:
         """

@@ -147,6 +147,37 @@ class LogVisualizer:
         )
         return fig
 
+    def create_tool_flow_sankey(self) -> go.Figure:
+        """
+        Creates a Sankey diagram to visualize the flow between tool calls.
+
+        Returns:
+            A Plotly Figure object representing the tool flow.
+        """
+        sequence_df = self.analyzer.get_tool_sequence_analysis()
+        if sequence_df.empty:
+            return go.Figure().update_layout(title="Not enough data for a flow diagram")
+
+        # Create a list of unique tool names (nodes)
+        all_nodes = pd.concat([sequence_df['source'], sequence_df['target']]).unique()
+        node_map = {node: i for i, node in enumerate(all_nodes)}
+
+        fig = go.Figure(data=[go.Sankey(
+            node=dict(
+                pad=15,
+                thickness=20,
+                line=dict(color="black", width=0.5),
+                label=all_nodes,
+            ),
+            link=dict(
+                source=[node_map[s] for s in sequence_df['source']],
+                target=[node_map[t] for t in sequence_df['target']],
+                value=sequence_df['count']
+            ))])
+
+        fig.update_layout(title_text="Tool Call Flow Analysis", font_size=10)
+        return fig
+
     def create_performance_bottleneck_plot(self) -> go.Figure:
         """
         Create a plot to identify performance bottlenecks.
