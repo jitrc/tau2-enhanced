@@ -132,6 +132,37 @@ class LogAnalyzer:
 
         return error_counts.sort_values('count', ascending=False)
 
+    def get_state_change_analysis(self) -> pd.DataFrame:
+        """
+        Analyzes performance based on whether a tool call changed the state.
+
+        Returns:
+            A pandas DataFrame summarizing metrics for state-changing vs.
+            non-state-changing calls.
+        """
+        if self.df.empty or 'state_changed' not in self.df.columns:
+            return pd.DataFrame()
+
+        state_analysis = self.df.groupby('state_changed').agg(
+            total_calls=('state_changed', 'count'),
+            successful_calls=('success', 'sum'),
+            avg_execution_time=('execution_time', 'mean')
+        ).reset_index()
+
+        state_analysis['failed_calls'] = (
+            state_analysis['total_calls'] - state_analysis['successful_calls']
+        )
+        state_analysis['success_rate'] = (
+            state_analysis['successful_calls'] / state_analysis['total_calls']
+        )
+
+        # Rename index for clarity
+        state_analysis['category'] = state_analysis['state_changed'].apply(
+            lambda x: 'State-Changing' if x else 'Read-Only'
+        )
+
+        return state_analysis
+
     def identify_bottlenecks(self, time_threshold: float = 1.0) -> pd.DataFrame:
         """
         Identify performance bottlenecks based on execution time.

@@ -111,6 +111,42 @@ class LogVisualizer:
         fig.update_layout(margin=dict(t=50, l=25, r=25, b=25))
         return fig
 
+    def create_state_change_plot(self) -> go.Figure:
+        """
+        Creates a bar chart comparing performance of state-changing vs.
+        read-only tool calls.
+
+        Returns:
+            A Plotly Figure object.
+        """
+        state_analysis_df = self.analyzer.get_state_change_analysis()
+        if state_analysis_df.empty:
+            return go.Figure().update_layout(
+                title="No State Change Data Available"
+            )
+
+        fig = px.bar(
+            state_analysis_df,
+            x='category',
+            y='total_calls',
+            color='success_rate',
+            labels={
+                'category': 'Call Type',
+                'total_calls': 'Total Calls',
+                'success_rate': 'Success Rate'
+            },
+            title='Performance of Read-Only vs. State-Changing Calls',
+            text='total_calls',
+            color_continuous_scale='RdYlGn',
+            range_color=[0,1]
+        )
+        fig.update_traces(textposition='outside')
+        fig.update_layout(
+            xaxis_title="Tool Call Type",
+            yaxis_title="Number of Calls"
+        )
+        return fig
+
     def create_performance_bottleneck_plot(self) -> go.Figure:
         """
         Create a plot to identify performance bottlenecks.

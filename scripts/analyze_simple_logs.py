@@ -35,14 +35,31 @@ def analyze_logs(log_file: Path, output_dir: Path):
         print(f"❌ Error loading log file: {e}")
         return
 
-    # The logs are nested within a `Results` -> `Simulation` structure.
-    # The `simulations` key can be a dictionary, so we'll grab the first one.
+    # The `simulations` key can be a list or a dictionary. We need to handle both.
     try:
-        first_simulation = next(iter(data['simulations'].values()))
-        log_data = first_simulation['execution_logs']
+        simulations_data = data.get('simulations', [])
+        if isinstance(simulations_data, list) and simulations_data:
+            first_simulation = simulations_data[0]
+        elif isinstance(simulations_data, dict) and simulations_data:
+            first_simulation = next(iter(simulations_data.values()))
+        else:
+            print("❌ 'simulations' field is empty or has an unexpected type.")
+            return
+
+        # The location of execution_logs can vary.
+        # Try finding it inside `enhanced_logs` first, then fall back to the top level.
+        if 'enhanced_logs' in first_simulation and 'execution_logs' in first_simulation['enhanced_logs']:
+            log_data = first_simulation['enhanced_logs']['execution_logs']
+        elif 'execution_logs' in first_simulation:
+            log_data = first_simulation['execution_logs']
+        else:
+            print("❌ Could not find 'execution_logs' in the first simulation.")
+            print("   Please ensure you are using a results file with enhanced logging enabled.")
+            return
+
     except (KeyError, IndexError, TypeError, StopIteration):
-        print("❌ Could not find 'simulations.{id}.execution_logs' in the provided file.")
-        print("   Please ensure you are using a results file with the expected structure.")
+        print("❌ Could not find or parse the simulation data in the provided file.")
+        print("   Please ensure you are using a valid results file.")
         return
 
     if not log_data:
@@ -80,6 +97,15 @@ def analyze_logs(log_file: Path, output_dir: Path):
     else:
         print("  🎉 No failures recorded.")
 
+    print("\n" + "="*50)
+    print("🔄 STATE CHANGE ANALYSIS")
+    print("="*50)
+    state_analysis = analyzer.get_state_change_analysis()
+    if not state_analysis.empty:
+        print(state_analysis.to_string(index=False))
+    else:
+        print("  🤷 No state change data available to analyze.")
+
     # 2. Visualize the results
     print("\n" + "="*50)
     print("📈 GENERATING VISUALIZATIONS")
@@ -98,6 +124,12 @@ def analyze_logs(log_file: Path, output_dir: Path):
         failure_path = output_dir / "failure_analysis.html"
         failure_fig.write_html(failure_path)
         print(f"  ✅ Failure analysis plot saved to: {failure_path}")
+
+        # State Change Plot
+        state_change_fig = visualizer.create_state_change_plot()
+        state_change_path = output_dir / "state_change_analysis.html"
+        state_change_fig.write_html(state_change_path)
+        print(f"  ✅ State change analysis plot saved to: {state_change_path}")
 
         # Bottleneck Plot
         bottleneck_fig = visualizer.create_performance_bottleneck_plot()
