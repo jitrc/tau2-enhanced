@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Tau2 Analysis Report</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+            body { font-size: 12px; }
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .section {
+            margin: 30px 0;
+            padding: 25px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-left: 4px solid #007bff;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        .section h3 {
+            color: #34495e;
+            margin-top: 25px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .metric-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .plot-container {
+            margin: 30px 0;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .insight-box {
+            background: #f8f9ff;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .insight-box h4 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+
+        .insight-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .insight-box li {
+            margin-bottom: 8px;
+        }
+
+        .recommendations {
+            background: #f3e5f5;
+            border: 1px solid #e1bee7;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .recommendations ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .recommendations li {
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .status-excellent { color: #28a745; font-weight: bold; }
+        .status-good { color: #17a2b8; font-weight: bold; }
+        .status-fair { color: #ffc107; font-weight: bold; }
+        .status-poor { color: #dc3545; font-weight: bold; }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .analysis-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .performance-issue {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .performance-good {
+            background: #f0fff4;
+            border: 1px solid #c6f6d5;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .key-metric {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 Enhanced Tau2 Analysis Report</h1>
+            <div class="subtitle">
+                Comprehensive performance analysis with interactive visualizations<br>
+                Generated on September 29, 2025 at 02:49 AM<br>
+                Source: <strong>airline_gemini2_5_flash_10tasks_2t_retry_agent_enhanced_logs.json</strong>
+            </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="section">
+            <h2>📊 Executive Summary</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">20</div>
+                    <div class="metric-label">Total Simulations</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">2</div>
+                    <div class="metric-label">Total Trials</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">10</div>
+                    <div class="metric-label">Total Tasks</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">230</div>
+                    <div class="metric-label">Total Tool Calls</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">10</div>
+                    <div class="metric-label">Unique Tools</div>
+                </div>
+            </div>
+            <div class="plot-container">
+                <div>                            <div id="ae720f42-163e-4d07-a0de-c073971c3eff" class="plotly-graph-div" style="height:800px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("ae720f42-163e-4d07-a0de-c073971c3eff")) {                    Plotly.newPlot(                        "ae720f42-163e-4d07-a0de-c073971c3eff",                        [{"domain":{"x":[0.0,0.45],"y":[0.625,1.0]},"gauge":{"axis":{"range":[0,100]},"bar":{"color":"#4A90E2"},"steps":[{"color":"#FFF0F0","range":[0,40]},{"color":"#FFF8E7","range":[40,70]},{"color":"#F0FFF4","range":[70,100]}],"threshold":{"line":{"color":"#E74C3C","width":2},"thickness":0.75,"value":80}},"mode":"gauge+number","title":{"text":"Task Success %"},"value":60.0,"type":"indicator"},{"gauge":{"axis":{"range":[0,100]},"bar":{"color":"#4A90E2"},"steps":[{"color":"#FFF0F0","range":[0,40]},{"color":"#FFF8E7","range":[40,70]},{"color":"#F0FFF4","range":[70,100]}],"threshold":{"line":{"color":"#E74C3C","width":2},"thickness":0.75,"value":80}},"mode":"gauge+number","title":{"text":"Tool Success %"},"value":68.51851851851852,"type":"indicator","domain":{"x":[0.55,1.0],"y":[0.625,1.0]}},{"marker":{"color":"green"},"name":"Success Rate","text":["18.1%","25.0%","100.0%","28.6%","100.0%","0.0%","20.0%","25.0%","100.0%","0.0%"],"textposition":"outside","x":["get_reservation_details","get_user_details","transfer_to_human_agents","cancel_reservation","get_flight_status","book_reservation","search_direct_flight","send_certificate","search_onestop_flight","update_reservation_flights"],"y":{"dtype":"f8","bdata":"NcJyTyMsxz8AAAAAAADQPwAAAAAAAPA\u002fkiRJkiRJ0j8AAAAAAADwPwAAAAAAAAAAmpmZmZmZyT8AAAAAAADQPwAAAAAAAPA\u002fAAAAAAAAAAA="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"blue"},"name":"Avg. Time (ms)","text":["0.04ms","0.04ms","0.03ms","0.10ms","0.04ms","6.62ms","0.18ms","0.05ms","0.17ms","0.12ms"],"textposition":"outside","x":["get_reservation_details","get_user_details","transfer_to_human_agents","cancel_reservation","get_flight_status","book_reservation","search_direct_flight","send_certificate","search_onestop_flight","update_reservation_flights"],"y":{"dtype":"f8","bdata":"GmG5p0F5oj9xHMdxrOuhPwAAAADYdqA\u002f27Zt26bduT9VVVVVJVqlPwAAAMCDeRpAAAAAAHj4xj8AAAAAoOSrPwAAAAD4psU\u002fAAAAAPCVvz8="},"type":"bar","xaxis":"x2","yaxis":"y2"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.45],"title":{"text":"Tools"}},"yaxis":{"anchor":"x","domain":[0.0,0.375],"title":{"text":"Success Rate"},"range":[0,1.1]},"xaxis2":{"anchor":"y2","domain":[0.55,1.0],"title":{"text":"Tools"}},"yaxis2":{"anchor":"x2","domain":[0.0,0.375],"title":{"text":"Execution Time (ms)"}},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Task Success Rate","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Tool Success Rate","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Tool Success Rates","x":0.225,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Tool Execution Times","x":0.775,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"}],"title":{"text":"Execution Summary Dashboard"},"height":800},                        {"responsive": true}                    )                };            </script>        </div>
+            </div>
+        </div>
+
+        <!-- Key Insights -->
+        <div class="section">
+            <h2>💡 Key Insights & Recommendations</h2>
+            <div class="analysis-grid">
+                <div class="analysis-card">
+                    <h3>🔍 Key Insights</h3>
+                    
+            <div class="insight-box">
+                <h4>🎯 Performance Insights</h4>
+                <ul>
+                    <li><strong>3</strong> out of 10 tools have excellent performance (≥95% success rate)</li>
+                    <li><strong>get_reservation_details</strong> is the most frequently used tool with 116 calls</li>
+                    <li>Overall system reliability: <strong>68.5%</strong></li>
+                </ul>
+            </div>
+            
+            <div class="insight-box">
+                <h4>🔄 State Management Insights</h4>
+                <ul>
+                    <li><strong>4</strong> tools perform state changes, <strong>7</strong> are read-only</li>
+                    <li>State-changing operations: 24 calls</li>
+                    <li>Read-only operations: 206 calls</li>
+                </ul>
+            </div>
+            
+            <div class="warning-box">
+                <h4>⚠️ Error Analysis</h4>
+                <ul>
+                    <li><strong>17</strong> total errors across <strong>1</strong> error types</li>
+                    <li>Most problematic tool: <strong>get_reservation_details</strong> (5 errors)</li>
+                    <li>Primary error type: <strong>ActionCheckFailure</strong></li>
+                </ul>
+            </div>
+            
+                </div>
+                <div class="analysis-card">
+                    <h3>💡 Recommendations</h3>
+                    <div class="recommendations">
+                        
+            <div class="recommendation-box" style="border-left: 4px solid #dc3545;">
+                <h4>🚨 High Priority Actions</h4>
+                <ul>
+                    <li><strong>Critical:</strong> System success rate is only 68.5%. Immediate investigation required.</li>
+                </ul>
+            </div>
+            
+            <div class="recommendation-box" style="border-left: 4px solid #ffc107;">
+                <h4>⚡ Performance Optimizations</h4>
+                <ul>
+                    <li><strong>Fix failing tools:</strong> 7 tools need attention: get_reservation_details (4.3% failure), get_user_details (8.3% failure), cancel_reservation (14.3% failure)</li><li><strong>Consider caching:</strong> High-usage tools could benefit from result caching: get_reservation_details, get_user_details</li>
+                </ul>
+            </div>
+            
+            <div class="recommendation-box">
+                <h4>📈 Enhancement Opportunities</h4>
+                <ul>
+                    <li><strong>Monitoring setup:</strong> With 230 tool calls analyzed, implement automated monitoring dashboards.</li><li><strong>Performance baselines:</strong> Establish SLA targets for your 10 tools based on current performance data.</li><li><strong>Load distribution:</strong> get_reservation_details accounts for 50.4% of calls. Consider load balancing or scaling strategies.</li>
+                </ul>
+            </div>
+            
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Issues Analysis -->
+        <div class="section page-break">
+            <h2>🎯 Performance Issues Analysis</h2>
+            <div class="plot-container">
+                <div>                            <div id="67dce2b2-d590-4de7-8be9-c157f01697ab" class="plotly-graph-div" style="height:800px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("67dce2b2-d590-4de7-8be9-c157f01697ab")) {                    Plotly.newPlot(                        "67dce2b2-d590-4de7-8be9-c157f01697ab",                        [{"marker":{"color":["#28a745","#17a2b8","#ffc107","#dc3545"]},"name":"Tools by Category","x":["poor","excellent"],"y":{"dtype":"i1","bdata":"BwM="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"#ff6b6b"},"name":"State-Changing","y":{"dtype":"f8","bdata":"kiRJkiRJ0j8AAAAAAAAAAAAAAAAAANA\u002fAAAAAAAAAAA="},"type":"box","xaxis":"x2","yaxis":"y2"},{"marker":{"color":"#4ecdc4"},"name":"Read-Only","y":{"dtype":"f8","bdata":"NcJyTyMsxz8AAAAAAADQPwAAAAAAAPA\u002fAAAAAAAA8D+amZmZmZnJPwAAAAAAAPA\u002f"},"type":"box","xaxis":"x2","yaxis":"y2"},{"marker":{"color":{"dtype":"f8","bdata":"NcJyTyMsxz8AAAAAAADQPwAAAAAAAPA\u002fkiRJkiRJ0j8AAAAAAADwPwAAAAAAAAAAmpmZmZmZyT8AAAAAAADQPwAAAAAAAPA\u002fAAAAAAAAAAA="},"colorscale":[[0.0,"rgb(165,0,38)"],[0.1,"rgb(215,48,39)"],[0.2,"rgb(244,109,67)"],[0.3,"rgb(253,174,97)"],[0.4,"rgb(254,224,139)"],[0.5,"rgb(255,255,191)"],[0.6,"rgb(217,239,139)"],[0.7,"rgb(166,217,106)"],[0.8,"rgb(102,189,99)"],[0.9,"rgb(26,152,80)"],[1.0,"rgb(0,104,55)"]],"showscale":true,"size":10},"mode":"markers+text","name":"Success vs Usage","text":["get_reservation_details","get_user_details","transfer_to_human_agents","cancel_reservation","get_flight_status","book_reservation","search_direct_flight","send_certificate","search_onestop_flight","update_reservation_flights"],"textposition":"top center","x":{"dtype":"i1","bdata":"dCQYDgwKCgQCAg=="},"y":{"dtype":"f8","bdata":"NcJyTyMsxz8AAAAAAADQPwAAAAAAAPA\u002fkiRJkiRJ0j8AAAAAAADwPwAAAAAAAAAAmpmZmZmZyT8AAAAAAADQPwAAAAAAAPA\u002fAAAAAAAAAAA="},"type":"scatter","xaxis":"x3","yaxis":"y3"},{"marker":{"color":"#dc3545"},"name":"Failure Rate","x":["book_reservation","update_reservation_flights","search_direct_flight","send_certificate","cancel_reservation","get_user_details","get_reservation_details"],"y":{"dtype":"f8","bdata":"AAAAAAAA8D8AAAAAAADwPwAAAAAAAOA\u002fAAAAAAAA4D9VVVVVVVXVPwAAAAAAANA\u002f2Ymd2ImdyD8="},"type":"bar","xaxis":"x4","yaxis":"y4"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.45]},"yaxis":{"anchor":"x","domain":[0.625,1.0]},"xaxis2":{"anchor":"y2","domain":[0.55,1.0]},"yaxis2":{"anchor":"x2","domain":[0.625,1.0]},"xaxis3":{"anchor":"y3","domain":[0.0,0.45]},"yaxis3":{"anchor":"x3","domain":[0.0,0.375]},"xaxis4":{"anchor":"y4","domain":[0.55,1.0]},"yaxis4":{"anchor":"x4","domain":[0.0,0.375]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Performance by Category","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"State-Changing vs Read-Only","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Success Rate vs Calls","x":0.225,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Failure Rate Analysis","x":0.775,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"}],"title":{"text":"Performance Issues Analysis"},"height":800,"showlegend":false},                        {"responsive": true}                    )                };            </script>        </div>
+            </div>
+            
+        <div class="key-metric">
+            Overall Performance Assessment: 68.5% (concerning)
+        </div>
+        
+                    <div class="performance-issue">
+                        <strong>Critical Performance Drop:</strong> 47%pp drop when state changes are required
+                        (60.5% → 13.4% success)
+                    </div>
+                    
+        </div>
+
+        <!-- Communication vs Tool Call Analysis -->
+        <div class="section page-break">
+            <h2>💬 Communication vs Tool Call Analysis</h2>
+            <div class="plot-container">
+                <div>                            <div id="79a54500-3a59-416b-a626-e2744bda0be2" class="plotly-graph-div" style="height:800px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("79a54500-3a59-416b-a626-e2744bda0be2")) {                    Plotly.newPlot(                        "79a54500-3a59-416b-a626-e2744bda0be2",                        [{"labels":["get_reservation_details","get_user_details","transfer_to_human_agents","cancel_reservation","get_flight_status","book_reservation","search_direct_flight","send_certificate","search_onestop_flight","update_reservation_flights"],"name":"Tool Usage","values":{"dtype":"i1","bdata":"dCQYDgwKCgQCAg=="},"type":"pie","domain":{"x":[0.0,0.45],"y":[0.625,1.0]}},{"marker":{"color":["#007bff","#28a745"]},"name":"Communication Tools","x":["transfer_to_human_agents","send_certificate"],"y":[24,4],"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":"#ff6b6b","size":8},"mode":"markers+lines","name":"Transition Frequency","x":[0,1,2,3,4,5,6,7,8,9],"y":{"dtype":"i1","bdata":"RSAQDAoJBgYGBg=="},"type":"scatter","xaxis":"x2","yaxis":"y2"},{"domain":{"x":[0.55,1.0],"y":[0.0,0.375]},"gauge":{"axis":{"range":[null,100]},"bar":{"color":"#4A90E2"},"steps":[{"color":"#FFF0F0","range":[0,25]},{"color":"#FFF8E7","range":[25,50]},{"color":"#F0FFF4","range":[50,75]},{"color":"#E8F5E8","range":[75,100]}],"threshold":{"line":{"color":"#E74C3C","width":2},"thickness":0.75,"value":10}},"mode":"gauge+number+delta","title":{"text":"Efficiency %"},"value":0.04218076220668579,"type":"indicator"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.55,1.0]},"yaxis":{"anchor":"x","domain":[0.625,1.0]},"xaxis2":{"anchor":"y2","domain":[0.0,0.45]},"yaxis2":{"anchor":"x2","domain":[0.0,0.375]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Tool Usage Distribution","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Transfer vs Communication","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Tool Transition Patterns","x":0.225,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Execution Efficiency","x":0.775,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"}],"title":{"text":"Communication vs Tool Call Analysis"},"height":800},                        {"responsive": true}                    )                };            </script>        </div>
+            </div>
+            
+            <div class="key-metric">
+                Transfer to Human: 24 calls (10.4% of total) with 100.0% success
+            </div>
+            
+            <div class="key-metric">
+                Communication Tools: 4 calls (1.7% of total) with 25.0% success
+            </div>
+            
+        <div class="key-metric">
+            Execution Efficiency: 0.0% (time spent in actual tool execution)
+        </div>
+        
+            <div class="performance-issue">
+                <strong>Low Efficiency:</strong> High wait times or communication delays detected
+            </div>
+            
+        </div>
+
+        <!-- Task & Simulation Analysis -->
+        <div class="section page-break">
+            <h2>📋 Task & Simulation Analysis</h2>
+            <div class="plot-container">
+                <div>                            <div id="9d7f5ba1-49ae-4796-a419-7aa45ff0c52a" class="plotly-graph-div" style="height:400px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("9d7f5ba1-49ae-4796-a419-7aa45ff0c52a")) {                    Plotly.newPlot(                        "9d7f5ba1-49ae-4796-a419-7aa45ff0c52a",                        [{"gauge":{"axis":{"range":[null,100]},"bar":{"color":"#4A90E2"},"steps":[{"color":"#FFF0F0","range":[0,40]},{"color":"#FFF8E7","range":[40,70]},{"color":"#F0FFF4","range":[70,100]}],"threshold":{"line":{"color":"#E74C3C","width":2},"thickness":0.75,"value":80}},"mode":"gauge+number","title":{"text":"Task Success Rate"},"value":60.0,"type":"indicator","domain":{"x":[0.0,0.2888888888888889],"y":[0.0,1.0]}},{"marker":{"color":{"dtype":"f8","bdata":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8D8AAAAAAAAAAJqZmZmZmdk\u002fAAAAAAAAAAAAAAAAAADwPwAAAAAAAAAAAAAAAAAA8D8="},"colorbar":{"title":{"text":"State Change Rate"}},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"showscale":true,"size":{"dtype":"f8","bdata":"AAAAAAAATUAAAAAAAAAyQAAAAAAAAChAAAAAAAAAHEAAAAAAAAAYQAAAAAAAABRAAAAAAAAAFEAAAAAAAAAAQAAAAAAAAPA\u002fAAAAAAAA8D8="}},"mode":"markers+text","name":"Tools","text":["get_reservation_details","get_user_details","transfer_to_human_agents","cancel_reservation","get_flight_status","book_reservation","search_direct_flight","send_certificate","search_onestop_flight","update_reservation_flights"],"x":{"dtype":"i1","bdata":"dCQYDgwKCgQCAg=="},"y":{"dtype":"f8","bdata":"NcJyTyMsxz8AAAAAAADQPwAAAAAAAPA\u002fkiRJkiRJ0j8AAAAAAADwPwAAAAAAAAAAmpmZmZmZyT8AAAAAAADQPwAAAAAAAPA\u002fAAAAAAAAAAA="},"type":"scatter","xaxis":"x","yaxis":"y"},{"marker":{"color":["#ff6b6b","#4ecdc4"]},"name":"Success by Type","x":["State-Changing","Read-Only"],"y":[1.0,0.852216748768473],"type":"bar","xaxis":"x2","yaxis":"y2"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.35555555555555557,0.6444444444444445]},"yaxis":{"anchor":"x","domain":[0.0,1.0]},"xaxis2":{"anchor":"y2","domain":[0.7111111111111111,1.0]},"yaxis2":{"anchor":"x2","domain":[0.0,1.0]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Task Success Overview","x":0.14444444444444446,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Complexity vs Success","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"State Operations Impact","x":0.8555555555555556,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"title":{"text":"Task & Simulation Success Analysis"},"height":400},                        {"responsive": true}                    )                };            </script>        </div>
+            </div>
+            
+        <div class="key-metric">
+            Task Completion: 60.0% success rate across 20 simulations
+        </div>
+        
+            <div class="key-metric">
+                Complexity Metrics: 0.5 tools per simulation, 11.5 calls per simulation
+            </div>
+            
+        </div>
+
+        <!-- Execution Patterns & Workflow Analysis -->
+        <div class="section page-break">
+            <h2>🔄 Execution Patterns & Workflow Analysis</h2>
+            <div class="plot-container">
+                <div>                            <div id="f5bc2ccc-0824-42b3-a480-381bf7267def" class="plotly-graph-div" style="height:800px; width:100%;"></div>            <script type="text/javascript">                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("f5bc2ccc-0824-42b3-a480-381bf7267def")) {                    Plotly.newPlot(                        "f5bc2ccc-0824-42b3-a480-381bf7267def",                        [{"marker":{"color":{"dtype":"f8","bdata":"NcJyTyMsxz8AAAAAAADQPwAAAAAAAPA\u002fkiRJkiRJ0j8AAAAAAADwPwAAAAAAAAAAmpmZmZmZyT8AAAAAAADQPwAAAAAAAPA\u002fAAAAAAAAAAA="},"colorscale":[[0.0,"rgb(165,0,38)"],[0.1,"rgb(215,48,39)"],[0.2,"rgb(244,109,67)"],[0.3,"rgb(253,174,97)"],[0.4,"rgb(254,224,139)"],[0.5,"rgb(255,255,191)"],[0.6,"rgb(217,239,139)"],[0.7,"rgb(166,217,106)"],[0.8,"rgb(102,189,99)"],[0.9,"rgb(26,152,80)"],[1.0,"rgb(0,104,55)"]]},"name":"Call Frequency","x":["get_reservation_details","get_user_details","transfer_to_human_agents","cancel_reservation","get_flight_status","book_reservation","search_direct_flight","send_certificate","search_onestop_flight","update_reservation_flights"],"y":{"dtype":"i1","bdata":"dCQYDgwKCgQCAg=="},"type":"bar","xaxis":"x","yaxis":"y"},{"marker":{"color":["#ff6b6b","#4ecdc4"]},"name":"Usage Distribution","x":["Most Used Tool","Other Tools"],"y":[50.43478260869565,49.56521739130435],"type":"bar","xaxis":"x2","yaxis":"y2"},{"marker":{"color":"#007bff"},"name":"Success Rate Distribution","nbinsx":10,"x":{"dtype":"f8","bdata":"NcJyTyMsxz8AAAAAAADQPwAAAAAAAPA\u002fkiRJkiRJ0j8AAAAAAADwPwAAAAAAAAAAmpmZmZmZyT8AAAAAAADQPwAAAAAAAPA\u002fAAAAAAAAAAA="},"type":"histogram","xaxis":"x3","yaxis":"y3"},{"labels":["Self-Loops","Tool Transitions"],"name":"Transition Types","values":[85,144],"type":"pie","domain":{"x":[0.55,1.0],"y":[0.625,1.0]}}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.45]},"yaxis":{"anchor":"x","domain":[0.625,1.0]},"xaxis2":{"anchor":"y2","domain":[0.0,0.45]},"yaxis2":{"anchor":"x2","domain":[0.0,0.375]},"xaxis3":{"anchor":"y3","domain":[0.55,1.0]},"yaxis3":{"anchor":"x3","domain":[0.0,0.375]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Tool Call Timeline","x":0.225,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Self-Loop Analysis","x":0.775,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Usage Concentration","x":0.225,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Performance Distribution","x":0.775,"xanchor":"center","xref":"paper","y":0.375,"yanchor":"bottom","yref":"paper"}],"title":{"text":"Execution Patterns & Workflow Analysis"},"height":800},                        {"responsive": true}                    )                };            </script>        </div>
+            </div>
+            
+            <div class="key-metric">
+                Execution Timeline: 182.3s total, 1.26 calls/second
+            </div>
+            
+                <div class="key-metric">
+                    Self-Loop Pattern: 37.1% of transitions are repeated calls
+                </div>
+                
+                    <div class="performance-issue">
+                        <strong>High Self-Loop Rate:</strong> May indicate retry logic or iterative processing patterns
+                    </div>
+                    
+            <div class="key-metric">
+                Usage Concentration: 50.4% of calls go to most-used tool
+            </div>
+            
+        </div>
+
+        <!-- Tool Performance Deep Dive -->
+        <div class="section page-break">
+            <h2>⚡ Performance Deep Dive</h2>
+            
+        <h3>🏆 Performance Tier Analysis</h3>
+        
+            <div class="performance-good">
+                <h4>Excellent Performance (3 tools)</h4>
+                <ul>
+            <li><strong>transfer_to_human_agents</strong>: 100.0% success, 0.03ms avg time</li><li><strong>get_flight_status</strong>: 100.0% success, 0.04ms avg time</li><li><strong>search_onestop_flight</strong>: 100.0% success, 0.17ms avg time</li></ul></div>
+            <div class="performance-issue">
+                <h4>Poor Performance (7 tools)</h4>
+                <ul>
+            <li><strong>get_reservation_details</strong>: 18.1% success, 0.04ms avg time</li><li><strong>get_user_details</strong>: 25.0% success, 0.04ms avg time</li><li><strong>cancel_reservation</strong>: 28.6% success, 0.10ms avg time</li><li><strong>book_reservation</strong>: 0.0% success, 6.62ms avg time</li><li><strong>search_direct_flight</strong>: 20.0% success, 0.18ms avg time</li></ul></div>
+            <h3>🚨 Critical Performance Issues</h3>
+            <div class="performance-issue">
+                <h4>High-Usage Poor Performers</h4>
+            
+                <p><strong>get_reservation_details</strong>: 18.1% success rate,
+                116 total calls, 95 failed calls,
+                Impact Score: 95.0</p>
+                
+                <p><strong>get_user_details</strong>: 25.0% success rate,
+                36 total calls, 27 failed calls,
+                Impact Score: 27.0</p>
+                
+                <p><strong>cancel_reservation</strong>: 28.6% success rate,
+                14 total calls, 10 failed calls,
+                Impact Score: 10.0</p>
+                
+                <p><strong>book_reservation</strong>: 0.0% success rate,
+                10 total calls, 10 failed calls,
+                Impact Score: 10.0</p>
+                
+                <p><strong>search_direct_flight</strong>: 20.0% success rate,
+                10 total calls, 8 failed calls,
+                Impact Score: 8.0</p>
+                </div>
+        </div>
+
+        <!-- Failure Analysis -->
+        <div class="section page-break">
+            <h2>🔥 Detailed Failure Analysis</h2>
+            
+        <div class="failure-section">
+            <h3>🎯 Root Cause Analysis</h3>
+            <div class="failure-stats">
+                <div class="stat-card">
+                    <h4>Total Failures</h4>
+                    <div class="stat-value">17</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Error Rate</h4>
+                    <div class="stat-value">7.4%</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Affected Tools</h4>
+                    <div class="stat-value">7</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Error Categories</h4>
+                    <div class="stat-value">1</div>
+                </div>
+            </div>
+        
+            <div class="failure-modes">
+                <h4>🚨 Primary Failure Modes</h4>
+        
+                <div class="failure-mode">
+                    <h5>Action Check Failures</h5>
+                    <p><strong>7 tools</strong> failed action validation checks:</p>
+                    <ul>
+            
+                    <li><strong>get_reservation_details</strong>: 5 failures (19.2% rate)
+                <br>→ Affected 4 simulation(s)<br>→ Example args: <code>{'reservation_id': '4OG6T3'}</code></li>
+                    <li><strong>get_user_details</strong>: 3 failures (25.0% rate)
+                <br>→ Affected 3 simulation(s)<br>→ Example args: <code>{'user_id': 'anya_garcia_5901'}</code></li>
+                    <li><strong>book_reservation</strong>: 2 failures (100.0% rate)
+                <br>→ Affected 2 simulation(s)<br>→ Example args: <code>{'user_id': 'sophia_silva_7557', 'origin': 'ORD', 'destination': 'PHL', 'flight_type': 'one_way', 'c...</code></li>
+                    <li><strong>cancel_reservation</strong>: 2 failures (33.3% rate)
+                <br>→ Affected 2 simulation(s)<br>→ Example args: <code>{'reservation_id': 'NQNU5R'}</code></li>
+                    <li><strong>search_direct_flight</strong>: 2 failures (50.0% rate)
+                <br>→ Affected 2 simulation(s)<br>→ Example args: <code>{'origin': 'JFK', 'destination': 'MCO', 'date': '2024-05-22'}</code></li>
+                    <li><strong>update_reservation_flights</strong>: 2 failures (100.0% rate)
+                <br>→ Affected 2 simulation(s)<br>→ Example args: <code>{'reservation_id': 'XEHM4B', 'cabin': 'economy', 'flights': [{'flight_number': 'HAT005', 'date': '20...</code></li>
+                    <li><strong>send_certificate</strong>: 1 failures (50.0% rate)
+                <br>→ Affected 1 simulation(s)<br>→ Example args: <code>{'user_id': 'noah_muller_9847', 'amount': 50}</code></li></ul></div>
+            <div class="performance-impact">
+                <h4>⚡ Performance Impact Analysis</h4>
+        
+                    <div class="poor-performers">
+                        <h5>High-Usage Tools with Poor Performance</h5>
+                        <table class="performance-table">
+                            <thead>
+                                <tr>
+                                    <th>Tool Name</th>
+                                    <th>Total Calls</th>
+                                    <th>Success Rate</th>
+                                    <th>Avg Time (ms)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                
+                        <tr>
+                            <td><strong>get_reservation_details</strong></td>
+                            <td>116</td>
+                            <td>18.1%</td>
+                            <td>0.04ms</td>
+                        </tr>
+                    
+                        <tr>
+                            <td><strong>get_user_details</strong></td>
+                            <td>36</td>
+                            <td>25.0%</td>
+                            <td>0.04ms</td>
+                        </tr>
+                    
+                        <tr>
+                            <td><strong>cancel_reservation</strong></td>
+                            <td>14</td>
+                            <td>28.6%</td>
+                            <td>0.10ms</td>
+                        </tr>
+                    
+                        <tr>
+                            <td><strong>book_reservation</strong></td>
+                            <td>10</td>
+                            <td>0.0%</td>
+                            <td>6.62ms</td>
+                        </tr>
+                    
+                        <tr>
+                            <td><strong>search_direct_flight</strong></td>
+                            <td>10</td>
+                            <td>20.0%</td>
+                            <td>0.18ms</td>
+                        </tr>
+                    </tbody></table></div>
+                <div class="slowest-tools">
+                    <h5>Slowest Tools by Execution Time</h5>
+                    <table class="performance-table">
+                        <thead>
+                            <tr>
+                                <th>Tool Name</th>
+                                <th>Avg Time (ms)</th>
+                                <th>Total Calls</th>
+                                <th>Success Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            
+                    <tr>
+                        <td><strong>book_reservation</strong></td>
+                        <td>6.62ms</td>
+                        <td>10</td>
+                        <td>0.0%</td>
+                    </tr>
+                
+                    <tr>
+                        <td><strong>search_direct_flight</strong></td>
+                        <td>0.18ms</td>
+                        <td>10</td>
+                        <td>20.0%</td>
+                    </tr>
+                
+                    <tr>
+                        <td><strong>search_onestop_flight</strong></td>
+                        <td>0.17ms</td>
+                        <td>2</td>
+                        <td>100.0%</td>
+                    </tr>
+                
+                    <tr>
+                        <td><strong>update_reservation_flights</strong></td>
+                        <td>0.12ms</td>
+                        <td>2</td>
+                        <td>0.0%</td>
+                    </tr>
+                
+                    <tr>
+                        <td><strong>cancel_reservation</strong></td>
+                        <td>0.10ms</td>
+                        <td>14</td>
+                        <td>28.6%</td>
+                    </tr>
+                </tbody></table></div></div>
+            <div class="failure-insights">
+                <h4>💡 Key Insights</h4>
+                <ul>
+        <li><strong>Most problematic tool:</strong> get_reservation_details (5 failures)</li><li><strong>Primary failure mode:</strong> Action validation failures suggest issues with tool argument validation or execution logic</li><li><strong>Average tool success rate:</strong> 41.7%</li><li><strong>⚠️ Low overall success rate</strong> suggests systemic issues requiring investigation</li></ul></div>
+            <div class="recommendations">
+                <h4>🔧 Critical Recommendations</h4>
+                <ol>
+        <li><strong>Action Validation:</strong> Review and strengthen argument validation logic for failing tools</li><li><strong>Error Handling:</strong> Implement more robust error recovery mechanisms</li><li><strong>Performance Optimization:</strong> Focus on improving poor-performing tools with high usage</li><li><strong>Monitoring:</strong> Implement enhanced monitoring and alerting for tools with high failure rates</li><li><strong>Testing:</strong> Increase test coverage for identified problematic tool patterns</li></ol></div></div></div>
+        </div>
+
+        <div class="footer">
+            <p>Report generated by Enhanced Tau2 Analytics Framework</p>
+            <p>Interactive visualizations powered by Plotly</p>
+        </div>
+    </div>
+</body>
+</html>
