@@ -66,16 +66,58 @@ def analyze_logs(log_file: Path, output_dir: Path):
     Loads, analyzes, and visualizes execution logs from a file.
     """
     print(f"📁 Loading logs from: {log_file}")
-    try:
-        with log_file.open('r') as f:
-            data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"❌ Error loading log file: {e}")
-        return
+    
+    # Determine which file is which and load both
+    if '_enhanced_logs' in log_file.name:
+        enhanced_log_file = log_file
+        task_log_file = Path(str(log_file).replace('_enhanced_logs', ''))
+    else:
+        task_log_file = log_file
+        enhanced_log_file = Path(str(log_file).replace('.json', '_enhanced_logs.json'))
 
+    try:
+        with enhanced_log_file.open('r') as f:
+            tool_data = json.load(f)
+        print(f"  |-> Loaded tool logs from: {enhanced_log_file}")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"❌ Error loading tool log file: {e}")
+        tool_data = {}
+
+    try:
+        with task_log_file.open('r') as f:
+            task_data = json.load(f)
+        print(f"  |-> Loaded task logs from: {task_log_file}")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"❌ Error loading task log file: {e}")
+        task_data = {}
+
+    # Custom merging logic
+    merged_data = task_data.copy()
+    if tool_data and 'simulations' in tool_data and 'simulations' in merged_data:
+        # Special handling for simulations: tool_data has a dict, task_data has a list
+        # We want to merge the dict values from tool_data into the list items of task_data
+        if isinstance(tool_data['simulations'], dict) and isinstance(merged_data['simulations'], list):
+            # This assumes the order is consistent, which is risky but might be the case
+            # A better approach would be to match by a common key if available
+            
+            # Let's try to match by task_id if possible
+            sim_list_from_tool_data = []
+            for i, sim_in_list in enumerate(merged_data['simulations']):
+                # Heuristic: find a matching dict entry. This is brittle.
+                # A better way would be a unique simulation ID if it existed in both.
+                # For now, we assume the keys in the dict are not directly relatable to list indices
+                # and we just convert the dict to a list.
+                pass # Let's just convert dict to list for now.
+            
+            tool_sims_as_list = list(tool_data['simulations'].values())
+
+            for i, sim_in_list in enumerate(merged_data['simulations']):
+                if i < len(tool_sims_as_list):
+                    sim_in_list.update(tool_sims_as_list[i])
+    
     # The LogAnalyzer is capable of handling different log formats.
     # We pass the entire loaded JSON data to it.
-    analyzer = LogAnalyzer(data)
+    analyzer = LogAnalyzer(merged_data)
 
     # Check if any tool events were found
     if analyzer.df.empty:

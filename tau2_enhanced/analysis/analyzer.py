@@ -57,6 +57,19 @@ class LogAnalyzer:
         # Detect if this is a tau2-bench-jit log format
         if isinstance(log_data, dict) and 'tasks' in log_data and 'info' in log_data:
             self.tool_events = self._parse_jit_log_data(log_data)
+        # Logic for old format with simulations
+        elif isinstance(log_data, dict) and 'simulations' in log_data and isinstance(log_data['simulations'], dict):
+            self.tool_events = []
+            for sim_id, sim_data in log_data['simulations'].items():
+                if 'execution_logs' in sim_data and isinstance(sim_data['execution_logs'], list):
+                    for event_data in sim_data['execution_logs']:
+                        if isinstance(event_data, dict) and event_data.get('event_type') == 'ToolExecutionEvent':
+                            from tau2_enhanced.logging.events import event_from_dict
+                            event = event_from_dict(event_data)
+                            if isinstance(event, ToolExecutionEvent):
+                                self.tool_events.append(event)
+                        elif isinstance(event_data, ToolExecutionEvent):
+                            self.tool_events.append(event_data)
         # Existing logic for enhanced logs
         elif isinstance(log_data, dict) and 'execution_events' in log_data:
             # Extract ToolExecutionEvents from structured logs
@@ -79,6 +92,12 @@ class LogAnalyzer:
 
         # Convert events to structured DataFrame
         event_dicts = [event.to_dict() if not isinstance(event, dict) else event for event in self.tool_events]
+        
+        # Ensure execution_time is correctly populated
+        for event in event_dicts:
+            if 'execution_time_ms' in event:
+                event['execution_time'] = event['execution_time_ms'] / 1000.0
+        
         df = pd.DataFrame(event_dicts)
 
         # Handle datetime conversion
@@ -95,6 +114,10 @@ class LogAnalyzer:
         if 'error_message' in df.columns:
             df['error_details'] = df['error_message']  # Use error_message as primary error field
 
+        # Ensure execution_time is numeric
+        if 'execution_time' in df.columns:
+            df['execution_time'] = pd.to_numeric(df['execution_time'], errors='coerce').fillna(0)
+
         return df
 
     def _parse_jit_log_data(self, log_data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -102,10 +125,16 @@ class LogAnalyzer:
         Parses the log data from tau2-bench-jit format.
         """
         tool_events = []
-        for sim in log_data.get('simulations', []):
+        sim_iterator = log_data.get('simulations', [])
+        if isinstance(sim_iterator, dict):
+            sim_iterator = sim_iterator.values()
+
+        for sim in sim_iterator:
             if 'execution_logs' in sim and sim['execution_logs'] is not None:
                 for log in sim['execution_logs']:
                     tool_args = log.get('arguments', {})
+                    if not isinstance(tool_args, dict):
+                        tool_args = {}
                     result = log.get('result_preview')
 
                     # Argument analysis
@@ -133,7 +162,6 @@ class LogAnalyzer:
                     timestamp = 0.0
                     if log.get('pre_call_timestamp'):
                         try:
-                            # Handle timezone-aware ISO format
                             ts_str = log.get('pre_call_timestamp')
                             if isinstance(ts_str, str):
                                 if ts_str.endswith('Z'):
@@ -141,6 +169,27 @@ class LogAnalyzer:
                                 timestamp = datetime.fromisoformat(ts_str).timestamp()
                         except Exception:
                             timestamp = 0.0
+                    elif log.get('timestamp'):
+                        timestamp = log.get('timestamp', 0.0)
+
+                    # Handle execution time from different formats
+                    execution_time = 0.0
+                    if 'execution_time_ms' in log:
+                        execution_time = log.get('execution_time_ms', 0) / 1000.0
+                    elif 'execution_time' in log:
+                        execution_time = log.get('execution_time', 0)
+
+                    # Handle error messages from different formats
+                    error_message = log.get('error_details')
+                    if error_message is None:
+                        error_message = log.get('error_message')
+
+                    # Heuristic to infer state_changed for jit logs
+                    state_changed = log.get('state_changed', False)
+                    if not state_changed:
+                        tool_name = log.get('tool_name', '')
+                        if any(keyword in tool_name for keyword in ['update', 'cancel', 'book', 'send', 'create', 'delete', 'add', 'remove']):
+                            state_changed = True
 
                     # Map jit log fields to ToolExecutionEvent fields
                     event_dict = {
@@ -148,24 +197,24 @@ class LogAnalyzer:
                         'tool_call_id': log.get('tool_call_id'),
                         'tool_args': tool_args,
                         'timestamp': timestamp,
-                        'execution_time': log.get('execution_time_ms', 0) / 1000.0, # convert to seconds
+                        'execution_time': execution_time,
                         'success': log.get('success'),
-                        'error_message': log.get('error_details'),
+                        'error_message': error_message,
                         'requestor': log.get('requestor'),
                         'result_preview': result,
-                        'state_changed': False, # Not directly available, default to False
+                        'state_changed': state_changed,
                         'level': LogLevel.INFO if log.get('success') else LogLevel.ERROR,
                         'source': f"tool:{log.get('tool_name')}",
                         'message': f"Tool {log.get('tool_name')} {'succeeded' if log.get('success') else 'failed'}",
                         'metadata': {},
-                        'error_type': None,
+                        'error_type': log.get('error_type'),
                         'result_size': result_size,
-                        'validation_errors': [],
+                        'validation_errors': log.get('validation_errors', []),
                         'args_count': args_count,
                         'args_size_bytes': args_size_bytes,
                         'args_types': args_types,
                         'args_complexity_score': args_complexity_score,
-                        'has_file_args': False, # Heuristic not implemented for this format
+                        'has_file_args': False, 
                         'has_large_args': has_large_args,
                         'sensitive_args_detected': sensitive_args_detected,
                         'required_args_provided': [],
@@ -173,8 +222,8 @@ class LogAnalyzer:
                         'missing_args': [],
                         'unexpected_args': [],
                         'result_type': result_type,
-                        'result_complexity_score': None, # Heuristic not implemented for this format
-                        'result_contains_errors': False, # Heuristic not implemented for this format
+                        'result_complexity_score': None,
+                        'result_contains_errors': False,
                         'result_truncated': False,
                         'has_result': result is not None,
                     }
@@ -216,7 +265,9 @@ class LogAnalyzer:
         total_simulations = len(simulations)
         successful_simulations = 0
         if simulations:
-            for sim in simulations:
+            # Handle both list and dict of simulations
+            sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+            for sim in sim_iterator:
                 reward_info = sim.get('reward_info')
                 if reward_info and reward_info.get('reward', 0) > 0:
                     successful_simulations += 1
