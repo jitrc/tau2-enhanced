@@ -20,6 +20,22 @@ from .logging import (
     LogLevel
 )
 
+# Import enhanced agents
+from .agents import (
+    RetryManagedLLMAgent,
+    ContextManagedLLMAgent,
+    EnhancedLLMAgent
+)
+
+# Import agent registry functions
+from .agents.agent_registry import (
+    register_all_enhanced_agents,
+    get_enhanced_agents_info,
+    get_usage_examples,
+    get_performance_expectations,
+    print_enhanced_agent_summary
+)
+
 __all__ = [
     # Enhanced runner
     'EnhancedRunner',
@@ -33,5 +49,17 @@ __all__ = [
     'ToolExecutionEvent',
     'StateChangeEvent',
     'ContextReductionEvent',
-    'LogLevel'
+    'LogLevel',
+
+    # Enhanced agents
+    'RetryManagedLLMAgent',
+    'ContextManagedLLMAgent',
+    'EnhancedLLMAgent',
+
+    # Agent registry functions
+    'register_all_enhanced_agents',
+    'get_enhanced_agents_info',
+    'get_usage_examples',
+    'get_performance_expectations',
+    'print_enhanced_agent_summary'
 ]

@@ -94,27 +94,13 @@ def analyze_logs(log_file: Path, output_dir: Path):
     # Custom merging logic
     merged_data = task_data.copy()
     if tool_data and 'simulations' in tool_data and 'simulations' in merged_data:
-        # Special handling for simulations: tool_data has a dict, task_data has a list
-        # We want to merge the dict values from tool_data into the list items of task_data
         if isinstance(tool_data['simulations'], dict) and isinstance(merged_data['simulations'], list):
-            # This assumes the order is consistent, which is risky but might be the case
-            # A better approach would be to match by a common key if available
-            
-            # Let's try to match by task_id if possible
-            sim_list_from_tool_data = []
-            for i, sim_in_list in enumerate(merged_data['simulations']):
-                # Heuristic: find a matching dict entry. This is brittle.
-                # A better way would be a unique simulation ID if it existed in both.
-                # For now, we assume the keys in the dict are not directly relatable to list indices
-                # and we just convert the dict to a list.
-                pass # Let's just convert dict to list for now.
-            
-            tool_sims_as_list = list(tool_data['simulations'].values())
+            task_sims_by_id = {sim['id']: sim for sim in merged_data['simulations'] if 'id' in sim}
+            for sim_id, tool_sim_data in tool_data['simulations'].items():
+                if sim_id in task_sims_by_id:
+                    task_sims_by_id[sim_id].update(tool_sim_data)
+            merged_data['simulations'] = list(task_sims_by_id.values())
 
-            for i, sim_in_list in enumerate(merged_data['simulations']):
-                if i < len(tool_sims_as_list):
-                    sim_in_list.update(tool_sims_as_list[i])
-    
     # The LogAnalyzer is capable of handling different log formats.
     # We pass the entire loaded JSON data to it.
     analyzer = LogAnalyzer(merged_data)
