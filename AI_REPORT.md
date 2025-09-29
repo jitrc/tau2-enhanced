@@ -196,7 +196,32 @@ python scripts/analyze_simple_logs.py results.json
 **Key Findings:** Enhanced agents achieve 13.0pp tool success improvement through intelligent retry logic and context management, with zero modifications to core tau2-bench.
 
 
+## 5. (Bonus) Suggested Training Data
 
+### Core Training Strategy
+Based on Grok's 89.4% action execution failures, we propose three targeted training approaches:
+
+**1. Structured Output Training**
+- **50K examples** of correct API parameter formatting addressing type inconsistencies
+- **Focus:** JSON schema compliance, nested object structures, parameter validation
+- **Target:** Reduce ActionCheckFailure rate from 89.4% to <45%
+
+**2. Adversarial RL Environment**
+- **Fault-injection training** with 30% API failure rate during learning
+- **Recovery strategies:** Retry logic, parameter reformatting, alternative action paths
+- **Reward system:** +15 for successful recovery, +10 for novel approaches, +8 for avoiding loops
+- **Target:** Achieve 60% error recovery success rate
+
+**3. Context Management Dataset**
+- **25K multi-turn conversations** with state consistency challenges
+- **Augmentation:** Parameter format variations, conversation length diversity, failure timing
+- **Validation:** Automated schema checking + human quality scoring (>4.2/5.0)
+- **Target:** Reduce 37-40% self-loop rate to <15%
+
+**Expected Outcomes:**
+- **13pp further improvement** in tool success rates through structured training
+- **Introduction of robust error recovery** capabilities missing in current model
+- **Production-ready resilience** against real-world API failures and edge cases
 
 
 ## Conclusion
@@ -213,3 +238,6 @@ python scripts/analyze_simple_logs.py results.json
 - **Efficiency Patterns:** 37-40% self-loops reveal planning deficiencies
 
 **Impact:** tau2-enhanced demonstrates how systematic benchmark critique drives practical improvements, providing both research insights and production solutions through intelligent agent enhancements and deterministic evaluation methodologies.
+
+---
+
