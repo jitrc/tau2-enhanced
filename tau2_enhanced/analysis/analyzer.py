@@ -194,25 +194,40 @@ class LogAnalyzer:
                 'total_tool_calls': 0,
                 'successful_calls': 0,
                 'failed_calls': 0,
-                'success_rate': 0,
+                'tool_success_rate': 0,
                 'total_execution_time': 0,
                 'average_execution_time': 0,
                 'median_execution_time': 0,
                 'state_changing_calls': 0,
                 'read_only_calls': 0,
-                'error_rate': 0,
+                'tool_error_rate': 0,
                 'most_common_tool': None,
                 'slowest_tool_avg': None,
                 'fastest_tool_avg': None,
                 'execution_timespan': None,
-                'tools_used': 0
+                'tools_used': 0,
+                'total_simulations': 0,
+                'successful_simulations': 0,
+                'task_success_rate': 0,
             }
 
+        # --- Task-level metrics ---
+        simulations = self.raw_log_data.get('simulations', [])
+        total_simulations = len(simulations)
+        successful_simulations = 0
+        if simulations:
+            for sim in simulations:
+                reward_info = sim.get('reward_info')
+                if reward_info and reward_info.get('reward', 0) > 0:
+                    successful_simulations += 1
+        task_success_rate = successful_simulations / total_simulations if total_simulations > 0 else 0
+
+        # --- Tool-level metrics ---
         total_calls = len(self.df)
         successful_calls = self.df['success'].sum()
         failed_calls = total_calls - successful_calls
-        success_rate = successful_calls / total_calls if total_calls > 0 else 0
-        error_rate = failed_calls / total_calls if total_calls > 0 else 0
+        tool_success_rate = successful_calls / total_calls if total_calls > 0 else 0
+        tool_error_rate = failed_calls / total_calls if total_calls > 0 else 0
 
         # Time-based metrics
         total_time = self.df['execution_time'].sum()
@@ -240,11 +255,14 @@ class LogAnalyzer:
             execution_timespan = time_range.total_seconds()
 
         return {
+            'total_simulations': total_simulations,
+            'successful_simulations': successful_simulations,
+            'task_success_rate': task_success_rate,
             'total_tool_calls': total_calls,
             'successful_calls': int(successful_calls),
             'failed_calls': int(failed_calls),
-            'success_rate': success_rate,
-            'error_rate': error_rate,
+            'tool_success_rate': tool_success_rate,
+            'tool_error_rate': tool_error_rate,
             'total_execution_time': total_time,
             'average_execution_time': avg_time,
             'median_execution_time': median_time,

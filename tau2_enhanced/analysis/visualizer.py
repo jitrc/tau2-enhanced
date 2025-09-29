@@ -1,3 +1,4 @@
+import json
 """
 Visualization tools for the simplified log format.
 """
@@ -40,14 +41,14 @@ class LogVisualizer:
                 [{"type": "indicator"}, {"type": "indicator"}],
                 [{"type": "bar"}, {"type": "bar"}]
             ],
-            subplot_titles=("Overall Success Rate", "Avg. Execution Time", "Tool Success Rates", "Tool Execution Times")
+            subplot_titles=("Task Success Rate", "Tool Success Rate", "Tool Success Rates", "Tool Execution Times")
         )
 
         fig.add_trace(
             go.Indicator(
                 mode="gauge+number",
-                value=summary['success_rate'] * 100,
-                title={'text': "Success %"},
+                value=summary.get('task_success_rate', 0) * 100,
+                title={'text': "Task Success %"},
                 gauge={'axis': {'range': [0, 100]}},
                 domain={'x': [0, 1], 'y': [0, 1]}
             ),
@@ -56,10 +57,10 @@ class LogVisualizer:
 
         fig.add_trace(
             go.Indicator(
-                mode="number",
-                value=summary['average_execution_time'],
-                title={'text': "Avg. Time (s)"},
-                number={'suffix': " s"}
+                mode="gauge+number",
+                value=summary.get('tool_success_rate', 0) * 100,
+                title={'text': "Tool Success %"},
+                gauge={'axis': {'range': [0, 100]}},
             ),
             row=1, col=2
         )
@@ -420,7 +421,7 @@ class LogVisualizer:
         )
         return fig
 
-    def create_comprehensive_report(self, output_path: str, log_file_name: str = "execution_logs") -> str:
+    def create_tool_report(self, output_path: str, log_file_name: str = "execution_logs") -> str:
         """
         Create a comprehensive HTML report with detailed analysis, insights, and embedded plots.
 
@@ -665,8 +666,8 @@ class LogVisualizer:
                     <div class="metric-label">Total Tool Calls</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">{summary.get('success_rate', 0):.1%}</div>
-                    <div class="metric-label">Success Rate</div>
+                    <div class="metric-value">{summary.get('tool_success_rate', 0):.1%}</div>
+                    <div class="metric-label">Tool Success Rate</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-value">{summary.get('average_execution_time', 0):.4f}s</div>
@@ -806,7 +807,7 @@ class LogVisualizer:
                 <ul>
                     <li><strong>{excellent_tools}</strong> out of {len(tool_perf)} tools have excellent performance (≥95% success rate)</li>
                     <li><strong>{most_used}</strong> is the most frequently used tool with {tool_perf.iloc[0]['total_calls']} calls</li>
-                    <li>Overall system reliability: <strong>{summary.get('success_rate', 0):.1%}</strong></li>
+                    <li>Overall system reliability: <strong>{summary.get('tool_success_rate', 0):.1%}</strong></li>
                 </ul>
             </div>
             """
@@ -916,7 +917,7 @@ class LogVisualizer:
         low_priority = []
 
         # Analyze overall system health
-        success_rate = summary.get('success_rate', 1.0)
+        success_rate = summary.get('tool_success_rate', 1.0)
         total_calls = summary.get('total_tool_calls', 0)
         avg_execution_time = summary.get('average_execution_time', 0)
 
@@ -1129,3 +1130,88 @@ class LogVisualizer:
             insights += f"<p><strong>Recursive patterns:</strong> {len(self_loops)} tools frequently call themselves, indicating iterative processing patterns.</p>"
 
         return insights
+
+    def create_comprehensive_report(self, output_path: str, log_file_name: str = "execution_logs") -> str:
+        """
+        Create a comprehensive HTML report with simulation overviews, transcripts, and results.
+        """
+        from datetime import datetime
+
+        summary = self.analyzer.get_summary_metrics()
+        simulations = self.analyzer.raw_log_data.get('simulations', [])
+        tasks = {task['id']: task for task in self.analyzer.raw_log_data.get('tasks', [])}
+
+        def format_message(msg):
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            tool_calls = msg.get('tool_calls')
+            
+            color = {
+                'assistant': '#2b5797',
+                'user': '#008a00',
+                'tool': '#6a00ff'
+            }.get(role, '#333')
+
+            html = f'<div class="message" style="border-left-color: {color};">'
+            html += f'<div class="role" style="color: {color};">{role.title()}</div>'
+            if content:
+                html += f'<div class="content">{content.replace(">", "&gt;").replace("<", "&lt;")}</div>'
+            if tool_calls:
+                html += '<div class="tool-calls">'
+                for tc in tool_calls:
+                    html += f'<div class="tool-call"><strong>Tool:</strong> {tc.get("name", "N/A")}'
+                    html += f'<pre>{json.dumps(tc.get("arguments", {}), indent=2)}</pre></div>'
+                html += '</div>'
+            html += '</div>'
+            return html
+
+        sim_html = ""
+        for sim in simulations:
+            task_id = sim.get('task_id')
+            task = tasks.get(task_id, {})
+            reward_info = sim.get('reward_info', {})
+            reward = reward_info.get('reward', 0)
+            status = "✅ Success" if reward > 0 else "❌ Failure"
+            
+            sim_html += f'<div class="simulation">'
+            sim_html += f'<h3>Task: {task_id} ({status})</h3>'
+            sim_html += f'<p><strong>Description:</strong> {task.get("description", {}).get("purpose", "N/A")}</p>'
+            sim_html += f'<p><strong>Termination Reason:</strong> {sim.get("termination_reason", "N/A")}</p>'
+            sim_html += f'<p><strong>Final Reward:</strong> {reward:.2f}</p>'
+            
+            sim_html += '<h4>Conversation Transcript:</h4>'
+            sim_html += '<div class="transcript">'
+            for msg in sim.get('messages', []):
+                sim_html += format_message(msg)
+            sim_html += '</div></div>'
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Comprehensive Simulation Report</title>
+            <style>
+                body {{ font-family: sans-serif; margin: 20px; }}
+                .container {{ max-width: 1000px; margin: auto; }}
+                .simulation {{ border: 1px solid #ccc; border-radius: 5px; padding: 15px; margin-bottom: 20px; }}
+                .message {{ border-left: 4px solid; padding: 10px; margin-bottom: 10px; background-color: #f9f9f9; }}
+                .role {{ font-weight: bold; margin-bottom: 5px; }}
+                .tool-call {{ background-color: #eee; padding: 5px; border-radius: 3px; }}
+                pre {{ white-space: pre-wrap; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Comprehensive Simulation Report</h1>
+                <p><strong>Source:</strong> {log_file_name}</p>
+                <p><strong>Task Success Rate:</strong> {summary.get('task_success_rate', 0):.1%}</p>
+                {sim_html}
+            </div>
+        </body>
+        </html>
+        """
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+            
+        return output_path
