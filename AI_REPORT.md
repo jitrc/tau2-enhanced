@@ -73,20 +73,14 @@ The most problematic actions identified in the analysis include:
 2. `book_reservation`: 84.8% failure rate - Complex booking logic and parameter validation errors.
 3. `send_certificate`: 66.7% failure rate - Parameter validation issues.
 
-**Key Performance Insights:**
-- **Action Complexity Impact**: Tasks requiring 0 actions succeeded 93.8% of the time, while those requiring 1+ actions dropped to 32.8% success
-- **Complete Task Failures**: 5 tasks (7, 14, 17, 20, 23) showed 100% failure rate across all 4 trials
-- **Communication Excellence**: 97.0% success rate in communication tasks demonstrates strong conversational abilities
-- **Database Operations**: Universal failure pattern (100%) consistent with industry-wide issues
-- **Trial Performance Degradation**: Success rate declined from 66% (trial 0) to 50% (trial 3), indicating consistency issues
-- **Cost Efficiency**: Average agent cost of $0.23 per simulation demonstrates reasonable resource usage
-
 **Root Cause Analysis:**
-The analysis reveals a **61.1 percentage point performance drop** when actions are required, indicating systematic execution failures:
+The analysis reveals a **61.1 percentage point performance drop** when actions are required (93.8% → 32.8% success), indicating systematic execution failures:
 
 - **Primary Failure Mode**: Database failures (100% of all 85 failed simulations)
 - **Action Execution Crisis**: 89.4% of failures involve action execution problems
-- **Complex Task Breakdown**: Tasks requiring 4+ actions show 0% success rate
+- **Complete Task Failures**: 5 tasks (7, 14, 17, 20, 23) showed 100% failure rate across all trials
+- **Trial Consistency Issues**: Success degraded from 66% (trial 0) to 50% (trial 3)
+- **Communication Strength**: 97.0% success rate demonstrates strong conversational abilities
 
 **Most Problematic Actions** (minimum 5 attempts):
 1. **`book_reservation`**: 84.8% failure rate across 33 attempts
