@@ -64,10 +64,6 @@ def convert_state_snapshots_to_events(state_snapshots):
 def analyze_logs(log_file: Path, output_dir: Path):
     """
     Loads, analyzes, and visualizes execution logs from a file.
-
-    Args:
-        log_file: Path to the JSON file containing the execution logs.
-        output_dir: Directory to save the analysis reports and plots.
     """
     print(f"📁 Loading logs from: {log_file}")
     try:
@@ -77,64 +73,19 @@ def analyze_logs(log_file: Path, output_dir: Path):
         print(f"❌ Error loading log file: {e}")
         return
 
-    # The `simulations` key can be a list or a dictionary. We need to handle both.
-    try:
-        simulations_data = data.get('simulations', [])
-        if isinstance(simulations_data, list) and simulations_data:
-            first_simulation = simulations_data[0]
-        elif isinstance(simulations_data, dict) and simulations_data:
-            first_simulation = next(iter(simulations_data.values()))
-        else:
-            print("❌ 'simulations' field is empty or has an unexpected type.")
-            return
+    # The LogAnalyzer is capable of handling different log formats.
+    # We pass the entire loaded JSON data to it.
+    analyzer = LogAnalyzer(data)
 
-        # The location of execution_logs can vary.
-        # Try finding it inside `enhanced_logs` first, then fall back to the top level.
-        log_data = None
-        if 'enhanced_logs' in first_simulation and 'execution_logs' in first_simulation['enhanced_logs']:
-            log_data = first_simulation['enhanced_logs']['execution_logs']
-        elif 'execution_logs' in first_simulation:
-            log_data = first_simulation['execution_logs']
-
-        # If we found proper execution logs, use them directly
-        if log_data:
-            print(f"   Found {len(log_data)} execution events in enhanced logs.")
-            # Convert list of dicts to wrapped structure that LogAnalyzer expects
-            log_data = {'execution_events': log_data}
-
-        # If no execution_logs found, check if we have state_snapshots to analyze
-        if not log_data:
-            state_snapshots = None
-            if 'state_snapshots' in first_simulation:
-                state_snapshots = first_simulation['state_snapshots']
-            elif 'enhanced_logs' in first_simulation and 'state_snapshots' in first_simulation['enhanced_logs']:
-                state_snapshots = first_simulation['enhanced_logs']['state_snapshots']
-
-            if not state_snapshots:
-                print("❌ Could not find 'execution_logs' or 'state_snapshots' in the first simulation.")
-                print("   Please ensure you are using a results file with enhanced logging enabled.")
-                return
-            else:
-                print("⚠️  No execution_logs found, but state_snapshots are available.")
-                print(f"   Found {len(state_snapshots)} state snapshots to analyze.")
-                # Convert state snapshots to a format we can analyze
-                log_data = convert_state_snapshots_to_events(state_snapshots)
-
-    except (KeyError, IndexError, TypeError, StopIteration):
-        print("❌ Could not find or parse the simulation data in the provided file.")
-        print("   Please ensure you are using a valid results file.")
+    # Check if any tool events were found
+    if analyzer.df.empty:
+        print("🤷 No tool execution events found in the file.")
         return
 
-    if not log_data:
-        print("🤷 No log events found in the file.")
-        return
-
-    print(f"🔬 Found {len(log_data)} log events to analyze.")
+    print(f"🔬 Found {len(analyzer.df)} tool execution events to analyze.")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Analyze the logs
-    analyzer = LogAnalyzer(log_data)
-
     print("\n" + "="*50)
     print("📊 SUMMARY METRICS")
     print("="*50)

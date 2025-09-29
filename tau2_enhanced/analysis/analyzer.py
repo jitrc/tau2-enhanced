@@ -54,8 +54,11 @@ class LogAnalyzer:
         Returns:
             A pandas DataFrame optimized for analysis operations.
         """
-        # Extract ToolExecutionEvent objects
-        if isinstance(log_data, dict) and 'execution_events' in log_data:
+        # Detect if this is a tau2-bench-jit log format
+        if isinstance(log_data, dict) and 'tasks' in log_data and 'info' in log_data:
+            self.tool_events = self._parse_jit_log_data(log_data)
+        # Existing logic for enhanced logs
+        elif isinstance(log_data, dict) and 'execution_events' in log_data:
             # Extract ToolExecutionEvents from structured logs
             self.tool_events = []
             for event_data in log_data['execution_events']:
@@ -67,7 +70,6 @@ class LogAnalyzer:
                         self.tool_events.append(event)
                 elif isinstance(event_data, ToolExecutionEvent):
                     self.tool_events.append(event_data)
-
         elif isinstance(log_data, list):
             # List of ToolExecutionEvent objects
             self.tool_events = [e for e in log_data if isinstance(e, ToolExecutionEvent)]
@@ -76,7 +78,7 @@ class LogAnalyzer:
             return pd.DataFrame()
 
         # Convert events to structured DataFrame
-        event_dicts = [event.to_dict() for event in self.tool_events]
+        event_dicts = [event.to_dict() if not isinstance(event, dict) else event for event in self.tool_events]
         df = pd.DataFrame(event_dicts)
 
         # Handle datetime conversion
@@ -94,6 +96,91 @@ class LogAnalyzer:
             df['error_details'] = df['error_message']  # Use error_message as primary error field
 
         return df
+
+    def _parse_jit_log_data(self, log_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Parses the log data from tau2-bench-jit format.
+        """
+        tool_events = []
+        for sim in log_data.get('simulations', []):
+            if 'execution_logs' in sim and sim['execution_logs'] is not None:
+                for log in sim['execution_logs']:
+                    tool_args = log.get('arguments', {})
+                    result = log.get('result_preview')
+
+                    # Argument analysis
+                    args_count = len(tool_args)
+                    args_size_bytes = len(str(tool_args))
+                    has_large_args = args_size_bytes > 1024
+                    args_types = {k: type(v).__name__ for k, v in tool_args.items()}
+                    
+                    complexity_factors = [
+                        len(tool_args) * 0.1,
+                        sum(1 for v in tool_args.values() if isinstance(v, (dict, list))) * 0.2,
+                        sum(1 for v in tool_args.values() if isinstance(v, str) and len(v) > 100) * 0.15,
+                        (args_size_bytes / 1024) * 0.1
+                    ]
+                    args_complexity_score = min(sum(complexity_factors), 1.0)
+
+                    sensitive_indicators = ['password', 'key', 'secret', 'token', 'auth', 'credential', 'ssn', 'credit']
+                    sensitive_args_detected = any(any(indicator in str(k).lower() for indicator in sensitive_indicators) for k in tool_args.keys())
+
+                    # Result analysis
+                    result_type = type(result).__name__ if result is not None else None
+                    result_size = len(str(result)) if result is not None else 0
+                    
+                    # Timestamp conversion
+                    timestamp = 0.0
+                    if log.get('pre_call_timestamp'):
+                        try:
+                            # Handle timezone-aware ISO format
+                            ts_str = log.get('pre_call_timestamp')
+                            if isinstance(ts_str, str):
+                                if ts_str.endswith('Z'):
+                                    ts_str = ts_str[:-1] + '+00:00'
+                                timestamp = datetime.fromisoformat(ts_str).timestamp()
+                        except Exception:
+                            timestamp = 0.0
+
+                    # Map jit log fields to ToolExecutionEvent fields
+                    event_dict = {
+                        'tool_name': log.get('tool_name'),
+                        'tool_call_id': log.get('tool_call_id'),
+                        'tool_args': tool_args,
+                        'timestamp': timestamp,
+                        'execution_time': log.get('execution_time_ms', 0) / 1000.0, # convert to seconds
+                        'success': log.get('success'),
+                        'error_message': log.get('error_details'),
+                        'requestor': log.get('requestor'),
+                        'result_preview': result,
+                        'state_changed': False, # Not directly available, default to False
+                        'level': LogLevel.INFO if log.get('success') else LogLevel.ERROR,
+                        'source': f"tool:{log.get('tool_name')}",
+                        'message': f"Tool {log.get('tool_name')} {'succeeded' if log.get('success') else 'failed'}",
+                        'metadata': {},
+                        'error_type': None,
+                        'result_size': result_size,
+                        'validation_errors': [],
+                        'args_count': args_count,
+                        'args_size_bytes': args_size_bytes,
+                        'args_types': args_types,
+                        'args_complexity_score': args_complexity_score,
+                        'has_file_args': False, # Heuristic not implemented for this format
+                        'has_large_args': has_large_args,
+                        'sensitive_args_detected': sensitive_args_detected,
+                        'required_args_provided': [],
+                        'optional_args_provided': [],
+                        'missing_args': [],
+                        'unexpected_args': [],
+                        'result_type': result_type,
+                        'result_complexity_score': None, # Heuristic not implemented for this format
+                        'result_contains_errors': False, # Heuristic not implemented for this format
+                        'result_truncated': False,
+                        'has_result': result is not None,
+                    }
+                    tool_events.append(event_dict)
+        return tool_events
+
 
     def get_summary_metrics(self) -> Dict[str, Any]:
         """
