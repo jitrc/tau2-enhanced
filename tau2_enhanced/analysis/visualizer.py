@@ -124,6 +124,9 @@ class LogVisualizer:
                 ]
             )
 
+        # Determine subplot titles based on available data
+        subplot2_title = "Failure Rate vs Execution Time" if 'avg_execution_time' in failures.columns else "Failure Rate vs Error Count"
+
         # Create comprehensive failure analysis dashboard
         fig = make_subplots(
             rows=2, cols=2,
@@ -133,7 +136,7 @@ class LogVisualizer:
             ],
             subplot_titles=(
                 "Failure Count by Tool",
-                "Failure Rate vs Execution Time",
+                subplot2_title,
                 "Error Types Distribution",
                 "Failure Details Summary"
             ),
@@ -155,10 +158,30 @@ class LogVisualizer:
             row=1, col=1
         )
 
-        # 2. Failure rate vs execution time scatter (top-right)
+        # 2. Failure rate vs failure count scatter (top-right)
+        # Note: avg_execution_time may not be available for action check failures
+        if 'avg_execution_time' in failures.columns:
+            x_data = failures['avg_execution_time']
+            x_title = 'Avg Execution Time (s)'
+            hover_template = (
+                '<b>%{text}</b><br>' +
+                'Failure Rate: %{y:.1%}<br>' +
+                'Avg Execution Time: %{x:.4f}s<br>' +
+                'Error Count: %{marker.color}<extra></extra>'
+            )
+        else:
+            x_data = failures['count']
+            x_title = 'Error Count'
+            hover_template = (
+                '<b>%{text}</b><br>' +
+                'Failure Rate: %{y:.1%}<br>' +
+                'Error Count: %{x}<br>' +
+                'Total Errors: %{marker.color}<extra></extra>'
+            )
+
         fig.add_trace(
             go.Scatter(
-                x=failures['avg_execution_time'],
+                x=x_data,
                 y=failures['failure_rate'],
                 mode='markers+text',
                 marker=dict(
@@ -171,12 +194,7 @@ class LogVisualizer:
                 text=failures['tool_name'],
                 textposition='top center',
                 name='Tools',
-                hovertemplate=(
-                    '<b>%{text}</b><br>' +
-                    'Failure Rate: %{y:.1%}<br>' +
-                    'Avg Execution Time: %{x:.4f}s<br>' +
-                    'Error Count: %{marker.color}<extra></extra>'
-                )
+                hovertemplate=hover_template
             ),
             row=1, col=2
         )
@@ -197,22 +215,37 @@ class LogVisualizer:
 
         # 4. Failure details table (bottom-right)
         table_data = failures.head(10)  # Top 10 failures
+
+        # Determine table columns based on available data
+        if 'avg_execution_time' in failures.columns:
+            headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Avg Time (s)</b>']
+            cell_values = [
+                table_data['tool_name'],
+                table_data['error_category'],
+                table_data['count'],
+                [f"{rate:.1%}" for rate in table_data['failure_rate']],
+                [f"{time:.4f}" for time in table_data['avg_execution_time']]
+            ]
+        else:
+            headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Simulations</b>']
+            cell_values = [
+                table_data['tool_name'],
+                table_data['error_category'],
+                table_data['count'],
+                [f"{rate:.1%}" for rate in table_data['failure_rate']],
+                table_data.get('simulations_affected', ['N/A'] * len(table_data))
+            ]
+
         fig.add_trace(
             go.Table(
                 header=dict(
-                    values=['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Avg Time (s)</b>'],
+                    values=headers,
                     fill_color='lightcoral',
                     align='center',
                     font=dict(color='white', size=12)
                 ),
                 cells=dict(
-                    values=[
-                        table_data['tool_name'],
-                        table_data['error_category'],
-                        table_data['count'],
-                        [f"{rate:.1%}" for rate in table_data['failure_rate']],
-                        [f"{time:.4f}" for time in table_data['avg_execution_time']]
-                    ],
+                    values=cell_values,
                     fill_color=[['white', 'lightgray']*len(table_data)],
                     align='center',
                     font=dict(size=11)
@@ -231,7 +264,7 @@ class LogVisualizer:
         # Update axes
         fig.update_xaxes(title_text="Failure Count", row=1, col=1)
         fig.update_yaxes(title_text="Tools", row=1, col=1)
-        fig.update_xaxes(title_text="Average Execution Time (s)", row=1, col=2)
+        fig.update_xaxes(title_text=x_title, row=1, col=2)
         fig.update_yaxes(title_text="Failure Rate", row=1, col=2, tickformat='.0%')
         fig.update_xaxes(title_text="Error Category", row=2, col=1)
         fig.update_yaxes(title_text="Error Count", row=2, col=1)
@@ -1084,9 +1117,20 @@ class LogVisualizer:
                         <th>Tool Name</th>
                         <th>Error Type</th>
                         <th>Count</th>
-                        <th>Failure Rate</th>
-                        <th>Avg Time (s)</th>
-                        <th>First Occurrence</th>
+                        <th>Failure Rate</th>"""
+
+        # Determine which additional columns are available
+        if 'avg_execution_time' in failures.columns:
+            failure_html += """
+                        <th>Avg Time (s)</th>"""
+        if 'simulations_affected' in failures.columns:
+            failure_html += """
+                        <th>Simulations</th>"""
+        if 'first_occurrence' in failures.columns:
+            failure_html += """
+                        <th>First Occurrence</th>"""
+
+        failure_html += """
                     </tr>
                 </thead>
                 <tbody>
@@ -1098,9 +1142,20 @@ class LogVisualizer:
                 <td><strong>{row['tool_name']}</strong></td>
                 <td>{row['error_category']}</td>
                 <td>{int(row['count'])}</td>
-                <td>{row['failure_rate']:.1%}</td>
-                <td>{row['avg_execution_time']:.4f}</td>
-                <td>{str(row['first_occurrence'])[:19]}</td>
+                <td>{row['failure_rate']:.1%}</td>"""
+
+            # Add available columns dynamically
+            if 'avg_execution_time' in failures.columns:
+                failure_html += f"""
+                <td>{row['avg_execution_time']:.4f}</td>"""
+            if 'simulations_affected' in failures.columns:
+                failure_html += f"""
+                <td>{row['simulations_affected']}</td>"""
+            if 'first_occurrence' in failures.columns:
+                failure_html += f"""
+                <td>{str(row['first_occurrence'])[:19]}</td>"""
+
+            failure_html += """
             </tr>
             """
 

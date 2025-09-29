@@ -14,11 +14,6 @@ from tau2.utils.utils import get_now
 from tau2.utils import llm_utils
 from tau2.data_model.message import AssistantMessage, ToolCall
 
-from tau2_enhanced.data_model.enhanced_simulation import (
-    EnhancedResults,
-    EnhancedSimulationRun,
-    convert_to_enhanced_results
-)
 from tau2_enhanced.environments.logging_environment import LoggingEnvironment
 
 
@@ -75,11 +70,12 @@ class EnhancedRunner:
         seed: Optional[int] = None,
         log_level: str = "INFO",
         **kwargs
-    ) -> EnhancedResults:
+    ) -> tuple[Results, Dict[str, Any]]:
         """
         Run tasks with enhanced logging capture.
 
-        This wraps the original run_tasks and captures enhanced logs from LoggingEnvironments.
+        Returns:
+            tuple: (original Results object, enhanced_logs dictionary)
         """
         # Clear previous environment instances
         self._environment_instances.clear()
@@ -94,6 +90,8 @@ class EnhancedRunner:
                 env = env_constructor(**kwargs)
                 if isinstance(env, LoggingEnvironment):
                     self._environment_instances.append(env)
+                else:
+                    logger.debug(f"Environment is not LoggingEnvironment: {type(env).__module__}.{type(env).__name__}")
                 return env
 
             return wrapped_constructor
@@ -161,58 +159,70 @@ class EnhancedRunner:
             registry.get_env_constructor = original_get_env_constructor
             llm_utils.generate = original_generate
 
-        # Convert to enhanced results
-        enhanced_results = convert_to_enhanced_results(results)
-
         # Capture enhanced logs from LoggingEnvironments
-        self._capture_enhanced_logs(enhanced_results)
+        enhanced_logs = self._capture_enhanced_logs()
 
-        return enhanced_results
+        return results, enhanced_logs
 
-    def _capture_enhanced_logs(self, results: EnhancedResults) -> None:
-        """Capture enhanced logs from LoggingEnvironment instances."""
+    def _capture_enhanced_logs(self) -> Dict[str, Any]:
+        """Capture and aggregate enhanced logs from all LoggingEnvironment instances."""
+        logger.info(f"Starting log capture. Environment instances found: {len(self._environment_instances)}")
+
         if not self._environment_instances:
-            return
+            logger.warning("No LoggingEnvironment instances captured during execution!")
+            return {}
 
-        # For now, we'll aggregate all logs across environments
-        # In a more sophisticated setup, you might want to match logs to specific simulations
-        all_execution_logs = []
+        # Aggregate logs from all environment instances
+        all_execution_events = []
         all_state_snapshots = []
+        environments_with_logs = 0
 
-        for env in self._environment_instances:
-            if hasattr(env, 'get_enhanced_logs'):
-                enhanced_logs = env.get_enhanced_logs()
-                all_execution_logs.extend(enhanced_logs.get('execution_events', []))
-                all_state_snapshots.extend(enhanced_logs.get('state_snapshots', []))
+        for i, env in enumerate(self._environment_instances):
+            if not hasattr(env, 'get_enhanced_logs'):
+                continue
 
-        # Apply enhanced logs to simulations
-        # For simplicity, we'll apply aggregated logs to all simulations
-        # In a production system, you'd want more sophisticated mapping
-        for i, sim in enumerate(results.simulations):
-            if all_execution_logs or all_state_snapshots:
-                sim.execution_logs = all_execution_logs
-                sim.state_snapshots = all_state_snapshots
-                sim.enhanced_logging_enabled = True
+            enhanced_logs = env.get_enhanced_logs()
+            execution_events = enhanced_logs.get('execution_events', [])
+            state_snapshots = enhanced_logs.get('state_snapshots', [])
 
-        # Create summary
-        if all_execution_logs or all_state_snapshots:
-            results.enhanced_logs_summary = {
-                'total_execution_logs': len(all_execution_logs),
+            if execution_events or state_snapshots:
+                environments_with_logs += 1
+                all_execution_events.extend(execution_events)
+                all_state_snapshots.extend(state_snapshots)
+
+                logger.debug(f"Environment {i} contributed {len(execution_events)} execution logs and "
+                           f"{len(state_snapshots)} state snapshots")
+
+        # Create enhanced logs dictionary
+        enhanced_logs_dict = {
+            'timestamp': get_now(),
+            'execution_events': all_execution_events,
+            'state_snapshots': all_state_snapshots,
+            'summary': {
+                'total_execution_logs': len(all_execution_events),
                 'total_state_snapshots': len(all_state_snapshots),
-                'environments_with_logs': len([env for env in self._environment_instances if hasattr(env, 'get_enhanced_logs')])
+                'environments_with_logs': environments_with_logs,
+                'environment_instances': len(self._environment_instances)
             }
+        }
+
+        logger.info(f"Enhanced logs captured: {len(all_execution_events)} execution logs, "
+                   f"{len(all_state_snapshots)} state snapshots from {environments_with_logs} environments")
+
+        return enhanced_logs_dict
 
     def save_enhanced_results(
         self,
-        results: EnhancedResults,
+        results: Results,
+        enhanced_logs: Dict[str, Any],
         domain: str,
         agent: str,
         user: str,
         llm_agent: str,
         llm_user: str,
         save_to: Optional[str] = None
-    ) -> tuple[Path, Optional[Path]]:
-        """Save enhanced results using tau2-bench naming pattern."""
+    ) -> tuple[Path, Path]:
+        """Save both original results and enhanced logs as separate files."""
         if save_to:
             # Use custom filename - save_to should be the base name without extension
             base_path = self.save_dir / save_to
@@ -221,7 +231,16 @@ class EnhancedRunner:
             run_name = make_enhanced_run_name(domain, agent, user, llm_agent, llm_user)
             base_path = self.save_dir / run_name
 
-        main_path, logs_path = results.save_enhanced(base_path, include_logs=True)
+        # Save original results
+        main_path = base_path.with_suffix('.json')
+        results.save(main_path)
+
+        # Save enhanced logs separately
+        logs_path = Path(str(base_path) + '_enhanced_logs.json')
+        with open(logs_path, 'w') as f:
+            import json
+            json.dump(enhanced_logs, f, indent=2)
+
         return main_path, logs_path
 
 
@@ -235,7 +254,7 @@ def run_enhanced_simulation(
     llm_user: Optional[str] = None,
     save_to: Optional[str] = None,
     **kwargs
-) -> tuple[EnhancedResults, tuple[Path, Optional[Path]]]:
+) -> tuple[Results, Dict[str, Any], tuple[Path, Path]]:
     """
     Convenience function to run enhanced simulation and save results.
 
@@ -243,7 +262,7 @@ def run_enhanced_simulation(
         save_to: Custom filename for the results (without extension)
 
     Returns:
-        Tuple of (enhanced_results, (main_path, logs_path))
+        Tuple of (results, enhanced_logs, (main_path, logs_path))
 
     Note:
         Results are always saved to 'enhanced_logs' directory in the current working directory.
@@ -258,7 +277,7 @@ def run_enhanced_simulation(
 
     # EnhancedRunner defaults to 'enhanced_logs' directory when save_dir is None
     runner = EnhancedRunner(save_dir=None)
-    results = runner.run_tasks_enhanced(
+    results, enhanced_logs = runner.run_tasks_enhanced(
         domain=domain,
         tasks=tasks,
         agent=agent,
@@ -270,6 +289,7 @@ def run_enhanced_simulation(
 
     paths = runner.save_enhanced_results(
         results=results,
+        enhanced_logs=enhanced_logs,
         domain=domain,
         agent=agent,
         user=user,
@@ -277,4 +297,4 @@ def run_enhanced_simulation(
         llm_user=llm_user,
         save_to=save_to
     )
-    return results, paths
+    return results, enhanced_logs, paths

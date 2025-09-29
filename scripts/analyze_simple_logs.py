@@ -66,44 +66,46 @@ def analyze_logs(log_file: Path, output_dir: Path):
     Loads, analyzes, and visualizes execution logs from a file.
     """
     print(f"📁 Loading logs from: {log_file}")
-    
-    # Determine which file is which and load both
-    if '_enhanced_logs' in log_file.name:
-        enhanced_log_file = log_file
-        task_log_file = Path(str(log_file).replace('_enhanced_logs', ''))
+
+    try:
+        with log_file.open('r') as f:
+            data = json.load(f)
+        print(f"  ✅ Successfully loaded log file")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"❌ Error loading log file: {e}")
+        return
+
+    # Detect log format and handle accordingly
+    if 'execution_events' in data:
+        # New simplified format: direct execution_events array
+        print("  📊 Detected new simplified enhanced logs format")
+
+        # Try to load the corresponding standard results file for simulation success data
+        if '_enhanced_logs' in log_file.name:
+            standard_file = Path(str(log_file).replace('_enhanced_logs', ''))
+            try:
+                with standard_file.open('r') as f:
+                    standard_data = json.load(f)
+                print(f"  ✅ Loaded standard results file for simulation data")
+
+                # Add simulation data to the enhanced logs for analysis
+                data['simulations'] = standard_data.get('simulations', [])
+
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                print(f"  ⚠️  Could not load standard results file: {e}")
+
+        analyzer_data = data  # Use combined data
+    elif 'simulations' in data:
+        # Legacy format: simulations with embedded logs
+        print("  📊 Detected legacy enhanced logs format")
+        analyzer_data = data
     else:
-        task_log_file = log_file
-        enhanced_log_file = Path(str(log_file).replace('.json', '_enhanced_logs.json'))
-
-    try:
-        with enhanced_log_file.open('r') as f:
-            tool_data = json.load(f)
-        print(f"  |-> Loaded tool logs from: {enhanced_log_file}")
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"❌ Error loading tool log file: {e}")
-        tool_data = {}
-
-    try:
-        with task_log_file.open('r') as f:
-            task_data = json.load(f)
-        print(f"  |-> Loaded task logs from: {task_log_file}")
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"❌ Error loading task log file: {e}")
-        task_data = {}
-
-    # Custom merging logic
-    merged_data = task_data.copy()
-    if tool_data and 'simulations' in tool_data and 'simulations' in merged_data:
-        if isinstance(tool_data['simulations'], dict) and isinstance(merged_data['simulations'], list):
-            task_sims_by_id = {sim['id']: sim for sim in merged_data['simulations'] if 'id' in sim}
-            for sim_id, tool_sim_data in tool_data['simulations'].items():
-                if sim_id in task_sims_by_id:
-                    task_sims_by_id[sim_id].update(tool_sim_data)
-            merged_data['simulations'] = list(task_sims_by_id.values())
+        print("❌ Unrecognized log format - no execution_events or simulations found")
+        return
 
     # The LogAnalyzer is capable of handling different log formats.
     # We pass the entire loaded JSON data to it.
-    analyzer = LogAnalyzer(merged_data)
+    analyzer = LogAnalyzer(analyzer_data)
 
     # Check if any tool events were found
     if analyzer.df.empty:

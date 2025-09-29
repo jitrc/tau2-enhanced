@@ -54,22 +54,10 @@ class LogAnalyzer:
         Returns:
             A pandas DataFrame optimized for analysis operations.
         """
-        # Detect if this is a tau2-bench-jit log format
-        if isinstance(log_data, dict) and 'tasks' in log_data and 'info' in log_data:
+        # Detect if this is a https://github.com/jitrc/tau2-bench/tree/xai log format
+        if  isinstance(log_data, dict) and 'simulations' in log_data and isinstance(log_data['simulations'], list) and len(log_data['simulations']) > 0 and 'enhanced_logging_enabled' in log_data['simulations'][0]:
             self.tool_events = self._parse_jit_log_data(log_data)
-        # Logic for old format with simulations
-        elif isinstance(log_data, dict) and 'simulations' in log_data and isinstance(log_data['simulations'], dict):
-            self.tool_events = []
-            for sim_id, sim_data in log_data['simulations'].items():
-                if 'execution_logs' in sim_data and isinstance(sim_data['execution_logs'], list):
-                    for event_data in sim_data['execution_logs']:
-                        if isinstance(event_data, dict) and event_data.get('event_type') == 'ToolExecutionEvent':
-                            from tau2_enhanced.logging.events import event_from_dict
-                            event = event_from_dict(event_data)
-                            if isinstance(event, ToolExecutionEvent):
-                                self.tool_events.append(event)
-                        elif isinstance(event_data, ToolExecutionEvent):
-                            self.tool_events.append(event_data)
+
         # Existing logic for enhanced logs
         elif isinstance(log_data, dict) and 'execution_events' in log_data:
             # Extract ToolExecutionEvents from structured logs
@@ -230,6 +218,74 @@ class LogAnalyzer:
                     tool_events.append(event_dict)
         return tool_events
 
+    def _calculate_action_check_success_rates(self) -> Dict[str, Any]:
+        """
+        Calculate tool success rates based on action check results from simulations.
+
+        Returns:
+            Dictionary with action check success metrics
+        """
+        if not hasattr(self, 'raw_log_data') or not self.raw_log_data:
+            return {'has_action_checks': False}
+
+        simulations = self.raw_log_data.get('simulations', [])
+        if not simulations:
+            return {'has_action_checks': False}
+
+        # Collect all action checks across simulations
+        all_actions = []
+        sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+
+        for sim in sim_iterator:
+            reward_info = sim.get('reward_info', {})
+            action_checks = reward_info.get('action_checks')
+
+            if action_checks and isinstance(action_checks, list):
+                for check in action_checks:
+                    if isinstance(check, dict):
+                        action = check.get('action', {})
+                        all_actions.append({
+                            'tool_name': action.get('name'),
+                            'action_match': check.get('action_match', False),
+                            'action_reward': check.get('action_reward', 0.0),
+                            'simulation_id': sim.get('id', 'unknown')
+                        })
+
+        if not all_actions:
+            return {'has_action_checks': False}
+
+        # Calculate overall success metrics based on action checks
+        total_actions = len(all_actions)
+        successful_actions = sum(1 for action in all_actions if action['action_match'])
+        failed_actions = total_actions - successful_actions
+
+        action_success_rate = successful_actions / total_actions if total_actions > 0 else 0
+
+        # Calculate per-tool success rates based on action checks
+        tool_action_stats = {}
+        for action in all_actions:
+            tool_name = action['tool_name']
+            if tool_name not in tool_action_stats:
+                tool_action_stats[tool_name] = {'total': 0, 'successful': 0}
+
+            tool_action_stats[tool_name]['total'] += 1
+            if action['action_match']:
+                tool_action_stats[tool_name]['successful'] += 1
+
+        # Calculate success rates per tool
+        for tool_name in tool_action_stats:
+            stats = tool_action_stats[tool_name]
+            stats['success_rate'] = stats['successful'] / stats['total'] if stats['total'] > 0 else 0
+            stats['failed'] = stats['total'] - stats['successful']
+
+        return {
+            'has_action_checks': True,
+            'total_actions_checked': total_actions,
+            'successful_actions': successful_actions,
+            'failed_actions': failed_actions,
+            'action_check_success_rate': action_success_rate,
+            'tool_action_stats': tool_action_stats
+        }
 
     def get_summary_metrics(self) -> Dict[str, Any]:
         """
@@ -275,10 +331,24 @@ class LogAnalyzer:
 
         # --- Tool-level metrics ---
         total_calls = len(self.df)
-        successful_calls = self.df['success'].sum()
-        failed_calls = total_calls - successful_calls
-        tool_success_rate = successful_calls / total_calls if total_calls > 0 else 0
-        tool_error_rate = failed_calls / total_calls if total_calls > 0 else 0
+
+        # Try to use action check success rates first (more accurate for tool effectiveness)
+        action_check_metrics = self._calculate_action_check_success_rates()
+
+        if action_check_metrics['has_action_checks']:
+            # Use action check success rates as the primary tool success metric
+            successful_calls = action_check_metrics['successful_actions']
+            failed_calls = action_check_metrics['failed_actions']
+            tool_success_rate = action_check_metrics['action_check_success_rate']
+            tool_error_rate = 1 - tool_success_rate
+            success_metric_source = 'action_checks'
+        else:
+            # Fallback to execution success (API call didn't throw exception)
+            successful_calls = self.df['success'].sum()
+            failed_calls = total_calls - successful_calls
+            tool_success_rate = successful_calls / total_calls if total_calls > 0 else 0
+            tool_error_rate = failed_calls / total_calls if total_calls > 0 else 0
+            success_metric_source = 'execution_success'
 
         # Time-based metrics
         total_time = self.df['execution_time'].sum()
@@ -323,7 +393,8 @@ class LogAnalyzer:
             'slowest_tool_avg': slowest_tool_avg,
             'fastest_tool_avg': fastest_tool_avg,
             'execution_timespan': execution_timespan,
-            'tools_used': tools_used
+            'tools_used': tools_used,
+            'success_metric_source': success_metric_source
         }
 
     def get_tool_performance(self) -> pd.DataFrame:
@@ -350,10 +421,34 @@ class LogAnalyzer:
             avg_result_size=('result_size', lambda x: x.dropna().mean() if x.dropna().any() else 0)
         ).reset_index()
 
-        # Calculate derived metrics
-        tool_performance['failed_calls'] = (
-            tool_performance['total_calls'] - tool_performance['successful_calls']
-        )
+        # Try to use action check success rates for per-tool metrics
+        action_check_metrics = self._calculate_action_check_success_rates()
+
+        if action_check_metrics['has_action_checks']:
+            # Override success rates with action check results
+            tool_action_stats = action_check_metrics['tool_action_stats']
+
+            for idx, row in tool_performance.iterrows():
+                tool_name = row['tool_name']
+                if tool_name in tool_action_stats:
+                    stats = tool_action_stats[tool_name]
+                    tool_performance.at[idx, 'successful_calls'] = stats['successful']
+                    tool_performance.at[idx, 'failed_calls'] = stats['failed']
+                else:
+                    # No action checks for this tool, keep execution success
+                    tool_performance.at[idx, 'failed_calls'] = (
+                        tool_performance.at[idx, 'total_calls'] - tool_performance.at[idx, 'successful_calls']
+                    )
+
+            success_metric_source = 'action_checks'
+        else:
+            # Calculate derived metrics using execution success
+            tool_performance['failed_calls'] = (
+                tool_performance['total_calls'] - tool_performance['successful_calls']
+            )
+            success_metric_source = 'execution_success'
+
+        # Calculate success and error rates
         tool_performance['success_rate'] = (
             tool_performance['successful_calls'] / tool_performance['total_calls']
         )
@@ -382,6 +477,7 @@ class LogAnalyzer:
     def get_failure_analysis(self) -> pd.DataFrame:
         """
         Analyze the most common failures with enhanced error categorization.
+        Uses action check failures when available for more accurate failure analysis.
 
         Returns:
             A pandas DataFrame detailing comprehensive error analysis.
@@ -389,48 +485,106 @@ class LogAnalyzer:
         if self.df.empty:
             return pd.DataFrame()
 
-        failed_calls = self.df[self.df['success'] == False].copy()
-        if failed_calls.empty:
-            return pd.DataFrame()
+        # Try to use action check failures first (more accurate)
+        action_check_metrics = self._calculate_action_check_success_rates()
 
-        # Enhanced error type extraction
-        def extract_error_type(row):
-            if pd.notna(row.get('error_type')):
-                return row['error_type']
-            elif pd.notna(row.get('error_details')):
-                error_detail = str(row['error_details'])
-                if 'timeout' in error_detail.lower():
-                    return 'TimeoutError'
-                elif 'connection' in error_detail.lower():
-                    return 'ConnectionError'
-                elif 'permission' in error_detail.lower() or 'forbidden' in error_detail.lower():
-                    return 'PermissionError'
-                elif 'not found' in error_detail.lower():
-                    return 'NotFoundError'
-                elif 'validation' in error_detail.lower():
-                    return 'ValidationError'
+        if action_check_metrics['has_action_checks']:
+            # Build failure analysis from action check data
+            failed_actions = []
+
+            # Extract failed actions from simulations
+            simulations = self.raw_log_data.get('simulations', [])
+            sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+
+            for sim in sim_iterator:
+                reward_info = sim.get('reward_info', {})
+                action_checks = reward_info.get('action_checks')
+
+                if action_checks and isinstance(action_checks, list):
+                    for check in action_checks:
+                        if isinstance(check, dict) and not check.get('action_match', False):
+                            action = check.get('action', {})
+                            failed_actions.append({
+                                'tool_name': action.get('name', 'unknown'),
+                                'error_category': 'ActionCheckFailure',
+                                'simulation_id': sim.get('id', 'unknown'),
+                                'task_id': sim.get('task_id', 'unknown'),
+                                'action_reward': check.get('action_reward', 0.0),
+                                'arguments': str(action.get('arguments', {}))[:100] + '...' if len(str(action.get('arguments', {}))) > 100 else str(action.get('arguments', {}))
+                            })
+
+            if failed_actions:
+                # Create DataFrame from failed actions
+                failed_df = pd.DataFrame(failed_actions)
+
+                # Aggregate failure analysis
+                error_analysis = failed_df.groupby(['tool_name', 'error_category']).agg(
+                    count=('tool_name', 'count'),
+                    simulations_affected=('simulation_id', 'nunique'),
+                    avg_action_reward=('action_reward', 'mean')
+                ).reset_index()
+
+                # Add failure rate for each tool
+                tool_action_stats = action_check_metrics['tool_action_stats']
+                error_analysis['failure_rate'] = error_analysis.apply(
+                    lambda row: row['count'] / tool_action_stats.get(row['tool_name'], {}).get('total', 1), axis=1
+                )
+
+                # Add example failed arguments
+                error_analysis['example_args'] = error_analysis.apply(
+                    lambda row: failed_df[(failed_df['tool_name'] == row['tool_name']) &
+                                        (failed_df['error_category'] == row['error_category'])]['arguments'].iloc[0], axis=1
+                )
+
+                return error_analysis.sort_values('count', ascending=False)
+            else:
+                # No action check failures found
+                return pd.DataFrame()
+
+        else:
+            # Fallback to execution failures
+            failed_calls = self.df[self.df['success'] == False].copy()
+            if failed_calls.empty:
+                return pd.DataFrame()
+
+            # Enhanced error type extraction
+            def extract_error_type(row):
+                if pd.notna(row.get('error_type')):
+                    return row['error_type']
+                elif pd.notna(row.get('error_details')):
+                    error_detail = str(row['error_details'])
+                    if 'timeout' in error_detail.lower():
+                        return 'TimeoutError'
+                    elif 'connection' in error_detail.lower():
+                        return 'ConnectionError'
+                    elif 'permission' in error_detail.lower() or 'forbidden' in error_detail.lower():
+                        return 'PermissionError'
+                    elif 'not found' in error_detail.lower():
+                        return 'NotFoundError'
+                    elif 'validation' in error_detail.lower():
+                        return 'ValidationError'
+                    else:
+                        return 'UnknownError'
                 else:
                     return 'UnknownError'
-            else:
-                return 'UnknownError'
 
-        failed_calls['error_category'] = failed_calls.apply(extract_error_type, axis=1)
+            failed_calls['error_category'] = failed_calls.apply(extract_error_type, axis=1)
 
-        # Comprehensive error analysis
-        error_analysis = failed_calls.groupby(['tool_name', 'error_category']).agg(
-            count=('tool_name', 'count'),
-            avg_execution_time=('execution_time', 'mean'),
-            first_occurrence=('datetime', 'min') if 'datetime' in failed_calls.columns else ('timestamp', 'min'),
-            last_occurrence=('datetime', 'max') if 'datetime' in failed_calls.columns else ('timestamp', 'max')
-        ).reset_index()
+            # Comprehensive error analysis
+            error_analysis = failed_calls.groupby(['tool_name', 'error_category']).agg(
+                count=('tool_name', 'count'),
+                avg_execution_time=('execution_time', 'mean'),
+                first_occurrence=('datetime', 'min') if 'datetime' in failed_calls.columns else ('timestamp', 'min'),
+                last_occurrence=('datetime', 'max') if 'datetime' in failed_calls.columns else ('timestamp', 'max')
+            ).reset_index()
 
-        # Add failure rate for each tool-error combination
-        total_calls_per_tool = self.df.groupby('tool_name').size()
-        error_analysis['failure_rate'] = error_analysis.apply(
-            lambda row: row['count'] / total_calls_per_tool.get(row['tool_name'], 1), axis=1
-        )
+            # Add failure rate for each tool-error combination
+            total_calls_per_tool = self.df.groupby('tool_name').size()
+            error_analysis['failure_rate'] = error_analysis.apply(
+                lambda row: row['count'] / total_calls_per_tool.get(row['tool_name'], 1), axis=1
+            )
 
-        return error_analysis.sort_values('count', ascending=False)
+            return error_analysis.sort_values('count', ascending=False)
 
     def get_state_change_analysis(self) -> pd.DataFrame:
         """

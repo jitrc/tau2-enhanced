@@ -273,7 +273,7 @@ def enhanced_main(cli_args: Optional[List[str]] = None):
         print_info(f"Executing {total_operations} simulation(s) with enhanced logging...")
 
         # Run enhanced simulation
-        results, (main_path, logs_path) = run_enhanced_simulation(
+        results, enhanced_logs, (main_path, logs_path) = run_enhanced_simulation(
             domain=args.domain,
             tasks=tasks,
             agent=args.agent,
@@ -303,10 +303,12 @@ def enhanced_main(cli_args: Optional[List[str]] = None):
         if logs_path:
             print_info(f"🔍 Enhanced logs: {Colors.BOLD}{logs_path}{Colors.ENDC}")
 
-        # Enhanced logging statistics
-        enhanced_count = sum(1 for sim in results.simulations if sim.enhanced_logging_enabled)
-        total_exec_logs = sum(len(sim.execution_logs) if sim.execution_logs else 0 for sim in results.simulations)
-        total_state_snaps = sum(len(sim.state_snapshots) if sim.state_snapshots else 0 for sim in results.simulations)
+        # Enhanced logging statistics from the enhanced_logs dict
+        summary = enhanced_logs.get('summary', {})
+        total_exec_logs = summary.get('total_execution_logs', 0)
+        total_state_snaps = summary.get('total_state_snapshots', 0)
+        environments_with_logs = summary.get('environments_with_logs', 0)
+        enhanced_count = 1 if total_exec_logs > 0 or total_state_snaps > 0 else 0
 
         # Calculate some basic statistics
         total_sims = len(results.simulations)
