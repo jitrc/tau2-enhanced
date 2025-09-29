@@ -42,11 +42,55 @@ tau2-enhanced transforms tau2-bench with comprehensive structured logging, advan
 
 ## Installation
 
-1. Clone or navigate to the tau2-enhanced directory
+### Setup Virtual Environment
+
+Create and activate a virtual environment first (requires Python 3.10+):
+
+```bash
+python -m venv tau2-enhanced-env
+source tau2-enhanced-env/bin/activate
+```
+
+### Prerequisites
+
+tau2-enhanced requires the tau2-bench framework to be installed first:
+
+```bash
+# Install tau2-bench from Sierra Research
+git clone https://github.com/sierra-research/tau2-bench.git
+cd tau2-bench
+pip install -e .
+cd ..
+```
+
+### Install tau2-enhanced
+
+1. Clone this repository:
+
+```bash
+git clone https://github.com/jitrc/tau2-enhanced.git
+cd tau2-enhanced
+```
+
 2. Install in development mode:
 
 ```bash
 pip install -e .
+```
+
+### Verify Installation
+
+Test that both tau2-bench and tau2-enhanced are working:
+
+```bash
+# Test tau2-bench
+tau2 --help
+
+# Test tau2-enhanced
+./tau2-enhanced --help
+
+# Test enhanced domains are available
+python -c "from tau2_enhanced.domain_registration import EnhancedDomainRegistry; print(list(EnhancedDomainRegistry().register_all_available_domains().keys()))"
 ```
 
 ## Usage
