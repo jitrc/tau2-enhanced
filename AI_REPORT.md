@@ -163,8 +163,8 @@ Core components:
 3. **Iterative Patterns:** 37-40% self-loops indicating inefficient information gathering
 
 **Implemented Agent Solutions:**
-- **RetryManagedAgent:** Intelligent error recovery with exponential backoff
-- **ContextManagedAgent:** Sliding window optimization for token limits
+- **ContextManagedAgent:** Sliding window optimization for token limits (1.9pp improvement)
+- **RetryManagedAgent:** Intelligent error recovery with exponential backoff (11.1pp improvement)
 - **EnhancedAgent:** Combined approach achieving 13.0pp improvement
 
 ### Code Instructions
@@ -178,7 +178,7 @@ pip install -e .
 ./tau2-enhanced run --domain airline_enhanced --agent llm_agent --agent-llm xai/grok-3 --user-llm xai/grok-3 --num-tasks 10 --num-trials 2 --save-to airline_xai_grok3_baseline
 
 # Compare all agents
-tau2 run --domain airline_enhanced --agent enhanced_agent,retry_agent,llm_agent --num-trials 5
+tau2 run --domain airline_enhanced --agent enhanced_agent,retry_agent,context_agent,llm_agent --num-trials 5
 
 # Analyze results
 python scripts/analyze_simple_logs.py results.json
@@ -192,6 +192,7 @@ python scripts/analyze_simple_logs.py results.json
 | Agent | Tool Success | Error Reduction | Key Achievement | Analysis Report |
 |-------|--------------|-----------------|------------------|----------------|
 | **llm_agent** (baseline) | 57.4% | - | Baseline performance | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/enhanced_analysis_report.html) |
+| **context_agent** | 59.3% | 1.9pp | Context management optimization | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_context_agent/enhanced_analysis_report.html) |
 | **retry_agent** | 68.5% | 11.1pp | Intelligent error recovery | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/enhanced_analysis_report.html) |
 | **enhanced_agent** | 70.4% | 13.0pp | Combined retry + context management | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/enhanced_analysis_report.html) |
 
@@ -199,6 +200,7 @@ python scripts/analyze_simple_logs.py results.json
 
 **Detailed Tool Analysis:**
 - [🔧 LLM Agent Tool Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/tool_report.html)
+- [🔧 Context Agent Tool Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_context_agent/tool_report.html)
 - [🔧 Retry Agent Tool Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/tool_report.html)
 - [🔧 Enhanced Agent Tool Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/tool_report.html)
 
