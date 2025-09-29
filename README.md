@@ -307,23 +307,6 @@ class CustomAnalysisEvent(ExecutionEvent):
         self.source = f"analysis:{self.analysis_type}"
 ```
 
-### Testing
-
-Run the comprehensive test suite:
-
-```bash
-# Test core logging functionality
-python -m pytest tests/test_logging.py -v
-
-# Test domain registration
-python -m pytest tests/test_domain_registration.py -v
-
-# Test analysis capabilities
-python -m pytest tests/test_analysis.py -v
-
-# Run all tests
-python -m pytest tests/ -v
-```
 
 ## API Reference
 
