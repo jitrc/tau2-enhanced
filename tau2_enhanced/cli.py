@@ -323,7 +323,8 @@ def enhanced_main(cli_args: Optional[List[str]] = None):
 
         # Provide next steps
         print(f"\n{Colors.UNDERLINE}🔍 Next Steps:{Colors.ENDC}")
-        print(f"   💡 Analyze logs: {Colors.OKCYAN}python scripts/analyze_simple_logs.py {main_path}{Colors.ENDC}")
+        analyze_path = logs_path if logs_path else main_path
+        print(f"   💡 Analyze logs: {Colors.OKCYAN}python scripts/analyze_simple_logs.py {analyze_path}{Colors.ENDC}")
         print(f"   📊 View dashboard: {Colors.OKCYAN}tau2 view{Colors.ENDC}")
         print(f"   🔬 Deep dive: Load logs in Jupyter notebook for detailed analysis")
 
