@@ -207,12 +207,18 @@ def analyze_logs(log_file: Path, output_dir: Path):
         visualizer.create_comprehensive_report(str(report_path), log_file.name)
         print(f"  ✅ Comprehensive simulation report saved to: {report_path}")
 
+        # Markdown Report
+        markdown_path = output_dir / "analysis_report.md"
+        visualizer.create_markdown_report(str(markdown_path), log_file.name)
+        print(f"  ✅ Markdown analysis report saved to: {markdown_path}")
+
     except Exception as e:
         print(f"  ❌ Error during visualization: {e}")
 
     print("\n🎉 Analysis complete!")
     print(f"\n📄 For a comprehensive overview, open: {output_dir / 'report.html'}")
     print(f"🛠️ For a detailed tool analysis, open: {output_dir / 'tool_report.html'}")
+    print(f"📋 For a markdown summary report, see: {output_dir / 'analysis_report.md'}")
 
 
 def main():

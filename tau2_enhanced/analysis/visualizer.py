@@ -24,7 +24,7 @@ class LogVisualizer:
         """
         self.analyzer = analyzer
 
-    def create_summary_dashboard(self) -> go.Figure:
+    def create_summary_dashboard(self, include_task_success=True) -> go.Figure:
         """
         Create a dashboard summarizing overall tool performance.
 
@@ -34,36 +34,73 @@ class LogVisualizer:
         summary = self.analyzer.get_summary_metrics()
         tool_perf = self.analyzer.get_tool_performance()
 
-        fig = make_subplots(
-            rows=2,
-            cols=2,
-            specs=[
-                [{"type": "indicator"}, {"type": "indicator"}],
-                [{"type": "bar"}, {"type": "bar"}]
-            ],
-            subplot_titles=("Task Success Rate", "Tool Success Rate", "Tool Success Rates", "Tool Execution Times")
-        )
+        if include_task_success:
+            # Full dashboard with both task and tool success rates
+            fig = make_subplots(
+                rows=2,
+                cols=2,
+                specs=[
+                    [{"type": "indicator"}, {"type": "indicator"}],
+                    [{"type": "bar"}, {"type": "bar"}]
+                ],
+                subplot_titles=("Task Success Rate", "Tool Success Rate", "Tool Success Rates", "Tool Execution Times")
+            )
 
-        fig.add_trace(
-            go.Indicator(
-                mode="gauge+number",
-                value=summary.get('task_success_rate', 0) * 100,
-                title={'text': "Task Success %"},
-                gauge={'axis': {'range': [0, 100]}},
-                domain={'x': [0, 1], 'y': [0, 1]}
-            ),
-            row=1, col=1
-        )
+            fig.add_trace(
+                go.Indicator(
+                    mode="gauge+number",
+                    value=summary.get('task_success_rate', 0) * 100,
+                    title={'text': "Task Success %"},
+                    gauge={'axis': {'range': [0, 100]}},
+                    domain={'x': [0, 1], 'y': [0, 1]}
+                ),
+                row=1, col=1
+            )
 
-        fig.add_trace(
-            go.Indicator(
-                mode="gauge+number",
-                value=summary.get('tool_success_rate', 0) * 100,
-                title={'text': "Tool Success %"},
-                gauge={'axis': {'range': [0, 100]}},
-            ),
-            row=1, col=2
-        )
+            fig.add_trace(
+                go.Indicator(
+                    mode="gauge+number",
+                    value=summary.get('tool_success_rate', 0) * 100,
+                    title={'text': "Tool Success %"},
+                    gauge={'axis': {'range': [0, 100]}},
+                ),
+                row=1, col=2
+            )
+        else:
+            # Tool-focused dashboard without task success rate
+            fig = make_subplots(
+                rows=2,
+                cols=2,
+                specs=[
+                    [{"type": "indicator"}, {"type": "indicator"}],
+                    [{"type": "bar"}, {"type": "bar"}]
+                ],
+                subplot_titles=("Tool Success Rate", "Avg Execution Time", "Tool Success Rates", "Tool Execution Times")
+            )
+
+            fig.add_trace(
+                go.Indicator(
+                    mode="gauge+number",
+                    value=summary.get('tool_success_rate', 0) * 100,
+                    title={'text': "Tool Success %"},
+                    gauge={'axis': {'range': [0, 100]}},
+                ),
+                row=1, col=1
+            )
+
+            avg_time_seconds = summary.get('average_execution_time', 0)
+            avg_time_ms = avg_time_seconds * 1000
+
+            # Always display in milliseconds
+            fig.add_trace(
+                go.Indicator(
+                    mode="gauge+number",
+                    value=avg_time_ms,
+                    title={'text': "Avg Time (ms)"},
+                    gauge={'axis': {'range': [0, max(1, avg_time_ms * 2)]}},  # At least 1ms range
+                ),
+                row=1, col=2
+            )
 
         if not tool_perf.empty:
             fig.add_trace(
@@ -80,10 +117,10 @@ class LogVisualizer:
             fig.add_trace(
                 go.Bar(
                     x=tool_perf['tool_name'],
-                    y=tool_perf['avg_execution_time'],
-                    name='Avg. Time (s)',
+                    y=tool_perf['avg_execution_time'] * 1000,  # Convert to ms
+                    name='Avg. Time (ms)',
                     marker_color='blue',
-                    text=[f"{time:.4f}s" for time in tool_perf['avg_execution_time']],
+                    text=[f"{time*1000:.2f}ms" for time in tool_perf['avg_execution_time']],
                     textposition='outside'
                 ),
                 row=2, col=2
@@ -98,7 +135,7 @@ class LogVisualizer:
         fig.update_xaxes(title_text="Tools", row=2, col=1)
         fig.update_yaxes(title_text="Success Rate", row=2, col=1, range=[0, 1.1])
         fig.update_xaxes(title_text="Tools", row=2, col=2)
-        fig.update_yaxes(title_text="Execution Time (s)", row=2, col=2)
+        fig.update_yaxes(title_text="Execution Time (ms)", row=2, col=2)
 
         return fig
 
@@ -161,12 +198,12 @@ class LogVisualizer:
         # 2. Failure rate vs failure count scatter (top-right)
         # Note: avg_execution_time may not be available for action check failures
         if 'avg_execution_time' in failures.columns:
-            x_data = failures['avg_execution_time']
-            x_title = 'Avg Execution Time (s)'
+            x_data = failures['avg_execution_time'] * 1000  # Convert to ms
+            x_title = 'Avg Execution Time (ms)'
             hover_template = (
                 '<b>%{text}</b><br>' +
                 'Failure Rate: %{y:.1%}<br>' +
-                'Avg Execution Time: %{x:.4f}s<br>' +
+                'Avg Execution Time: %{x:.2f}ms<br>' +
                 'Error Count: %{marker.color}<extra></extra>'
             )
         else:
@@ -218,13 +255,13 @@ class LogVisualizer:
 
         # Determine table columns based on available data
         if 'avg_execution_time' in failures.columns:
-            headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Avg Time (s)</b>']
+            headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Avg Time (ms)</b>']
             cell_values = [
                 table_data['tool_name'],
                 table_data['error_category'],
                 table_data['count'],
                 [f"{rate:.1%}" for rate in table_data['failure_rate']],
-                [f"{time:.4f}" for time in table_data['avg_execution_time']]
+                [f"{time*1000:.2f}ms" for time in table_data['avg_execution_time']]
             ]
         else:
             headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Simulations</b>']
@@ -450,7 +487,7 @@ class LogVisualizer:
         fig.update_traces(textposition='middle center', textfont_size=8)
         fig.update_layout(
             xaxis_title="Total Calls",
-            yaxis_title="Average Execution Time (s)"
+            yaxis_title="Average Execution Time (ms)"
         )
         return fig
 
@@ -477,7 +514,7 @@ class LogVisualizer:
         sequence_analysis = self.analyzer.get_tool_sequence_analysis()
 
         # Generate all plots
-        summary_fig = self.create_summary_dashboard()
+        summary_fig = self.create_summary_dashboard(include_task_success=False)  # Don't duplicate task success in tool report
         failure_fig = self.create_failure_analysis_plot()
         state_fig = self.create_state_change_plot()
         sankey_fig = self.create_tool_flow_sankey()
@@ -668,6 +705,114 @@ class LogVisualizer:
         .status-fair {{ color: #ffc107; font-weight: bold; }}
         .status-poor {{ color: #dc3545; font-weight: bold; }}
 
+        /* Enhanced Failure Analysis Styles */
+        .failure-section {{
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+        }}
+
+        .success-section {{
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }}
+
+        .failure-stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+
+        .stat-card {{
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }}
+
+        .stat-card h4 {{
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #dc3545;
+        }}
+
+        .failure-modes {{
+            margin-bottom: 30px;
+        }}
+
+        .failure-mode {{
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }}
+
+        .performance-impact {{
+            margin-bottom: 30px;
+        }}
+
+        .poor-performers, .slowest-tools {{
+            margin-bottom: 20px;
+        }}
+
+        .performance-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }}
+
+        .performance-table th {{
+            background-color: #dc3545;
+            color: white;
+        }}
+
+        .failure-insights {{
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }}
+
+        .failure-insights ul {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+
+        .failure-insights li {{
+            margin-bottom: 8px;
+        }}
+
+        .recommendations {{
+            background: #f3e5f5;
+            border: 1px solid #e1bee7;
+            border-radius: 8px;
+            padding: 20px;
+        }}
+
+        .recommendations ol {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+
+        .recommendations li {{
+            margin-bottom: 10px;
+        }}
+
         .footer {{
             text-align: center;
             margin-top: 50px;
@@ -703,7 +848,7 @@ class LogVisualizer:
                     <div class="metric-label">Tool Success Rate</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">{summary.get('average_execution_time', 0):.4f}s</div>
+                    <div class="metric-value">{summary.get('average_execution_time', 0)*1000:.2f}ms</div>
                     <div class="metric-label">Avg Execution Time</div>
                 </div>
                 <div class="metric-card">
@@ -734,7 +879,7 @@ class LogVisualizer:
                             <th>Tool Name</th>
                             <th>Total Calls</th>
                             <th>Success Rate</th>
-                            <th>Avg Time (s)</th>
+                            <th>Avg Time (ms)</th>
                             <th>Performance</th>
                             <th>State Changes</th>
                         </tr>
@@ -762,7 +907,7 @@ class LogVisualizer:
                             <th>Category</th>
                             <th>Calls</th>
                             <th>Success Rate</th>
-                            <th>Avg Time (s)</th>
+                            <th>Avg Time (ms)</th>
                             <th>Performance Rating</th>
                         </tr>
                     </thead>
@@ -781,7 +926,7 @@ class LogVisualizer:
         <div class="section page-break">
             <h2>🔥 Failure Analysis</h2>
 
-            {self._generate_failure_section(failures, summary)}
+            {self._generate_enhanced_failure_section(failures, summary, tool_perf)}
 
             <div class="plot-container">
                 {failure_html}
@@ -1055,7 +1200,7 @@ class LogVisualizer:
                 <td><strong>{row['tool_name']}</strong></td>
                 <td>{int(row['total_calls'])}</td>
                 <td>{row['success_rate']:.1%}</td>
-                <td>{row['avg_execution_time']:.4f}</td>
+                <td>{row['avg_execution_time']*1000:.2f}ms</td>
                 <td class="{status_class}">{row['performance_category'].title()}</td>
                 <td>{state_changes}</td>
             </tr>
@@ -1078,7 +1223,7 @@ class LogVisualizer:
                 <td>{row['category']}</td>
                 <td>{int(row['total_calls'])}</td>
                 <td>{row['success_rate']:.1%}</td>
-                <td>{row['avg_execution_time']:.4f}</td>
+                <td>{row['avg_execution_time']*1000:.2f}ms</td>
                 <td class="{status_class}">{row['performance_rating'].title()}</td>
             </tr>
             """)
@@ -1122,7 +1267,7 @@ class LogVisualizer:
         # Determine which additional columns are available
         if 'avg_execution_time' in failures.columns:
             failure_html += """
-                        <th>Avg Time (s)</th>"""
+                        <th>Avg Time (ms)</th>"""
         if 'simulations_affected' in failures.columns:
             failure_html += """
                         <th>Simulations</th>"""
@@ -1147,7 +1292,7 @@ class LogVisualizer:
             # Add available columns dynamically
             if 'avg_execution_time' in failures.columns:
                 failure_html += f"""
-                <td>{row['avg_execution_time']:.4f}</td>"""
+                <td>{row['avg_execution_time']*1000:.2f}ms</td>"""
             if 'simulations_affected' in failures.columns:
                 failure_html += f"""
                 <td>{row['simulations_affected']}</td>"""
@@ -1268,5 +1413,732 @@ class LogVisualizer:
         
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html_content)
-            
+
         return output_path
+
+    def create_markdown_report(self, output_path: str, log_file_name: str = "execution_logs") -> str:
+        """
+        Create a comprehensive markdown report with detailed analysis and insights.
+
+        Args:
+            output_path: Path where the markdown report will be saved
+            log_file_name: Name of the original log file for reference
+
+        Returns:
+            Path to the created markdown report file
+        """
+        from datetime import datetime
+
+        # Get all analysis data
+        summary = self.analyzer.get_summary_metrics()
+        tool_perf = self.analyzer.get_tool_performance()
+        failures = self.analyzer.get_failure_analysis()
+        state_analysis = self.analyzer.get_state_change_analysis()
+        sequence_analysis = self.analyzer.get_tool_sequence_analysis()
+
+        # Generate insights and recommendations
+        insights = self._generate_key_insights(summary, tool_perf, failures, state_analysis, sequence_analysis)
+        recommendations = self._generate_recommendations(summary, tool_perf, failures, state_analysis)
+
+        # Start building the markdown content
+        md_content = f"""# Enhanced Tau2 Execution Analysis Report
+
+**Source File:** `{log_file_name}`
+**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Analysis Framework:** Enhanced Tau2 Logging & Analytics
+
+---
+
+## 📊 Executive Summary
+
+| Metric | Value |
+|--------|-------|
+| **Total Simulations** | {summary.get('total_simulations', 'N/A')} |
+| **Successful Simulations** | {summary.get('successful_simulations', 'N/A')} |
+| **Task Success Rate** | {summary.get('task_success_rate', 0):.1%} |
+| **Total Tool Calls** | {summary.get('total_tool_calls', 0)} |
+| **Tool Success Rate** | {summary.get('tool_success_rate', 0):.1%} |
+| **Tool Error Rate** | {summary.get('tool_error_rate', 0):.1%} |
+| **State Changing Calls** | {summary.get('state_changing_calls', 0)} |
+| **Average Execution Time** | {summary.get('average_execution_time', 0)*1000:.2f}ms |
+| **Success Metric Source** | {summary.get('success_metric_source', 'N/A')} |
+
+---
+
+## 🛠️ Tool Performance Analysis
+
+"""
+
+        if not tool_perf.empty:
+            md_content += "### Performance Overview\n\n"
+            md_content += "| Tool Name | Calls | Success Rate | Avg Time (ms) | Category |\n"
+            md_content += "|-----------|-------|--------------|---------------|----------|\n"
+
+            for _, row in tool_perf.head(10).iterrows():
+                md_content += f"| {row['tool_name']} | {int(row['total_calls'])} | {row['success_rate']:.1%} | {row['avg_execution_time']*1000:.2f} | {row['performance_category'].title()} |\n"
+
+            # Performance categories breakdown
+            perf_categories = tool_perf['performance_category'].value_counts()
+            md_content += "\n### Performance Distribution\n\n"
+            for category, count in perf_categories.items():
+                md_content += f"- **{category.title()}**: {count} tools\n"
+
+        else:
+            md_content += "No tool performance data available.\n"
+
+        md_content += "\n---\n\n## 🔥 Failure Analysis\n\n"
+
+        if not failures.empty:
+            md_content += "### Failure Overview\n\n"
+            md_content += "| Tool Name | Error Type | Count | Failure Rate |\n"
+            md_content += "|-----------|------------|-------|-------------|\n"
+
+            for _, row in failures.head(10).iterrows():
+                md_content += f"| {row['tool_name']} | {row['error_category']} | {int(row['count'])} | {row['failure_rate']:.1%} |\n"
+
+            # Failure insights
+            total_failures = failures['count'].sum()
+            affected_tools = failures['tool_name'].nunique()
+            md_content += f"\n**Key Failure Metrics:**\n"
+            md_content += f"- Total failures: **{total_failures}**\n"
+            md_content += f"- Affected tools: **{affected_tools}**\n"
+            md_content += f"- Error categories: **{failures['error_category'].nunique()}**\n"
+
+            # Most problematic error types
+            error_types = failures.groupby('error_category')['count'].sum().sort_values(ascending=False)
+            md_content += f"\n**Most Common Error Types:**\n"
+            for error_type, count in error_types.head(5).items():
+                md_content += f"- {error_type}: {count} occurrences\n"
+
+        else:
+            md_content += "🎉 **No failures detected!** All tool calls completed successfully.\n"
+
+        md_content += "\n---\n\n## 🔄 State Change Analysis\n\n"
+
+        if not state_analysis.empty:
+            state_changing = state_analysis[state_analysis['state_changed'] == True]
+            read_only = state_analysis[state_analysis['state_changed'] == False]
+
+            md_content += f"### State-Changing Tools ({len(state_changing)} tools)\n\n"
+            if not state_changing.empty:
+                md_content += "| Tool Name | Calls | Success Rate | Avg Time (ms) |\n"
+                md_content += "|-----------|-------|--------------|---------------|\n"
+                for _, row in state_changing.iterrows():
+                    md_content += f"| {row['tool_name']} | {int(row['total_calls'])} | {row['success_rate']:.1%} | {row['avg_execution_time']*1000:.2f} |\n"
+            else:
+                md_content += "No state-changing tools found.\n"
+
+            md_content += f"\n### Read-Only Tools ({len(read_only)} tools)\n\n"
+            if not read_only.empty:
+                md_content += "| Tool Name | Calls | Success Rate | Avg Time (ms) |\n"
+                md_content += "|-----------|-------|--------------|---------------|\n"
+                for _, row in read_only.head(10).iterrows():
+                    md_content += f"| {row['tool_name']} | {int(row['total_calls'])} | {row['success_rate']:.1%} | {row['avg_execution_time']*1000:.2f} |\n"
+            else:
+                md_content += "No read-only tools found.\n"
+
+        else:
+            md_content += "No state change data available.\n"
+
+        md_content += "\n---\n\n## 🔗 Tool Sequence Patterns\n\n"
+
+        if not sequence_analysis.empty:
+            md_content += "### Most Common Tool Transitions\n\n"
+            md_content += "| From Tool | To Tool | Count |\n"
+            md_content += "|-----------|---------|-------|\n"
+
+            for _, row in sequence_analysis.head(10).iterrows():
+                md_content += f"| {row['source']} | {row['target']} | {int(row['count'])} |\n"
+        else:
+            md_content += "No sequence pattern data available.\n"
+
+        md_content += "\n---\n\n## 🔍 Key Insights\n\n"
+        for insight in insights:
+            md_content += f"- {insight}\n"
+
+        md_content += "\n---\n\n## 💡 Recommendations\n\n"
+        for recommendation in recommendations:
+            md_content += f"- {recommendation}\n"
+
+        # Add detailed failure analysis similar to non_enhanced script
+        md_content += self._generate_detailed_failure_analysis_md(summary, failures, tool_perf)
+
+        # Add task complexity and simulation analysis
+        md_content += self._generate_task_simulation_analysis_md(summary, tool_perf, state_analysis)
+
+        # Add performance deep dive
+        md_content += self._generate_performance_deep_dive_md(tool_perf, sequence_analysis)
+
+        # Add execution patterns analysis
+        md_content += self._generate_execution_patterns_md(summary, tool_perf, sequence_analysis)
+
+        md_content += "\n---\n\n## 📈 Visualization Files\n\n"
+        md_content += "The following interactive visualizations have been generated:\n\n"
+        md_content += "- `summary_dashboard.html` - Executive dashboard with key metrics\n"
+        md_content += "- `failure_analysis.html` - Detailed failure analysis charts\n"
+        md_content += "- `state_change_analysis.html` - State change patterns and performance\n"
+        md_content += "- `tool_flow_sankey.html` - Tool usage flow diagram\n"
+        md_content += "- `performance_bottlenecks.html` - Performance analysis scatter plot\n"
+        md_content += "- `tool_report.html` - Comprehensive HTML tool analysis report\n"
+        md_content += "- `report.html` - Comprehensive HTML simulation report\n"
+
+        md_content += f"\n---\n\n*Report generated by Enhanced Tau2 Analytics Framework*\n"
+
+        # Write the markdown file
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(md_content)
+
+        return output_path
+
+    def _generate_detailed_failure_analysis_md(self, summary, failures, tool_perf) -> str:
+        """Generate detailed failure analysis section in markdown format."""
+        md_content = "\n---\n\n## 🎯 Detailed Failure Analysis\n\n"
+
+        if failures.empty:
+            md_content += "### ✅ System Reliability\n\n"
+            md_content += "**Outstanding performance!** No failures detected during execution.\n"
+            md_content += "All tool calls completed successfully, demonstrating excellent system stability.\n"
+            return md_content
+
+        total_failures = failures['count'].sum()
+        total_calls = summary.get('total_tool_calls', 1)
+        error_rate = total_failures / total_calls
+
+        md_content += f"### 📊 Failure Statistics\n\n"
+        md_content += f"- **Total failures:** {total_failures}\n"
+        md_content += f"- **Overall error rate:** {error_rate:.1%}\n"
+        md_content += f"- **Affected tools:** {failures['tool_name'].nunique()}\n"
+        md_content += f"- **Error categories:** {failures['error_category'].nunique()}\n"
+
+        md_content += f"\n### 🚨 Root Cause Analysis\n\n"
+
+        # Analyze failure patterns similar to the non_enhanced script
+        if 'ActionCheckFailure' in failures['error_category'].values:
+            action_failures = failures[failures['error_category'] == 'ActionCheckFailure']
+            md_content += f"#### Action Check Failures\n\n"
+            md_content += f"**{len(action_failures)} tools** failed action validation checks:\n\n"
+
+            for _, row in action_failures.iterrows():
+                md_content += f"- **{row['tool_name']}**: {int(row['count'])} failures "
+                md_content += f"({row['failure_rate']:.1%} failure rate)\n"
+                if 'simulations_affected' in failures.columns:
+                    md_content += f"  - Affected {row['simulations_affected']} simulation(s)\n"
+                if 'example_args' in failures.columns:
+                    md_content += f"  - Example args: `{row['example_args']}`\n"
+
+        # Performance impact analysis
+        md_content += f"\n### ⚡ Performance Impact\n\n"
+
+        # Find tools with both high usage and failures
+        if not tool_perf.empty:
+            high_usage_tools = tool_perf[tool_perf['total_calls'] >= 5]
+            poor_performers = high_usage_tools[high_usage_tools['performance_category'] == 'poor']
+
+            if not poor_performers.empty:
+                md_content += f"**High-usage tools with poor performance:**\n\n"
+                for _, row in poor_performers.iterrows():
+                    md_content += f"- **{row['tool_name']}**: {int(row['total_calls'])} calls, "
+                    md_content += f"{row['success_rate']:.1%} success rate\n"
+
+            # Time-based analysis
+            slowest_tools = tool_perf.nlargest(5, 'avg_execution_time')
+            md_content += f"\n**Slowest tools by execution time:**\n\n"
+            for _, row in slowest_tools.iterrows():
+                md_content += f"- **{row['tool_name']}**: {row['avg_execution_time']*1000:.2f}ms average\n"
+
+        md_content += f"\n### 💡 Failure Insights\n\n"
+
+        # Generate insights based on failure patterns
+        if not failures.empty:
+            most_failed_tool = failures.loc[failures['count'].idxmax(), 'tool_name']
+            most_failed_count = failures['count'].max()
+            md_content += f"- **Most problematic tool:** {most_failed_tool} ({most_failed_count} failures)\n"
+
+            if 'ActionCheckFailure' in failures['error_category'].values:
+                md_content += f"- **Primary failure mode:** Action validation failures suggest issues with tool argument validation or execution logic\n"
+
+            # Success vs failure comparison
+            if not tool_perf.empty:
+                avg_success_rate = tool_perf['success_rate'].mean()
+                md_content += f"- **Average tool success rate:** {avg_success_rate:.1%}\n"
+
+                if avg_success_rate < 0.8:
+                    md_content += f"- **⚠️ Low overall success rate** suggests systemic issues requiring investigation\n"
+
+        return md_content
+
+    def _generate_enhanced_failure_section(self, failures, summary, tool_perf) -> str:
+        """Generate enhanced failure analysis section for HTML reports, similar to non_enhanced script."""
+        if failures.empty:
+            return """
+            <div class="success-section">
+                <h3>✅ System Reliability</h3>
+                <div class="insight-box">
+                    <p><strong>Outstanding performance!</strong> No failures detected during execution.</p>
+                    <p>All tool calls completed successfully, demonstrating excellent system stability.</p>
+                </div>
+            </div>
+            """
+
+        total_failures = failures['count'].sum()
+        total_calls = summary.get('total_tool_calls', 1)
+        error_rate = total_failures / total_calls
+        affected_tools = failures['tool_name'].nunique()
+
+        html = f"""
+        <div class="failure-section">
+            <h3>🎯 Root Cause Analysis</h3>
+            <div class="failure-stats">
+                <div class="stat-card">
+                    <h4>Total Failures</h4>
+                    <div class="stat-value">{total_failures}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Error Rate</h4>
+                    <div class="stat-value">{error_rate:.1%}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Affected Tools</h4>
+                    <div class="stat-value">{affected_tools}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Error Categories</h4>
+                    <div class="stat-value">{failures['error_category'].nunique()}</div>
+                </div>
+            </div>
+        """
+
+        # Primary failure modes analysis
+        html += """
+            <div class="failure-modes">
+                <h4>🚨 Primary Failure Modes</h4>
+        """
+
+        if 'ActionCheckFailure' in failures['error_category'].values:
+            action_failures = failures[failures['error_category'] == 'ActionCheckFailure']
+            html += f"""
+                <div class="failure-mode">
+                    <h5>Action Check Failures</h5>
+                    <p><strong>{len(action_failures)} tools</strong> failed action validation checks:</p>
+                    <ul>
+            """
+            for _, row in action_failures.iterrows():
+                html += f"""
+                    <li><strong>{row['tool_name']}</strong>: {int(row['count'])} failures ({row['failure_rate']:.1%} rate)
+                """
+                if 'simulations_affected' in failures.columns:
+                    html += f"<br>→ Affected {row['simulations_affected']} simulation(s)"
+                if 'example_args' in failures.columns:
+                    html += f"<br>→ Example args: <code>{row['example_args']}</code>"
+                html += "</li>"
+            html += "</ul></div>"
+
+        # Performance impact analysis
+        html += """
+            <div class="performance-impact">
+                <h4>⚡ Performance Impact Analysis</h4>
+        """
+
+        if not tool_perf.empty:
+            # High usage tools with poor performance
+            high_usage_tools = tool_perf[tool_perf['total_calls'] >= 5]
+            poor_performers = high_usage_tools[high_usage_tools['performance_category'] == 'poor']
+
+            if not poor_performers.empty:
+                html += """
+                    <div class="poor-performers">
+                        <h5>High-Usage Tools with Poor Performance</h5>
+                        <table class="performance-table">
+                            <thead>
+                                <tr>
+                                    <th>Tool Name</th>
+                                    <th>Total Calls</th>
+                                    <th>Success Rate</th>
+                                    <th>Avg Time (ms)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                """
+                for _, row in poor_performers.iterrows():
+                    html += f"""
+                        <tr>
+                            <td><strong>{row['tool_name']}</strong></td>
+                            <td>{int(row['total_calls'])}</td>
+                            <td>{row['success_rate']:.1%}</td>
+                            <td>{row['avg_execution_time']*1000:.2f}ms</td>
+                        </tr>
+                    """
+                html += "</tbody></table></div>"
+
+            # Slowest tools analysis
+            slowest_tools = tool_perf.nlargest(5, 'avg_execution_time')
+            html += """
+                <div class="slowest-tools">
+                    <h5>Slowest Tools by Execution Time</h5>
+                    <table class="performance-table">
+                        <thead>
+                            <tr>
+                                <th>Tool Name</th>
+                                <th>Avg Time (ms)</th>
+                                <th>Total Calls</th>
+                                <th>Success Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            """
+            for _, row in slowest_tools.iterrows():
+                html += f"""
+                    <tr>
+                        <td><strong>{row['tool_name']}</strong></td>
+                        <td>{row['avg_execution_time']*1000:.2f}ms</td>
+                        <td>{int(row['total_calls'])}</td>
+                        <td>{row['success_rate']:.1%}</td>
+                    </tr>
+                """
+            html += "</tbody></table></div>"
+
+        html += "</div>"  # Close performance-impact
+
+        # Key insights and recommendations
+        html += """
+            <div class="failure-insights">
+                <h4>💡 Key Insights</h4>
+                <ul>
+        """
+
+        # Most problematic tool
+        if not failures.empty:
+            most_failed_tool = failures.loc[failures['count'].idxmax(), 'tool_name']
+            most_failed_count = failures['count'].max()
+            html += f"<li><strong>Most problematic tool:</strong> {most_failed_tool} ({most_failed_count} failures)</li>"
+
+            if 'ActionCheckFailure' in failures['error_category'].values:
+                html += "<li><strong>Primary failure mode:</strong> Action validation failures suggest issues with tool argument validation or execution logic</li>"
+
+            # Success rate analysis
+            if not tool_perf.empty:
+                avg_success_rate = tool_perf['success_rate'].mean()
+                html += f"<li><strong>Average tool success rate:</strong> {avg_success_rate:.1%}</li>"
+
+                if avg_success_rate < 0.8:
+                    html += "<li><strong>⚠️ Low overall success rate</strong> suggests systemic issues requiring investigation</li>"
+
+        html += "</ul></div>"
+
+        # Critical recommendations
+        html += """
+            <div class="recommendations">
+                <h4>🔧 Critical Recommendations</h4>
+                <ol>
+        """
+
+        if not failures.empty:
+            # Specific recommendations based on failure patterns
+            if 'ActionCheckFailure' in failures['error_category'].values:
+                html += "<li><strong>Action Validation:</strong> Review and strengthen argument validation logic for failing tools</li>"
+                html += "<li><strong>Error Handling:</strong> Implement more robust error recovery mechanisms</li>"
+
+            if not tool_perf.empty and len(tool_perf[tool_perf['performance_category'] == 'poor']) > 0:
+                html += "<li><strong>Performance Optimization:</strong> Focus on improving poor-performing tools with high usage</li>"
+
+            html += "<li><strong>Monitoring:</strong> Implement enhanced monitoring and alerting for tools with high failure rates</li>"
+            html += "<li><strong>Testing:</strong> Increase test coverage for identified problematic tool patterns</li>"
+
+        html += "</ol></div>"
+
+        html += "</div></div>"  # Close failure-modes and failure-section
+
+        return html
+
+    def _generate_task_simulation_analysis_md(self, summary, tool_perf, state_analysis) -> str:
+        """Generate task and simulation analysis section."""
+        md_content = "\n---\n\n## 🎯 Task & Simulation Analysis\n\n"
+
+        # Simulation success analysis
+        total_sims = summary.get('total_simulations', 0)
+        successful_sims = summary.get('successful_simulations', 0)
+        failed_sims = total_sims - successful_sims
+
+        md_content += f"### 📊 Simulation Performance Breakdown\n\n"
+        md_content += f"- **Total simulations executed:** {total_sims}\n"
+        md_content += f"- **Successful completions:** {successful_sims} ({successful_sims/total_sims*100:.1f}%)\n"
+        md_content += f"- **Failed simulations:** {failed_sims} ({failed_sims/total_sims*100:.1f}%)\n"
+
+        if failed_sims > 0:
+            md_content += f"\n**Failure Impact Analysis:**\n"
+            md_content += f"- Each failure represents a complete task breakdown\n"
+            md_content += f"- {failed_sims/total_sims*100:.1f}% of tasks could not be completed successfully\n"
+
+            # Estimate impact based on action vs non-action tasks
+            if not tool_perf.empty:
+                state_changing_tools = len(tool_perf[tool_perf['state_change_rate'] > 0])
+                if state_changing_tools > 0:
+                    md_content += f"- {state_changing_tools} tools perform state-changing operations\n"
+                    md_content += f"- Failures likely impact real-world task completion\n"
+
+        # Success metrics analysis
+        success_source = summary.get('success_metric_source', 'unknown')
+        md_content += f"\n### 🎖️ Success Measurement\n\n"
+        md_content += f"- **Success metric source:** {success_source}\n"
+
+        if success_source == 'action_checks':
+            md_content += f"- Success determined by **action validation checks**\n"
+            md_content += f"- This measures whether the agent performed the correct actions with correct parameters\n"
+            md_content += f"- More reliable than execution-based success metrics\n"
+            md_content += f"- Failures indicate logical/reasoning issues rather than technical problems\n"
+        elif success_source == 'execution_success':
+            md_content += f"- Success determined by **tool execution success**\n"
+            md_content += f"- This measures whether tool calls completed without errors\n"
+            md_content += f"- May miss logical errors if tools execute but with wrong parameters\n"
+
+        # Task complexity indicators
+        md_content += f"\n### 🔧 Task Complexity Indicators\n\n"
+
+        if not tool_perf.empty:
+            total_calls = tool_perf['total_calls'].sum()
+            avg_calls_per_sim = total_calls / total_sims if total_sims > 0 else 0
+            unique_tools = len(tool_perf)
+            state_changing_calls = summary.get('state_changing_calls', 0)
+
+            md_content += f"- **Average tool calls per simulation:** {avg_calls_per_sim:.1f}\n"
+            md_content += f"- **Unique tools used:** {unique_tools}\n"
+            md_content += f"- **State-changing operations:** {state_changing_calls} ({state_changing_calls/total_calls*100:.1f}% of all calls)\n"
+
+            # Complexity assessment
+            if avg_calls_per_sim > 15:
+                complexity = "High"
+                md_content += f"- **Complexity level:** {complexity} (>15 calls/simulation suggests complex multi-step tasks)\n"
+            elif avg_calls_per_sim > 8:
+                complexity = "Medium"
+                md_content += f"- **Complexity level:** {complexity} (8-15 calls/simulation indicates moderate complexity)\n"
+            else:
+                complexity = "Low"
+                md_content += f"- **Complexity level:** {complexity} (<8 calls/simulation suggests simple tasks)\n"
+
+            # Tool diversity analysis
+            most_used_tool_calls = tool_perf['total_calls'].max()
+            tool_usage_concentration = most_used_tool_calls / total_calls * 100
+
+            md_content += f"\n**Tool Usage Patterns:**\n"
+            md_content += f"- **Most used tool concentration:** {tool_usage_concentration:.1f}% of all calls\n"
+
+            if tool_usage_concentration > 50:
+                md_content += f"- **High concentration** suggests tasks heavily depend on one tool type\n"
+            elif tool_usage_concentration > 30:
+                md_content += f"- **Moderate concentration** indicates some tools are more critical than others\n"
+            else:
+                md_content += f"- **Distributed usage** suggests balanced tool utilization\n"
+
+        return md_content
+
+    def _generate_performance_deep_dive_md(self, tool_perf, sequence_analysis) -> str:
+        """Generate detailed performance analysis section."""
+        md_content = "\n---\n\n## ⚡ Performance Deep Dive\n\n"
+
+        if tool_perf.empty:
+            md_content += "No performance data available for analysis.\n"
+            return md_content
+
+        # Performance tier analysis
+        excellent_tools = tool_perf[tool_perf['performance_category'] == 'excellent']
+        good_tools = tool_perf[tool_perf['performance_category'] == 'good']
+        fair_tools = tool_perf[tool_perf['performance_category'] == 'fair']
+        poor_tools = tool_perf[tool_perf['performance_category'] == 'poor']
+
+        md_content += f"### 🏆 Performance Tier Analysis\n\n"
+
+        for tier, tools_df, description in [
+            ("Excellent", excellent_tools, "High success rate (≥95%) and fast execution (≤1s)"),
+            ("Good", good_tools, "Good success rate (≥90%) and reasonable execution (≤2s)"),
+            ("Fair", fair_tools, "Acceptable success rate (≥75%)"),
+            ("Poor", poor_tools, "Low success rate (<75%)")
+        ]:
+            if not tools_df.empty:
+                md_content += f"**{tier} Performance ({len(tools_df)} tools)** - {description}:\n"
+                for _, tool in tools_df.iterrows():
+                    md_content += f"- `{tool['tool_name']}`: {tool['success_rate']:.1%} success, {tool['avg_execution_time']*1000:.2f}ms avg time, {int(tool['total_calls'])} calls\n"
+                md_content += f"\n"
+
+        # Critical performance issues
+        if not poor_tools.empty:
+            md_content += f"### 🚨 Critical Performance Issues\n\n"
+            high_usage_poor = poor_tools[poor_tools['total_calls'] >= 5]
+
+            if not high_usage_poor.empty:
+                md_content += f"**High-Usage Poor Performers** (≥5 calls with poor performance):\n\n"
+                for _, tool in high_usage_poor.iterrows():
+                    impact_score = tool['total_calls'] * (1 - tool['success_rate'])
+                    md_content += f"- **`{tool['tool_name']}`**:\n"
+                    md_content += f"  - Success rate: {tool['success_rate']:.1%}\n"
+                    md_content += f"  - Total calls: {int(tool['total_calls'])}\n"
+                    md_content += f"  - Failed calls: {int(tool['total_calls'] * (1 - tool['success_rate']))}\n"
+                    md_content += f"  - Impact score: {impact_score:.1f} (calls × failure rate)\n"
+                    md_content += f"  - State changing: {'Yes' if tool['state_change_rate'] > 0 else 'No'}\n"
+                md_content += f"\n"
+
+        # Execution time analysis
+        md_content += f"### ⏱️ Execution Time Analysis\n\n"
+
+        avg_time = tool_perf['avg_execution_time'].mean()
+        median_time = tool_perf['avg_execution_time'].median()
+        slowest_tool = tool_perf.loc[tool_perf['avg_execution_time'].idxmax()]
+        fastest_tool = tool_perf.loc[tool_perf['avg_execution_time'].idxmin()]
+
+        md_content += f"- **Average execution time across all tools:** {avg_time*1000:.2f}ms\n"
+        md_content += f"- **Median execution time:** {median_time*1000:.2f}ms\n"
+        md_content += f"- **Slowest tool:** `{slowest_tool['tool_name']}` ({slowest_tool['avg_execution_time']*1000:.2f}ms)\n"
+        md_content += f"- **Fastest tool:** `{fastest_tool['tool_name']}` ({fastest_tool['avg_execution_time']*1000:.2f}ms)\n"
+
+        # Performance vs usage correlation
+        md_content += f"\n**Performance vs Usage Correlation:**\n"
+
+        # High usage tools analysis
+        high_usage = tool_perf[tool_perf['total_calls'] >= 10]
+        if not high_usage.empty:
+            avg_success_high_usage = high_usage['success_rate'].mean()
+            md_content += f"- High-usage tools (≥10 calls) average success rate: {avg_success_high_usage:.1%}\n"
+
+        low_usage = tool_perf[tool_perf['total_calls'] < 10]
+        if not low_usage.empty:
+            avg_success_low_usage = low_usage['success_rate'].mean()
+            md_content += f"- Low-usage tools (<10 calls) average success rate: {avg_success_low_usage:.1%}\n"
+
+            if not high_usage.empty:
+                performance_correlation = avg_success_high_usage - avg_success_low_usage
+                if abs(performance_correlation) > 0.1:
+                    direction = "better" if performance_correlation > 0 else "worse"
+                    md_content += f"- **Usage-performance correlation:** High-usage tools perform {abs(performance_correlation)*100:.1f}% {direction}\n"
+
+        # State-changing vs read-only performance
+        state_changing = tool_perf[tool_perf['state_change_rate'] > 0]
+        read_only = tool_perf[tool_perf['state_change_rate'] == 0]
+
+        if not state_changing.empty and not read_only.empty:
+            md_content += f"\n**State-Changing vs Read-Only Performance:**\n"
+            state_avg_success = state_changing['success_rate'].mean()
+            readonly_avg_success = read_only['success_rate'].mean()
+            state_avg_time = state_changing['avg_execution_time'].mean()
+            readonly_avg_time = read_only['avg_execution_time'].mean()
+
+            md_content += f"- State-changing tools: {state_avg_success:.1%} success, {state_avg_time:.4f}s avg time\n"
+            md_content += f"- Read-only tools: {readonly_avg_success:.1%} success, {readonly_avg_time:.4f}s avg time\n"
+
+            if state_avg_success < readonly_avg_success - 0.1:
+                md_content += f"- ⚠️ State-changing tools show {(readonly_avg_success - state_avg_success)*100:.1f}% lower success rate\n"
+
+        return md_content
+
+    def _generate_execution_patterns_md(self, summary, tool_perf, sequence_analysis) -> str:
+        """Generate execution patterns and workflow analysis."""
+        md_content = "\n---\n\n## 🔄 Execution Patterns & Workflow Analysis\n\n"
+
+        # Execution timeline analysis
+        execution_timespan = summary.get('execution_timespan', 0)
+        total_execution_time = summary.get('total_execution_time', 0)
+        total_calls = summary.get('total_tool_calls', 0)
+
+        md_content += f"### ⏰ Execution Timeline\n\n"
+        md_content += f"- **Total execution timespan:** {execution_timespan:.1f} seconds\n"
+        md_content += f"- **Actual tool execution time:** {total_execution_time:.4f} seconds\n"
+        md_content += f"- **Execution efficiency:** {(total_execution_time/execution_timespan)*100:.2f}% (time spent in tool execution)\n"
+
+        if execution_timespan > 0:
+            calls_per_second = total_calls / execution_timespan
+            md_content += f"- **Average call rate:** {calls_per_second:.2f} calls/second\n"
+
+            if calls_per_second > 2:
+                md_content += f"- **High call rate** suggests rapid sequential execution\n"
+            elif calls_per_second < 0.5:
+                md_content += f"- **Low call rate** may indicate thinking/processing time between calls\n"
+
+        # Tool sequence patterns
+        md_content += f"\n### 🔗 Tool Usage Patterns\n\n"
+
+        if not sequence_analysis.empty:
+            md_content += f"**Most Common Tool Transitions:**\n\n"
+
+            # Analyze top transitions
+            top_transitions = sequence_analysis.head(5)
+            for _, row in top_transitions.iterrows():
+                source, target, count = row['source'], row['target'], int(row['count'])
+
+                if source == target:
+                    md_content += f"- **`{source}` → `{target}`** ({count}x): Self-loops indicate repeated calls to same tool\n"
+                else:
+                    md_content += f"- **`{source}` → `{target}`** ({count}x): Common workflow pattern\n"
+
+            # Pattern analysis
+            total_transitions = sequence_analysis['count'].sum()
+            top_transition_count = sequence_analysis.iloc[0]['count']
+            concentration = (top_transition_count / total_transitions) * 100
+
+            md_content += f"\n**Pattern Analysis:**\n"
+            md_content += f"- **Most common transition:** {concentration:.1f}% of all transitions\n"
+
+            if concentration > 40:
+                md_content += f"- **Highly concentrated** workflow with dominant pattern\n"
+            elif concentration > 20:
+                md_content += f"- **Moderately concentrated** workflow with some preferred patterns\n"
+            else:
+                md_content += f"- **Distributed** workflow with varied patterns\n"
+
+            # Self-loop analysis
+            self_loops = sequence_analysis[sequence_analysis['source'] == sequence_analysis['target']]
+            if not self_loops.empty:
+                total_self_loops = self_loops['count'].sum()
+                self_loop_rate = (total_self_loops / total_transitions) * 100
+                md_content += f"- **Self-loop rate:** {self_loop_rate:.1f}% of transitions are repeated calls to same tool\n"
+
+                if self_loop_rate > 30:
+                    md_content += f"- **High self-loop rate** may indicate retry logic or iterative processing\n"
+
+        # Workflow insights
+        md_content += f"\n### 🧠 Workflow Intelligence\n\n"
+
+        if not tool_perf.empty:
+            # Tool diversity
+            unique_tools = len(tool_perf)
+            total_calls = tool_perf['total_calls'].sum()
+            avg_calls_per_tool = total_calls / unique_tools
+
+            md_content += f"- **Tool diversity:** {unique_tools} unique tools used\n"
+            md_content += f"- **Average calls per tool:** {avg_calls_per_tool:.1f}\n"
+
+            # Usage distribution
+            top_tool_usage = tool_perf['total_calls'].max()
+            usage_concentration = (top_tool_usage / total_calls) * 100
+
+            md_content += f"- **Usage concentration:** {usage_concentration:.1f}% of calls go to most-used tool\n"
+
+            if usage_concentration > 60:
+                md_content += f"- **Tool dependency:** Workflow heavily depends on one primary tool\n"
+            elif usage_concentration < 30:
+                md_content += f"- **Balanced usage:** Well-distributed tool utilization\n"
+
+        # Success pattern analysis
+        total_sims = summary.get('total_simulations', 0)
+        successful_sims = summary.get('successful_simulations', 0)
+
+        if total_sims > 0 and successful_sims != total_sims:
+            md_content += f"\n### 🎯 Success Pattern Analysis\n\n"
+
+            success_rate = successful_sims / total_sims
+
+            if success_rate >= 0.8:
+                md_content += f"- **High success pattern** ({success_rate:.1%}): Consistent execution with occasional failures\n"
+            elif success_rate >= 0.5:
+                md_content += f"- **Moderate success pattern** ({success_rate:.1%}): Mixed results requiring investigation\n"
+            else:
+                md_content += f"- **Low success pattern** ({success_rate:.1%}): Systematic issues affecting most executions\n"
+
+            # Estimate failure clustering
+            failed_sims = total_sims - successful_sims
+            if failed_sims > 1:
+                md_content += f"- **Failure distribution:** {failed_sims} failed simulations out of {total_sims} total\n"
+                if failed_sims == 1:
+                    md_content += f"- **Isolated failure:** Single failure suggests edge case or random error\n"
+                elif failed_sims == total_sims - successful_sims and successful_sims > 0:
+                    md_content += f"- **Mixed pattern:** Both successes and failures indicate inconsistent behavior\n"
+
+        return md_content
+
