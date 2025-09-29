@@ -1436,9 +1436,9 @@ class LogVisualizer:
         state_analysis = self.analyzer.get_state_change_analysis()
         sequence_analysis = self.analyzer.get_tool_sequence_analysis()
 
-        # Generate insights and recommendations
-        insights = self._generate_key_insights(summary, tool_perf, failures, state_analysis, sequence_analysis)
-        recommendations = self._generate_recommendations(summary, tool_perf, failures, state_analysis)
+        # Generate insights and recommendations (markdown format)
+        insights = self._generate_key_insights_md(summary, tool_perf, failures, state_analysis, sequence_analysis)
+        recommendations = self._generate_recommendations_md(summary, tool_perf, failures, state_analysis)
 
         # Start building the markdown content
         md_content = f"""# Enhanced Tau2 Execution Analysis Report
@@ -1563,13 +1563,19 @@ class LogVisualizer:
         # Add detailed failure analysis similar to non_enhanced script
         md_content += self._generate_detailed_failure_analysis_md(summary, failures, tool_perf)
 
+        # Add advanced failure pattern analysis
+        md_content += self._generate_advanced_failure_patterns_md(summary, failures, tool_perf)
+
         # Add task complexity and simulation analysis
         md_content += self._generate_task_simulation_analysis_md(summary, tool_perf, state_analysis)
 
-        # Add performance deep dive
+        # Add communication vs tool call analysis
+        md_content += self._generate_communication_analysis_md(summary, tool_perf, sequence_analysis)
+
+        # Add performance issues deep dive
         md_content += self._generate_performance_deep_dive_md(tool_perf, sequence_analysis)
 
-        # Add execution patterns analysis
+        # Add execution patterns and termination analysis
         md_content += self._generate_execution_patterns_md(summary, tool_perf, sequence_analysis)
 
         md_content += "\n---\n\n## 📈 Visualization Files\n\n"
@@ -2141,4 +2147,315 @@ class LogVisualizer:
                     md_content += f"- **Mixed pattern:** Both successes and failures indicate inconsistent behavior\n"
 
         return md_content
+
+    def _generate_advanced_failure_patterns_md(self, summary, failures, tool_perf) -> str:
+        """Generate advanced failure pattern analysis similar to the requested format."""
+        md_content = "\n---\n\n## 🎯 Performance Issues Analysis\n\n"
+
+        total_calls = summary.get('total_tool_calls', 0)
+        total_failures = summary.get('failed_calls', 0) if failures.empty else failures['count'].sum()
+        success_rate = summary.get('tool_success_rate', 0)
+
+        # Overall performance assessment
+        md_content += f"### Overall Performance Assessment\n\n"
+        if success_rate >= 0.9:
+            md_content += f"- **Overall success: {success_rate:.1%} (excellent)**\n"
+        elif success_rate >= 0.7:
+            md_content += f"- **Overall success: {success_rate:.1%} (good)**\n"
+        elif success_rate >= 0.5:
+            md_content += f"- **Overall success: {success_rate:.1%} (concerning)**\n"
+        else:
+            md_content += f"- **Overall success: {success_rate:.1%} (critical)**\n"
+
+        # Analyze action vs read-only performance
+        if not tool_perf.empty:
+            state_changing = tool_perf[tool_perf['state_change_rate'] > 0]
+            read_only = tool_perf[tool_perf['state_change_rate'] == 0]
+
+            if not state_changing.empty and not read_only.empty:
+                state_avg_success = state_changing['success_rate'].mean()
+                read_avg_success = read_only['success_rate'].mean()
+
+                md_content += f"- **State-changing actions accuracy: {state_avg_success:.1%}**\n"
+                md_content += f"- **Read-only actions accuracy: {read_avg_success:.1%}**\n"
+
+                if state_avg_success < 0.5:
+                    md_content += f"- **Critical**: State-changing actions show severe accuracy issues\n"
+
+                performance_drop = read_avg_success - state_avg_success
+                if performance_drop > 0.2:
+                    md_content += f"- **{performance_drop:.0%}pp performance drop when actions are required** ({read_avg_success:.1%} → {state_avg_success:.1%} success)\n"
+
+        # Action complexity impact
+        if not failures.empty:
+            md_content += f"\n### 🔍 Failure Patterns\n\n"
+
+            total_failure_rate = total_failures / total_calls if total_calls > 0 else 0
+            md_content += f"- **{total_failure_rate:.0%} of operations result in failures**\n"
+
+            # Most failed actions
+            top_failures = failures.nlargest(3, 'count')
+            if not top_failures.empty:
+                md_content += f"- **Most failed operations:**\n"
+                for _, row in top_failures.iterrows():
+                    failure_percentage = row['failure_rate'] * 100
+                    md_content += f"  - {row['tool_name']}: {failure_percentage:.0f}% failure rate\n"
+
+            # Database validation patterns
+            action_check_failures = failures[failures['error_category'] == 'ActionCheckFailure']
+            if not action_check_failures.empty:
+                md_content += f"- **Action validation failures in {len(action_check_failures)} different tools**\n"
+                total_action_failures = action_check_failures['count'].sum()
+                action_failure_rate = total_action_failures / total_failures if total_failures > 0 else 0
+                md_content += f"- **{action_failure_rate:.0%}% of failures involve validation mismatches**\n"
+
+        # Performance degradation patterns
+        if not tool_perf.empty:
+            md_content += f"\n### 📊 Action Complexity Impact\n\n"
+
+            # Categorize tools by complexity (approximated by state changes)
+            no_action_tools = tool_perf[tool_perf['state_change_rate'] == 0]
+            action_tools = tool_perf[tool_perf['state_change_rate'] > 0]
+
+            if not no_action_tools.empty:
+                no_action_success = no_action_tools['success_rate'].mean()
+                md_content += f"- **0 state changes: {no_action_success:.1%} success**\n"
+
+            if not action_tools.empty:
+                action_success = action_tools['success_rate'].mean()
+                md_content += f"- **Tools with state changes: {action_success:.1%} success**\n"
+
+                if not no_action_tools.empty and no_action_success - action_success > 0.2:
+                    md_content += f"- **Clear correlation between complexity and failure**\n"
+
+        return md_content
+
+    def _generate_communication_analysis_md(self, summary, tool_perf, sequence_analysis) -> str:
+        """Analyze communication patterns vs tool call patterns."""
+        md_content = "\n---\n\n## 💬 Communication vs Tool Call Analysis\n\n"
+
+        # Look for transfer patterns
+        transfer_tools = tool_perf[tool_perf['tool_name'].str.contains('transfer|human', case=False, na=False)]
+        communication_tools = tool_perf[tool_perf['tool_name'].str.contains('send|message|communicate', case=False, na=False)]
+
+        total_calls = summary.get('total_tool_calls', 0)
+
+        if not transfer_tools.empty:
+            transfer_calls = transfer_tools['total_calls'].sum()
+            transfer_rate = (transfer_calls / total_calls * 100) if total_calls > 0 else 0
+            md_content += f"### Transfer to Human Analysis\n\n"
+            md_content += f"- **Transfer calls: {transfer_calls} ({transfer_rate:.1f}% of total calls)**\n"
+
+            avg_transfer_success = transfer_tools['success_rate'].mean()
+            md_content += f"- **Transfer success rate: {avg_transfer_success:.1%}**\n"
+
+            if transfer_rate > 20:
+                md_content += f"- **High transfer rate** may indicate agent limitations or complex user requests\n"
+
+        if not communication_tools.empty:
+            comm_calls = communication_tools['total_calls'].sum()
+            comm_rate = (comm_calls / total_calls * 100) if total_calls > 0 else 0
+            md_content += f"\n### Communication Tool Usage\n\n"
+            md_content += f"- **Communication calls: {comm_calls} ({comm_rate:.1f}% of total calls)**\n"
+
+            avg_comm_success = communication_tools['success_rate'].mean()
+            md_content += f"- **Communication success rate: {avg_comm_success:.1%}**\n"
+
+        # Analyze termination patterns from summary
+        md_content += f"\n### 🛑 Task Termination Analysis\n\n"
+
+        # Look for stopping patterns
+        execution_timespan = summary.get('execution_timespan', 0)
+        total_execution_time = summary.get('total_execution_time', 0)
+
+        if execution_timespan > 0:
+            efficiency = (total_execution_time / execution_timespan) * 100
+            md_content += f"- **Execution efficiency: {efficiency:.1f}%** (time spent in actual tool execution)\n"
+
+            if efficiency < 1:
+                md_content += f"- **Low efficiency suggests high wait times** or communication delays\n"
+
+        # Max length analysis (approximate from data patterns)
+        if not tool_perf.empty:
+            high_call_tools = tool_perf[tool_perf['total_calls'] >= 10]
+            if not high_call_tools.empty:
+                md_content += f"- **{len(high_call_tools)} tools used extensively** (10+ calls each)\n"
+                md_content += f"- **Possible indication of retry patterns** or complex multi-step operations\n"
+
+        return md_content
+
+    def _generate_task_simulation_analysis_md(self, summary, tool_perf, state_analysis) -> str:
+        """Generate task and simulation success analysis with trial patterns."""
+        md_content = "\n---\n\n## 📋 Task & Simulation Analysis\n\n"
+
+        # Simulation success patterns
+        total_sims = summary.get('total_simulations', 0)
+        successful_sims = summary.get('successful_simulations', 0)
+        task_success_rate = summary.get('task_success_rate', 0)
+
+        md_content += f"### Simulation Success Patterns\n\n"
+        if total_sims > 0:
+            md_content += f"- **Total simulations: {total_sims}**\n"
+            md_content += f"- **Successful simulations: {successful_sims}**\n"
+            md_content += f"- **Task success rate: {task_success_rate:.1%}**\n"
+
+            if task_success_rate >= 0.8:
+                md_content += f"- **Excellent task completion rate** - System performing well\n"
+            elif task_success_rate >= 0.6:
+                md_content += f"- **Good task completion rate** - Some optimization opportunities\n"
+            elif task_success_rate >= 0.4:
+                md_content += f"- **Moderate task completion rate** - Significant improvement needed\n"
+            else:
+                md_content += f"- **Poor task completion rate** - Critical issues require attention\n"
+
+        # Trial analysis (if multiple trials available)
+        md_content += f"\n### 📈 Trial Performance Patterns\n\n"
+
+        # Success metric source analysis
+        success_metric_source = summary.get('success_metric_source', 'unknown')
+        md_content += f"- **Success evaluation method: {success_metric_source}**\n"
+
+        if success_metric_source == 'action_checks':
+            md_content += f"- **Action-based evaluation** - Success determined by correct action execution\n"
+        elif success_metric_source == 'db_checks':
+            md_content += f"- **Database validation** - Success based on database state consistency\n"
+        elif success_metric_source == 'communicate_checks':
+            md_content += f"- **Communication-based** - Success based on proper information exchange\n"
+
+        # Tool complexity vs success correlation
+        if not tool_perf.empty and total_sims > 0:
+            md_content += f"\n### 🎲 Complexity vs Success Correlation\n\n"
+
+            # Calculate complexity metrics
+            unique_tools_used = len(tool_perf)
+            total_tool_calls = summary.get('total_tool_calls', 0)
+            avg_tools_per_sim = unique_tools_used / total_sims if total_sims > 0 else 0
+            avg_calls_per_sim = total_tool_calls / total_sims if total_sims > 0 else 0
+
+            md_content += f"- **Average tools per simulation: {avg_tools_per_sim:.1f}**\n"
+            md_content += f"- **Average calls per simulation: {avg_calls_per_sim:.1f}**\n"
+
+            # State changing vs read-only impact
+            if not state_analysis.empty:
+                state_changing = state_analysis[state_analysis['state_changed'] == True]
+                if not state_changing.empty:
+                    state_calls = state_changing['total_calls'].sum()
+                    state_call_rate = (state_calls / total_tool_calls * 100) if total_tool_calls > 0 else 0
+                    md_content += f"- **State-changing operations: {state_call_rate:.1f}% of all calls**\n"
+
+                    if task_success_rate < 0.5 and state_call_rate > 20:
+                        md_content += f"- **High state-change rate with low success** suggests action execution issues\n"
+
+        return md_content
+
+    def _generate_key_insights_md(self, summary, tool_perf, failures, state_analysis, sequence_analysis) -> list:
+        """Generate key insights in markdown format."""
+        insights = []
+
+        # Performance insights
+        if not tool_perf.empty:
+            excellent_tools = len(tool_perf[tool_perf['performance_category'] == 'excellent'])
+            poor_tools = len(tool_perf[tool_perf['performance_category'] == 'poor'])
+            most_used = tool_perf.iloc[0]['tool_name'] if len(tool_perf) > 0 else "N/A"
+
+            insights.append(f"**{excellent_tools}** out of {len(tool_perf)} tools have excellent performance (≥95% success rate)")
+            insights.append(f"**{most_used}** is the most frequently used tool with {tool_perf.iloc[0]['total_calls']} calls")
+            insights.append(f"Overall system reliability: **{summary.get('tool_success_rate', 0):.1%}**")
+
+            if poor_tools > 0:
+                insights.append(f"**{poor_tools}** tools showing poor performance require attention")
+
+        # Failure insights
+        if not failures.empty:
+            total_failures = failures['count'].sum()
+            total_calls = summary.get('total_tool_calls', 0)
+            error_rate = (total_failures / total_calls * 100) if total_calls > 0 else 0
+
+            insights.append(f"**{error_rate:.1f}%** error rate across all tool executions")
+
+            most_failed = failures.iloc[0]['tool_name'] if len(failures) > 0 else "N/A"
+            insights.append(f"**{most_failed}** has the highest failure count with {failures.iloc[0]['count']} failures")
+
+            if 'ActionCheckFailure' in failures['error_category'].values:
+                action_failures = failures[failures['error_category'] == 'ActionCheckFailure']['count'].sum()
+                insights.append(f"**{action_failures}** failures are due to action validation issues")
+
+        # State change insights
+        if not state_analysis.empty:
+            state_changing = len(state_analysis[state_analysis['state_changed'] == True])
+            read_only = len(state_analysis[state_analysis['state_changed'] == False])
+
+            insights.append(f"Tool distribution: **{state_changing}** state-changing, **{read_only}** read-only")
+
+            if state_changing > 0 and read_only > 0:
+                state_tools = state_analysis[state_analysis['state_changed'] == True]
+                read_tools = state_analysis[state_analysis['state_changed'] == False]
+                state_avg_success = state_tools['success_rate'].mean()
+                read_avg_success = read_tools['success_rate'].mean()
+
+                if state_avg_success < read_avg_success - 0.1:
+                    insights.append(f"State-changing tools underperform read-only tools ({state_avg_success:.1%} vs {read_avg_success:.1%})")
+
+        # Sequence insights
+        if not sequence_analysis.empty:
+            total_transitions = sequence_analysis['count'].sum()
+            self_loops = sequence_analysis[sequence_analysis['source'] == sequence_analysis['target']]['count'].sum()
+            self_loop_rate = (self_loops / total_transitions * 100) if total_transitions > 0 else 0
+
+            if self_loop_rate > 30:
+                insights.append(f"High self-loop rate ({self_loop_rate:.1f}%) indicates potential retry patterns")
+
+            top_transition = sequence_analysis.iloc[0] if len(sequence_analysis) > 0 else None
+            if top_transition is not None:
+                insights.append(f"Most common pattern: **{top_transition['source']}** → **{top_transition['target']}** ({top_transition['count']} times)")
+
+        return insights
+
+    def _generate_recommendations_md(self, summary, tool_perf, failures, state_analysis) -> list:
+        """Generate recommendations in markdown format."""
+        recommendations = []
+
+        # Performance recommendations
+        if not tool_perf.empty:
+            poor_performers = tool_perf[tool_perf['performance_category'] == 'poor']
+            if not poor_performers.empty:
+                high_usage_poor = poor_performers[poor_performers['total_calls'] >= 10]
+                if not high_usage_poor.empty:
+                    recommendations.append(f"**Priority**: Investigate high-usage poor performers: {', '.join(high_usage_poor['tool_name'].tolist())}")
+
+                recommendations.append(f"**Optimize** {len(poor_performers)} tools with poor performance categories")
+
+        # Failure recommendations
+        if not failures.empty:
+            action_check_failures = failures[failures['error_category'] == 'ActionCheckFailure']
+            if not action_check_failures.empty:
+                recommendations.append("**Action Validation**: Review argument validation logic for action check failures")
+                recommendations.append("**Database Consistency**: Ensure action execution aligns with database state expectations")
+
+            high_failure_tools = failures[failures['failure_rate'] > 0.5]
+            if not high_failure_tools.empty:
+                tool_names = ', '.join(high_failure_tools['tool_name'].tolist())
+                recommendations.append(f"**Critical Fix**: Address tools with >50% failure rate: {tool_names}")
+
+        # State change recommendations
+        if not state_analysis.empty:
+            state_changing = state_analysis[state_analysis['state_changed'] == True]
+            if not state_changing.empty:
+                low_success_state = state_changing[state_changing['success_rate'] < 0.7]
+                if not low_success_state.empty:
+                    recommendations.append("**State Management**: Improve reliability of state-changing operations")
+                    recommendations.append("**Testing**: Add comprehensive integration tests for database modifications")
+
+        # General recommendations based on success rates
+        tool_success_rate = summary.get('tool_success_rate', 0)
+        if tool_success_rate < 0.8:
+            recommendations.append("**System Reliability**: Overall tool success rate below 80% requires immediate attention")
+        elif tool_success_rate < 0.95:
+            recommendations.append("**Performance Tuning**: Consider optimizing tool execution patterns for better reliability")
+
+        task_success_rate = summary.get('task_success_rate', 0)
+        if task_success_rate < 0.7:
+            recommendations.append("**Task Success**: Low task completion rate suggests fundamental workflow issues")
+
+        return recommendations
 
