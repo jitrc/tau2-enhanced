@@ -127,15 +127,14 @@ class LogVisualizer:
                 row=1, col=1
             )
 
-            # Calculate total success rate combining both task and tool success
+            # Use task success rate as the overall success metric
             task_success = summary.get('task_success_rate', 0) * 100
             tool_success = summary.get('tool_success_rate', 0) * 100
-            total_success = (task_success + tool_success) / 2  # Average of both
 
             fig.add_trace(
                 go.Indicator(
                     mode="gauge+number",
-                    value=total_success,
+                    value=task_success,
                     title={'text': "Overall Success %"},
                     gauge={
                         'axis': {'range': [0, 100]},
