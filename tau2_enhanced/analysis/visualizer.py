@@ -1162,7 +1162,7 @@ class LogVisualizer:
             failure_rate = total_failures / total_calls if total_calls > 0 else 0
 
             if failure_rate > 0.1:  # More than 10% failure rate
-                high_priority.append(f"<strong>High failure rate:</strong> {failure_rate:.1%} of calls are failing. Focus on error handling improvements.")
+                high_priority.append(f"<strong>High failure rate:</strong> {failure_rate:.1%} of calls are failing across the system.")
 
             # Specific error type recommendations
             error_types = failures['error_category'].unique()
@@ -1173,9 +1173,9 @@ class LogVisualizer:
                 if error_type == 'ValidationError':
                     high_priority.append(f"<strong>Input validation critical:</strong> {error_count} ValidationErrors across {len(affected_tools)} tools: {', '.join(affected_tools[:3])}")
                 elif error_type == 'TimeoutError':
-                    high_priority.append(f"<strong>Timeout issues:</strong> {error_count} timeouts detected. Consider increasing timeout limits or optimizing performance.")
+                    high_priority.append(f"<strong>Timeout issues:</strong> {error_count} timeouts detected across {len(affected_tools)} tools.")
                 elif error_type == 'ConnectionError':
-                    high_priority.append(f"<strong>Network reliability:</strong> {error_count} connection errors. Implement robust retry mechanisms.")
+                    high_priority.append(f"<strong>Connection failures:</strong> {error_count} connection errors affecting {len(affected_tools)} tools.")
 
         # Analyze tool performance for medium priority recommendations
         if not tool_perf.empty:
@@ -1184,7 +1184,7 @@ class LogVisualizer:
             if not poor_tools.empty:
                 poor_list = poor_tools['tool_name'].tolist()
                 failure_rates = poor_tools['error_rate'].tolist()
-                medium_priority.append(f"<strong>Fix failing tools:</strong> {len(poor_list)} tools need attention: " +
+                medium_priority.append(f"<strong>Poor performing tools:</strong> {len(poor_list)} tools identified: " +
                                      ", ".join([f"{tool} ({rate:.1%} failure)" for tool, rate in zip(poor_list[:3], failure_rates[:3])]))
 
             # Slow tools
@@ -1196,11 +1196,11 @@ class LogVisualizer:
                 medium_priority.append(f"<strong>Performance optimization needed:</strong> " +
                                      ", ".join([f"{tool} ({time:.3f}s avg)" for tool, time in zip(slow_list[:3], slow_times[:3])]))
 
-            # High-volume tools could benefit from caching
+            # High-volume tools identification (data observation only)
             high_volume = tool_perf[tool_perf['total_calls'] > tool_perf['total_calls'].quantile(0.8)]
             if not high_volume.empty and len(high_volume) > 0:
                 cache_candidates = high_volume['tool_name'].tolist()[:3]
-                medium_priority.append(f"<strong>Consider caching:</strong> High-usage tools could benefit from result caching: {', '.join(cache_candidates)}")
+                medium_priority.append(f"<strong>High usage pattern:</strong> Top usage tools account for {len(high_volume)} of {len(tool_perf)} total tools: {', '.join(cache_candidates)}")
 
         # State change analysis recommendations
         if not state_analysis.empty:
@@ -1213,24 +1213,20 @@ class LogVisualizer:
                 readonly_error_rate = read_only['error_rate'].mean()
 
                 if state_error_rate > readonly_error_rate * 2:  # State operations much more error-prone
-                    medium_priority.append(f"<strong>State operation reliability:</strong> State-changing operations have {state_error_rate:.1%} error rate vs {readonly_error_rate:.1%} for read-only operations. Review transaction handling.")
+                    medium_priority.append(f"<strong>State operation pattern:</strong> State-changing operations have {state_error_rate:.1%} error rate vs {readonly_error_rate:.1%} for read-only operations.")
 
-        # Low priority: Best practice recommendations based on data patterns
-        if total_calls > 100:  # Only for systems with reasonable usage
-            low_priority.append(f"<strong>Monitoring setup:</strong> With {total_calls} tool calls analyzed, implement automated monitoring dashboards.")
-
-        if len(tool_perf) > 5:  # Multi-tool systems
-            low_priority.append(f"<strong>Performance baselines:</strong> Establish SLA targets for your {len(tool_perf)} tools based on current performance data.")
-
-        if success_rate > 0.95:  # Well-performing systems
-            low_priority.append(f"<strong>Optimization opportunities:</strong> Excellent {success_rate:.1%} success rate! Consider performance profiling for the remaining edge cases.")
-
-        # Tool usage pattern recommendations
+        # Data pattern observations (no hardcoded recommendations)
         if not tool_perf.empty:
             most_used = tool_perf.iloc[0]
             usage_ratio = most_used['total_calls'] / total_calls
-            if usage_ratio > 0.5:  # One tool dominates usage
-                low_priority.append(f"<strong>Load distribution:</strong> {most_used['tool_name']} accounts for {usage_ratio:.1%} of calls. Consider load balancing or scaling strategies.")
+            if usage_ratio > 0.5:  # One tool dominates usage - just report the pattern
+                low_priority.append(f"<strong>Usage concentration:</strong> {most_used['tool_name']} accounts for {usage_ratio:.1%} of all calls.")
+
+        if success_rate > 0.95:  # Report excellent performance
+            low_priority.append(f"<strong>System performance:</strong> Excellent {success_rate:.1%} success rate achieved across {total_calls} calls.")
+
+        if len(tool_perf) > 5:  # Report system complexity
+            low_priority.append(f"<strong>System scope:</strong> Analysis covers {len(tool_perf)} different tools across {total_calls} total calls.")
 
         return {
             'high_priority': high_priority,
@@ -2474,21 +2470,21 @@ class LogVisualizer:
             if not poor_performers.empty:
                 high_usage_poor = poor_performers[poor_performers['total_calls'] >= 10]
                 if not high_usage_poor.empty:
-                    recommendations.append(f"**Priority**: Investigate high-usage poor performers: {', '.join(high_usage_poor['tool_name'].tolist())}")
+                    recommendations.append(f"**High Impact Pattern**: High-usage poor performers identified: {', '.join(high_usage_poor['tool_name'].tolist())}")
 
-                recommendations.append(f"**Optimize** {len(poor_performers)} tools with poor performance categories")
+                recommendations.append(f"**Performance Pattern**: {len(poor_performers)} tools categorized as poor performers based on execution metrics")
 
         # Failure recommendations
         if not failures.empty:
             action_check_failures = failures[failures['error_category'] == 'ActionCheckFailure']
             if not action_check_failures.empty:
-                recommendations.append("**Action Validation**: Review argument validation logic for action check failures")
-                recommendations.append("**Database Consistency**: Ensure action execution aligns with database state expectations")
+                failure_count = len(action_check_failures)
+                recommendations.append(f"**Action Check Pattern**: {failure_count} action validation failures detected across tool executions")
 
             high_failure_tools = failures[failures['failure_rate'] > 0.5]
             if not high_failure_tools.empty:
                 tool_names = ', '.join(high_failure_tools['tool_name'].tolist())
-                recommendations.append(f"**Critical Fix**: Address tools with >50% failure rate: {tool_names}")
+                recommendations.append(f"**High Failure Rate**: Tools with >50% failure rate detected: {tool_names}")
 
         # State change recommendations
         if not state_analysis.empty:
@@ -2496,19 +2492,20 @@ class LogVisualizer:
             if not state_changing.empty:
                 low_success_state = state_changing[state_changing['success_rate'] < 0.7]
                 if not low_success_state.empty:
-                    recommendations.append("**State Management**: Improve reliability of state-changing operations")
-                    recommendations.append("**Testing**: Add comprehensive integration tests for database modifications")
+                    low_count = len(low_success_state)
+                    avg_success = low_success_state['success_rate'].mean()
+                    recommendations.append(f"**State Operation Pattern**: {low_count} state-changing operations show {avg_success:.1%} average success rate")
 
         # General recommendations based on success rates
         tool_success_rate = summary.get('tool_success_rate', 0)
         if tool_success_rate < 0.8:
-            recommendations.append("**System Reliability**: Overall tool success rate below 80% requires immediate attention")
+            recommendations.append(f"**System Status**: Overall tool success rate at {tool_success_rate:.1%} indicates significant reliability challenges")
         elif tool_success_rate < 0.95:
-            recommendations.append("**Performance Tuning**: Consider optimizing tool execution patterns for better reliability")
+            recommendations.append(f"**Performance Analysis**: Tool success rate at {tool_success_rate:.1%} indicates potential optimization opportunities")
 
         task_success_rate = summary.get('task_success_rate', 0)
         if task_success_rate < 0.7:
-            recommendations.append("**Task Success**: Low task completion rate suggests fundamental workflow issues")
+            recommendations.append(f"**Task Analysis**: Task completion rate at {task_success_rate:.1%} indicates workflow execution challenges")
 
         return recommendations
 
