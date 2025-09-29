@@ -184,6 +184,11 @@ tau2 run --domain airline_enhanced --agent enhanced_agent,retry_agent,context_ag
 python scripts/analyze_simple_logs.py results.json
 ```
 
+**Reproducibility:** Complete setup instructions and examples for reproducing the analysis results shown in `samples/analysis/` are provided in the [README.md](README.md#create-reproducible-analysis-results). Example command:
+```bash
+./tau2-enhanced run --domain airline_enhanced --agent llm_agent --agent-llm xai/grok-3 --user-llm gemini/gemini-2.5-flash --num-trials 4 --save-to baseline_airline_xai_grok3_gemini2_5_flash
+```
+
 
 ### Enhanced Agent Performance Results
 

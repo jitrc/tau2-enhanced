@@ -93,6 +93,42 @@ tau2 --help
 python -c "from tau2_enhanced.domain_registration import EnhancedDomainRegistry; print(list(EnhancedDomainRegistry().register_all_available_domains().keys()))"
 ```
 
+### Create Reproducible Analysis Results
+
+To reproduce the analysis results shown in `samples/analysis/`, run these commands:
+
+```bash
+# Create baseline comparison with different agents (Gemini)
+./tau2-enhanced run --domain airline_enhanced --agent llm_agent --agent-llm gemini/gemini-2.5-flash --user-llm gemini/gemini-2.5-flash --num-tasks 10 --num-trials 2 --save-to airline_gemini2_5_flash_10tasks_llm_agent
+
+./tau2-enhanced run --domain airline_enhanced --agent context_agent --agent-llm gemini/gemini-2.5-flash --user-llm gemini/gemini-2.5-flash --num-tasks 10 --num-trials 2 --save-to airline_gemini2_5_flash_10tasks_context_agent
+
+./tau2-enhanced run --domain airline_enhanced --agent retry_agent --agent-llm gemini/gemini-2.5-flash --user-llm gemini/gemini-2.5-flash --num-tasks 10 --num-trials 2 --save-to airline_gemini2_5_flash_10tasks_retry_agent
+
+./tau2-enhanced run --domain airline_enhanced --agent enhanced_agent --agent-llm gemini/gemini-2.5-flash --user-llm gemini/gemini-2.5-flash --num-tasks 10 --num-trials 2 --save-to airline_gemini2_5_flash_10tasks_enhanced_agent
+
+# Create agent comparison with Grok models
+./tau2-enhanced run --domain airline_enhanced --agent llm_agent --agent-llm xai/grok-3 --user-llm xai/grok-4-fast-reasoning --num-trials 4 --save-to airline_llm_agent_xai_grok3 --max-concurrency 5
+
+./tau2-enhanced run --domain airline_enhanced --agent context_agent --agent-llm xai/grok-3 --user-llm xai/grok-4-fast-reasoning --num-trials 4 --save-to airline_context_agent_xai_grok3 --max-concurrency 5
+
+./tau2-enhanced run --domain airline_enhanced --agent retry_agent --agent-llm xai/grok-3 --user-llm xai/grok-4-fast-reasoning --num-trials 4 --save-to airline_retry_agent_xai_grok3 --max-concurrency 5
+
+./tau2-enhanced run --domain airline_enhanced --agent enhanced_agent --agent-llm xai/grok-3 --user-llm xai/grok-4-fast-reasoning --num-trials 4 --save-to airline_enhanced_agent_xai_grok3 --max-concurrency 5
+
+# Create comprehensive Grok-3 baseline analysis
+./tau2-enhanced run --domain airline_enhanced --agent llm_agent --agent-llm xai/grok-3 --user-llm gemini/gemini-2.5-flash --num-trials 4 --save-to baseline_airline_xai_grok3_gemini2_5_flash
+
+# Analyze results (creates analysis folders in samples/analysis/)
+python scripts/analyze_simple_logs.py enhanced_logs/airline_gemini2_5_flash_10tasks_llm_agent.json
+python scripts/analyze_simple_logs.py enhanced_logs/baseline_airline_xai_grok3_gemini2_5_flash.json
+```
+
+This will create analysis folders matching the structure in `samples/analysis/` with:
+- Enhanced analysis reports (HTML)
+- Tool performance reports
+- Statistical breakdowns and visualizations
+
 ## Usage
 
 ### Method 1: Enhanced Agents (Performance Optimization) 🆕
