@@ -107,9 +107,8 @@ class ContextManagedLLMAgent(LLMAgent):
         self.context_logger.log_context_reduction(
             original_tokens=token_stats.current_tokens,
             reduced_tokens=token_stats.current_tokens,  # No reduction yet
-            reduction_strategy="token_analysis",
-            information_preserved=True,
-            performance_impact=0
+            strategy_used="token_analysis",
+            trigger_reason="performance_monitoring"
         )
 
         # Apply context reduction if needed
@@ -260,9 +259,8 @@ class ContextManagedLLMAgent(LLMAgent):
         self.context_logger.log_context_reduction(
             original_tokens=original_tokens,
             reduced_tokens=reduced_tokens,
-            reduction_strategy=strategy,
-            information_preserved=information_preserved > 0.7,  # Boolean for compatibility
-            performance_impact=processing_time
+            strategy_used=strategy,
+            trigger_reason="context_limit_exceeded"
         )
 
         # Log significant reductions

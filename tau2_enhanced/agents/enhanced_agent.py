@@ -91,9 +91,8 @@ class EnhancedLLMAgent(RetryManagedLLMAgent, ContextManagedLLMAgent):
             self.enhanced_logger.log_context_reduction(
                 original_tokens=token_stats.current_tokens,
                 reduced_tokens=self.estimate_tokens(state.messages),
-                reduction_strategy="enhanced_agent_preprocessing",
-                information_preserved=True,
-                performance_impact=time.time() - operation_start_time
+                strategy_used="enhanced_agent_preprocessing",
+                trigger_reason="context_limit_exceeded"
             )
 
         # Step 2: Attempt message generation with retry logic

@@ -206,9 +206,8 @@ class RetryManagedLLMAgent(LLMAgent):
                 self.retry_logger.log_context_reduction(
                     original_tokens=len(state.messages),
                     reduced_tokens=len(modified_state.messages),
-                    reduction_strategy=f"retry_guidance_{recovery_strategy}",
-                    information_preserved=True,
-                    performance_impact=retry_attempt.timestamp - start_time
+                    strategy_used=f"retry_guidance_{recovery_strategy}",
+                    trigger_reason="retry_failure_recovery"
                 )
 
                 # Attempt the operation again
