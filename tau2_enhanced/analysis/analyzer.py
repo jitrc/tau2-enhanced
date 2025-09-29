@@ -278,32 +278,56 @@ class LogAnalyzer:
 
     def get_state_change_analysis(self) -> pd.DataFrame:
         """
-        Analyzes performance based on whether a tool call changed the state.
+        Analyzes performance based on whether a tool call changed the state,
+        with detailed breakdown by function names.
 
         Returns:
             A pandas DataFrame summarizing metrics for state-changing vs.
-            non-state-changing calls.
+            non-state-changing calls, including per-tool breakdown.
         """
         if self.df.empty or 'state_changed' not in self.df.columns:
             return pd.DataFrame()
 
-        state_analysis = self.df.groupby('state_changed').agg(
+        # Enhanced analysis with tool-level breakdown
+        state_analysis = self.df.groupby(['state_changed', 'tool_name']).agg(
             total_calls=('state_changed', 'count'),
             successful_calls=('success', 'sum'),
-            avg_execution_time=('execution_time', 'mean')
+            avg_execution_time=('execution_time', 'mean'),
+            min_execution_time=('execution_time', 'min'),
+            max_execution_time=('execution_time', 'max')
         ).reset_index()
 
+        # Calculate derived metrics
         state_analysis['failed_calls'] = (
             state_analysis['total_calls'] - state_analysis['successful_calls']
         )
         state_analysis['success_rate'] = (
             state_analysis['successful_calls'] / state_analysis['total_calls']
         )
+        state_analysis['error_rate'] = (
+            state_analysis['failed_calls'] / state_analysis['total_calls']
+        )
 
-        # Rename index for clarity
+        # Add category labels
         state_analysis['category'] = state_analysis['state_changed'].apply(
             lambda x: 'State-Changing' if x else 'Read-Only'
         )
+
+        # Add performance classification
+        def classify_tool_performance(row):
+            if row['success_rate'] >= 0.95 and row['avg_execution_time'] <= 0.1:
+                return 'excellent'
+            elif row['success_rate'] >= 0.90 and row['avg_execution_time'] <= 0.5:
+                return 'good'
+            elif row['success_rate'] >= 0.75:
+                return 'fair'
+            else:
+                return 'poor'
+
+        state_analysis['performance_rating'] = state_analysis.apply(classify_tool_performance, axis=1)
+
+        # Sort by category (state-changing first) then by total calls
+        state_analysis = state_analysis.sort_values(['state_changed', 'total_calls'], ascending=[False, False])
 
         return state_analysis
 
