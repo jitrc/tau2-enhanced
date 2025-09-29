@@ -169,7 +169,7 @@ def create_enhanced_parser():
         "--log-level",
         type=str,
         default=DEFAULT_LOG_LEVEL,
-        help=f"Logging level. Default is {DEFAULT_LOG_LEVEL}."
+        help=f"Logging level (case insensitive). Valid levels: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL. Default is {DEFAULT_LOG_LEVEL}."
     )
     parser.add_argument(
         "--save-to",
@@ -197,6 +197,16 @@ def enhanced_main(cli_args: Optional[List[str]] = None):
     # Parse arguments
     parser = create_enhanced_parser()
     args = parser.parse_args(cli_args)
+
+    # Convert log level to uppercase for loguru compatibility
+    args.log_level = args.log_level.upper()
+
+    # Validate log level
+    valid_log_levels = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
+    if args.log_level not in valid_log_levels:
+        print_error(f"Invalid log level: {args.log_level}")
+        print_info(f"Valid log levels: {', '.join(valid_log_levels)}")
+        sys.exit(1)
 
     try:
         print_info(f"Initializing enhanced simulation for domain: {Colors.BOLD}{args.domain}{Colors.ENDC}")
