@@ -216,10 +216,16 @@ def analyze_logs(log_file: Path, output_dir: Path):
         bottleneck_fig.write_html(bottleneck_path)
         print(f"  ✅ Performance bottleneck plot saved to: {bottleneck_path}")
 
+        # Comprehensive Report
+        report_path = output_dir / "report.html"
+        visualizer.create_comprehensive_report(str(report_path), log_file.name)
+        print(f"  ✅ Comprehensive report saved to: {report_path}")
+
     except Exception as e:
         print(f"  ❌ Error during visualization: {e}")
 
     print("\n🎉 Analysis complete!")
+    print(f"\n📄 For a comprehensive overview, open: {output_dir / 'report.html'}")
 
 
 def main():
