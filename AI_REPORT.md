@@ -34,7 +34,7 @@ This report analyzes Grok's performance on the tau2-bench benchmark, identifies 
 
 ### Quantitative Results
 
-**Grok-3** analysis on airline domain (200 simulations, 50 tasks, 4 trials each):
+**Grok-3** analysis on airline domain (200 simulations, 50 tasks, 4 trials each) - [📊 Full Analysis Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/enhanced_analysis_report.html):
 
 | **Metric** | **Grok-3** | **Industry Comparison** |
 |------------|------------|-------------------------|
@@ -62,7 +62,7 @@ The analysis reveals a **61.1 percentage point performance drop** when actions a
 - **Trial Consistency Issues**: Success degraded from 66% (trial 0) to 50% (trial 3)
 - **Communication Strength**: 97.0% success rate demonstrates strong conversational abilities
 
-**Most Problematic Actions** (minimum 5 attempts):
+**Most Problematic Actions** (minimum 5 attempts) - [📈 Tool Analysis Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/tool_report.html):
 1. **`book_reservation`**: 84.8% failure rate across 33 attempts
 2. **`search_direct_flight`**: 78.8% failure rate across 80 attempts
 3. **`send_certificate`**: 66.7% failure rate across 12 attempts
@@ -153,6 +153,8 @@ Core components:
 - **Performance optimization:** Retry logic reduced error rates by 11-13pp
 - **Detailed insights:** 15 analysis methods revealed patterns invisible to original benchmark
 
+**Interactive Analysis Dashboard:** [🎯 View Complete Analysis](https://www.jitrc.com/tau2-enhanced/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/enhanced_analysis_report.html)
+
 ### Failure Case Analysis & Model Improvements
 
 **Primary Failure Modes:**
@@ -187,13 +189,18 @@ python scripts/analyze_simple_logs.py results.json
 
 **Performance Optimization Results:**
 
-| Agent | Tool Success | Error Reduction | Key Achievement |
-|-------|--------------|-----------------|------------------|
-| **llm_agent** (baseline) | 57.4% | - | Baseline performance |
-| **retry_agent** | 68.5% | 11.1pp | Intelligent error recovery |
-| **enhanced_agent** | 70.4% | 13.0pp | Combined retry + context management |
+| Agent | Tool Success | Error Reduction | Key Achievement | Analysis Report |
+|-------|--------------|-----------------|------------------|----------------|
+| **llm_agent** (baseline) | 57.4% | - | Baseline performance | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/enhanced_analysis_report.html) |
+| **retry_agent** | 68.5% | 11.1pp | Intelligent error recovery | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/enhanced_analysis_report.html) |
+| **enhanced_agent** | 70.4% | 13.0pp | Combined retry + context management | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/enhanced_analysis_report.html) |
 
 **Key Findings:** Enhanced agents achieve 13.0pp tool success improvement through intelligent retry logic and context management, with zero modifications to core tau2-bench.
+
+**Detailed Tool Analysis:**
+- [🔧 LLM Agent Tool Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/tool_report.html)
+- [🔧 Retry Agent Tool Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/tool_report.html)
+- [🔧 Enhanced Agent Tool Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/tool_report.html)
 
 
 ## 5. (Bonus) Suggested Training Data
