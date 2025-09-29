@@ -314,12 +314,17 @@ class LogAnalyzer:
                 'total_simulations': 0,
                 'successful_simulations': 0,
                 'task_success_rate': 0,
+                'total_trials': 0,
+                'total_tasks': 0,
             }
 
         # --- Task-level metrics ---
         simulations = self.raw_log_data.get('simulations', [])
         total_simulations = len(simulations)
         successful_simulations = 0
+        total_trials = 0
+        total_tasks = 0
+
         if simulations:
             # Handle both list and dict of simulations
             sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
@@ -327,6 +332,54 @@ class LogAnalyzer:
                 reward_info = sim.get('reward_info')
                 if reward_info and reward_info.get('reward', 0) > 0:
                     successful_simulations += 1
+
+                # Extract trial and task information
+                # Try different possible keys for trial information
+                if 'trial_id' in sim or 'trial' in sim:
+                    total_trials += 1
+
+                # Count tasks - look for task-related fields
+                if 'task_id' in sim:
+                    total_tasks += 1
+                elif 'task' in sim:
+                    total_tasks += 1
+                elif 'tasks' in sim and isinstance(sim['tasks'], list):
+                    total_tasks += len(sim['tasks'])
+                elif 'num_tasks' in sim:
+                    total_tasks += sim['num_tasks']
+
+        # Check if we have tasks at the top level - use this as the authoritative count
+        if 'tasks' in self.raw_log_data and isinstance(self.raw_log_data['tasks'], list):
+            top_level_tasks = len(self.raw_log_data['tasks'])
+            # Prioritize top-level task count over simulation-level counts
+            if top_level_tasks > 0:
+                total_tasks = top_level_tasks
+
+        # Better inference: if we have unique tasks and multiple simulations
+        # Pattern: multiple simulations can run the same tasks (trials)
+        if total_tasks > 0 and total_simulations >= total_tasks:
+            # Multiple simulations per task set - likely multiple trials
+            if total_simulations % total_tasks == 0:
+                # Perfect division - this is likely the correct pattern
+                total_trials = total_simulations // total_tasks
+            else:
+                # Not evenly divisible, round up conservatively
+                total_trials = (total_simulations + total_tasks - 1) // total_tasks
+        elif total_tasks > 0:
+            # Tasks > simulations, assume 1 trial
+            total_trials = 1
+        else:
+            # No task info, fallback
+            total_trials = 1
+
+        # If we still don't have reasonable trial info, use sensible defaults
+        if total_trials == 0:
+            total_trials = 1
+
+        # If we don't have task info, use simulations as fallback only
+        if total_tasks == 0:
+            total_tasks = total_simulations
+
         task_success_rate = successful_simulations / total_simulations if total_simulations > 0 else 0
 
         # --- Tool-level metrics ---
@@ -379,6 +432,8 @@ class LogAnalyzer:
             'total_simulations': total_simulations,
             'successful_simulations': successful_simulations,
             'task_success_rate': task_success_rate,
+            'total_trials': total_trials,
+            'total_tasks': total_tasks,
             'total_tool_calls': total_calls,
             'successful_calls': int(successful_calls),
             'failed_calls': int(failed_calls),

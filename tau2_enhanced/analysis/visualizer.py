@@ -51,7 +51,20 @@ class LogVisualizer:
                     mode="gauge+number",
                     value=summary.get('task_success_rate', 0) * 100,
                     title={'text': "Task Success %"},
-                    gauge={'axis': {'range': [0, 100]}},
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': "#4A90E2"},
+                        'steps': [
+                            {'range': [0, 40], 'color': "#FFF0F0"},
+                            {'range': [40, 70], 'color': "#FFF8E7"},
+                            {'range': [70, 100], 'color': "#F0FFF4"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "#E74C3C", 'width': 2},
+                            'thickness': 0.75,
+                            'value': 80
+                        }
+                    },
                     domain={'x': [0, 1], 'y': [0, 1]}
                 ),
                 row=1, col=1
@@ -62,7 +75,20 @@ class LogVisualizer:
                     mode="gauge+number",
                     value=summary.get('tool_success_rate', 0) * 100,
                     title={'text': "Tool Success %"},
-                    gauge={'axis': {'range': [0, 100]}},
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': "#4A90E2"},
+                        'steps': [
+                            {'range': [0, 40], 'color': "#FFF0F0"},
+                            {'range': [40, 70], 'color': "#FFF8E7"},
+                            {'range': [70, 100], 'color': "#F0FFF4"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "#E74C3C", 'width': 2},
+                            'thickness': 0.75,
+                            'value': 80
+                        }
+                    },
                 ),
                 row=1, col=2
             )
@@ -75,7 +101,7 @@ class LogVisualizer:
                     [{"type": "indicator"}, {"type": "indicator"}],
                     [{"type": "bar"}, {"type": "bar"}]
                 ],
-                subplot_titles=("Tool Success Rate", "Avg Execution Time", "Tool Success Rates", "Tool Execution Times")
+                subplot_titles=("Tool Success Rate", "Total Success", "Tool Success Rates", "Tool Execution Times")
             )
 
             fig.add_trace(
@@ -83,21 +109,48 @@ class LogVisualizer:
                     mode="gauge+number",
                     value=summary.get('tool_success_rate', 0) * 100,
                     title={'text': "Tool Success %"},
-                    gauge={'axis': {'range': [0, 100]}},
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': "#4A90E2"},
+                        'steps': [
+                            {'range': [0, 40], 'color': "#FFF0F0"},
+                            {'range': [40, 70], 'color': "#FFF8E7"},
+                            {'range': [70, 100], 'color': "#F0FFF4"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "#E74C3C", 'width': 2},
+                            'thickness': 0.75,
+                            'value': 80
+                        }
+                    },
                 ),
                 row=1, col=1
             )
 
-            avg_time_seconds = summary.get('average_execution_time', 0)
-            avg_time_ms = avg_time_seconds * 1000
+            # Calculate total success rate combining both task and tool success
+            task_success = summary.get('task_success_rate', 0) * 100
+            tool_success = summary.get('tool_success_rate', 0) * 100
+            total_success = (task_success + tool_success) / 2  # Average of both
 
-            # Always display in milliseconds
             fig.add_trace(
                 go.Indicator(
                     mode="gauge+number",
-                    value=avg_time_ms,
-                    title={'text': "Avg Time (ms)"},
-                    gauge={'axis': {'range': [0, max(1, avg_time_ms * 2)]}},  # At least 1ms range
+                    value=total_success,
+                    title={'text': "Overall Success %"},
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'bar': {'color': "#4A90E2"},
+                        'steps': [
+                            {'range': [0, 40], 'color': "#FFF0F0"},
+                            {'range': [40, 70], 'color': "#FFF8E7"},
+                            {'range': [70, 100], 'color': "#F0FFF4"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "#E74C3C", 'width': 2},
+                            'thickness': 0.75,
+                            'value': 80
+                        }
+                    },
                 ),
                 row=1, col=2
             )
@@ -840,12 +893,12 @@ class LogVisualizer:
 
             <div class="metrics-grid">
                 <div class="metric-card">
-                    <div class="metric-value">{summary.get('total_tool_calls', 0)}</div>
-                    <div class="metric-label">Total Tool Calls</div>
+                    <div class="metric-value">{summary.get('total_simulations', 'N/A')}</div>
+                    <div class="metric-label">Total Simulations</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">{summary.get('tool_success_rate', 0):.1%}</div>
-                    <div class="metric-label">Tool Success Rate</div>
+                    <div class="metric-value">{summary.get('total_tool_calls', 0)}</div>
+                    <div class="metric-label">Total Tool Calls</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-value">{summary.get('average_execution_time', 0)*1000:.2f}ms</div>
@@ -2458,4 +2511,977 @@ class LogVisualizer:
             recommendations.append("**Task Success**: Low task completion rate suggests fundamental workflow issues")
 
         return recommendations
+
+    def create_enhanced_analysis_report(self, output_path: str, log_file_name: str = "execution_logs") -> str:
+        """
+        Create an enhanced HTML report that combines comprehensive analysis content
+        with interactive plots, similar to analysis_report.md but in HTML format.
+        """
+        from datetime import datetime
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+
+        # Get all analysis data
+        summary = self.analyzer.get_summary_metrics()
+        tool_perf = self.analyzer.get_tool_performance()
+        failures = self.analyzer.get_failure_analysis()
+        state_analysis = self.analyzer.get_state_change_analysis()
+        sequence_analysis = self.analyzer.get_tool_sequence_analysis()
+
+        # Generate insights and recommendations for HTML
+        insights = self._generate_key_insights(summary, tool_perf, failures, state_analysis, sequence_analysis)
+        recommendations = self._generate_recommendations(summary, tool_perf, failures, state_analysis)
+
+        # Create summary dashboard
+        summary_html = self.create_summary_dashboard(include_task_success=True).to_html(full_html=False, include_plotlyjs=False)
+
+        # Create performance issues analysis plot
+        perf_issues_html = self._create_performance_issues_plot(summary, tool_perf, failures).to_html(full_html=False, include_plotlyjs=False)
+
+        # Create communication analysis plot
+        comm_analysis_html = self._create_communication_analysis_plot(summary, tool_perf, sequence_analysis).to_html(full_html=False, include_plotlyjs=False)
+
+        # Create execution patterns plot
+        exec_patterns_html = self._create_execution_patterns_plot(summary, tool_perf, sequence_analysis).to_html(full_html=False, include_plotlyjs=False)
+
+        # Create task success correlation plot
+        task_analysis_html = self._create_task_analysis_plot(summary, tool_perf, state_analysis).to_html(full_html=False, include_plotlyjs=False)
+
+        # Build comprehensive HTML content
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Tau2 Analysis Report</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        @media print {{
+            .no-print {{ display: none; }}
+            .page-break {{ page-break-before: always; }}
+            body {{ font-size: 12px; }}
+        }}
+
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }}
+
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }}
+
+        .header {{
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }}
+
+        .header h1 {{
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }}
+
+        .subtitle {{
+            font-size: 1.1em;
+            opacity: 0.9;
+        }}
+
+        .section {{
+            margin: 30px 0;
+            padding: 25px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-left: 4px solid #007bff;
+        }}
+
+        .section h2 {{
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }}
+
+        .section h3 {{
+            color: #34495e;
+            margin-top: 25px;
+        }}
+
+        .metrics-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }}
+
+        .metric-card {{
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }}
+
+        .metric-value {{
+            font-size: 2.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }}
+
+        .metric-label {{
+            font-size: 0.9em;
+            opacity: 0.9;
+        }}
+
+        .plot-container {{
+            margin: 30px 0;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }}
+
+        .insight-box {{
+            background: #f8f9ff;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }}
+
+        .insight-box h4 {{
+            color: #2c3e50;
+            margin-top: 0;
+        }}
+
+        .insight-box ul {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+
+        .insight-box li {{
+            margin-bottom: 8px;
+        }}
+
+        .recommendations {{
+            background: #f3e5f5;
+            border: 1px solid #e1bee7;
+            border-radius: 8px;
+            padding: 20px;
+        }}
+
+        .recommendations ol {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+
+        .recommendations li {{
+            margin-bottom: 10px;
+        }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }}
+
+        th {{
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }}
+
+        tr:nth-child(even) {{
+            background-color: #f8f9fa;
+        }}
+
+        .status-excellent {{ color: #28a745; font-weight: bold; }}
+        .status-good {{ color: #17a2b8; font-weight: bold; }}
+        .status-fair {{ color: #ffc107; font-weight: bold; }}
+        .status-poor {{ color: #dc3545; font-weight: bold; }}
+
+        .analysis-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }}
+
+        .analysis-card {{
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }}
+
+        .performance-issue {{
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }}
+
+        .performance-good {{
+            background: #f0fff4;
+            border: 1px solid #c6f6d5;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }}
+
+        .key-metric {{
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 10px 0;
+        }}
+
+        .footer {{
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 Enhanced Tau2 Analysis Report</h1>
+            <div class="subtitle">
+                Comprehensive performance analysis with interactive visualizations<br>
+                Generated on {datetime.now().strftime("%B %d, %Y at %I:%M %p")}<br>
+                Source: <strong>{log_file_name}</strong>
+            </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="section">
+            <h2>📊 Executive Summary</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">{summary.get('total_simulations', 'N/A')}</div>
+                    <div class="metric-label">Total Simulations</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{summary.get('total_trials', 'N/A')}</div>
+                    <div class="metric-label">Total Trials</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{summary.get('total_tasks', 'N/A')}</div>
+                    <div class="metric-label">Total Tasks</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{summary.get('total_tool_calls', 0)}</div>
+                    <div class="metric-label">Total Tool Calls</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{summary.get('tools_used', 0)}</div>
+                    <div class="metric-label">Unique Tools</div>
+                </div>
+            </div>
+            <div class="plot-container">
+                {summary_html}
+            </div>
+        </div>
+
+        <!-- Key Insights -->
+        <div class="section">
+            <h2>💡 Key Insights & Recommendations</h2>
+            <div class="analysis-grid">
+                <div class="analysis-card">
+                    <h3>🔍 Key Insights</h3>
+                    {insights}
+                </div>
+                <div class="analysis-card">
+                    <h3>💡 Recommendations</h3>
+                    <div class="recommendations">
+                        {recommendations}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Issues Analysis -->
+        <div class="section page-break">
+            <h2>🎯 Performance Issues Analysis</h2>
+            <div class="plot-container">
+                {perf_issues_html}
+            </div>
+            {self._generate_performance_issues_analysis_html(summary, tool_perf, failures)}
+        </div>
+
+        <!-- Communication vs Tool Call Analysis -->
+        <div class="section page-break">
+            <h2>💬 Communication vs Tool Call Analysis</h2>
+            <div class="plot-container">
+                {comm_analysis_html}
+            </div>
+            {self._generate_communication_analysis_html(summary, tool_perf, sequence_analysis)}
+        </div>
+
+        <!-- Task & Simulation Analysis -->
+        <div class="section page-break">
+            <h2>📋 Task & Simulation Analysis</h2>
+            <div class="plot-container">
+                {task_analysis_html}
+            </div>
+            {self._generate_task_analysis_html(summary, tool_perf, state_analysis)}
+        </div>
+
+        <!-- Execution Patterns & Workflow Analysis -->
+        <div class="section page-break">
+            <h2>🔄 Execution Patterns & Workflow Analysis</h2>
+            <div class="plot-container">
+                {exec_patterns_html}
+            </div>
+            {self._generate_execution_patterns_html(summary, tool_perf, sequence_analysis)}
+        </div>
+
+        <!-- Tool Performance Deep Dive -->
+        <div class="section page-break">
+            <h2>⚡ Performance Deep Dive</h2>
+            {self._generate_tool_performance_deep_dive_html(tool_perf, failures)}
+        </div>
+
+        <!-- Failure Analysis -->
+        <div class="section page-break">
+            <h2>🔥 Detailed Failure Analysis</h2>
+            {self._generate_enhanced_failure_section(failures, summary, tool_perf)}
+        </div>
+
+        <div class="footer">
+            <p>Report generated by Enhanced Tau2 Analytics Framework</p>
+            <p>Interactive visualizations powered by Plotly</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+        # Write the HTML file
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+
+        return output_path
+
+    def _create_performance_issues_plot(self, summary, tool_perf, failures):
+        """Create a plot showing performance issues and state-changing vs read-only performance."""
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=("Performance by Category", "State-Changing vs Read-Only",
+                          "Success Rate vs Calls", "Failure Rate Analysis"),
+            specs=[[{"type": "bar"}, {"type": "box"}],
+                   [{"type": "scatter"}, {"type": "bar"}]]
+        )
+
+        if not tool_perf.empty:
+            # Performance by category
+            perf_categories = tool_perf['performance_category'].value_counts()
+            fig.add_trace(
+                go.Bar(x=perf_categories.index, y=perf_categories.values,
+                       marker_color=['#28a745', '#17a2b8', '#ffc107', '#dc3545'],
+                       name="Tools by Category"),
+                row=1, col=1
+            )
+
+            # State-changing vs read-only performance
+            state_changing = tool_perf[tool_perf['state_change_rate'] > 0]
+            read_only = tool_perf[tool_perf['state_change_rate'] == 0]
+
+            if not state_changing.empty:
+                fig.add_trace(
+                    go.Box(y=state_changing['success_rate'], name="State-Changing",
+                           marker_color="#ff6b6b"),
+                    row=1, col=2
+                )
+            if not read_only.empty:
+                fig.add_trace(
+                    go.Box(y=read_only['success_rate'], name="Read-Only",
+                           marker_color="#4ecdc4"),
+                    row=1, col=2
+                )
+
+            # Success rate vs calls scatter
+            fig.add_trace(
+                go.Scatter(
+                    x=tool_perf['total_calls'],
+                    y=tool_perf['success_rate'],
+                    mode='markers+text',
+                    marker=dict(
+                        size=10,
+                        color=tool_perf['success_rate'],
+                        colorscale='RdYlGn',
+                        showscale=True
+                    ),
+                    text=tool_perf['tool_name'],
+                    textposition="top center",
+                    name="Success vs Usage"
+                ),
+                row=2, col=1
+            )
+
+        # Failure rate analysis
+        if not failures.empty:
+            failure_rates = failures.nlargest(10, 'failure_rate')
+            fig.add_trace(
+                go.Bar(
+                    x=failure_rates['tool_name'],
+                    y=failure_rates['failure_rate'],
+                    marker_color='#dc3545',
+                    name="Failure Rate"
+                ),
+                row=2, col=2
+            )
+
+        fig.update_layout(height=800, showlegend=False, title_text="Performance Issues Analysis")
+        return fig
+
+    def _create_communication_analysis_plot(self, summary, tool_perf, sequence_analysis):
+        """Create a plot analyzing communication patterns and tool usage."""
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=("Tool Usage Distribution", "Transfer vs Communication",
+                          "Tool Transition Patterns", "Execution Efficiency"),
+            specs=[[{"type": "pie"}, {"type": "bar"}],
+                   [{"type": "scatter"}, {"type": "indicator"}]]
+        )
+
+        if not tool_perf.empty:
+            # Tool usage pie chart
+            fig.add_trace(
+                go.Pie(labels=tool_perf['tool_name'], values=tool_perf['total_calls'],
+                       name="Tool Usage"),
+                row=1, col=1
+            )
+
+            # Transfer vs communication tools
+            transfer_tools = tool_perf[tool_perf['tool_name'].str.contains('transfer|human', case=False, na=False)]
+            comm_tools = tool_perf[tool_perf['tool_name'].str.contains('send|message|communicate', case=False, na=False)]
+
+            categories = []
+            values = []
+            colors = []
+
+            if not transfer_tools.empty:
+                categories.extend(transfer_tools['tool_name'].tolist())
+                values.extend(transfer_tools['total_calls'].tolist())
+                colors.extend(['#007bff'] * len(transfer_tools))
+
+            if not comm_tools.empty:
+                categories.extend(comm_tools['tool_name'].tolist())
+                values.extend(comm_tools['total_calls'].tolist())
+                colors.extend(['#28a745'] * len(comm_tools))
+
+            if categories:
+                fig.add_trace(
+                    go.Bar(x=categories, y=values, marker_color=colors,
+                           name="Communication Tools"),
+                    row=1, col=2
+                )
+
+        # Tool transition patterns
+        if not sequence_analysis.empty:
+            top_transitions = sequence_analysis.head(10)
+            fig.add_trace(
+                go.Scatter(
+                    x=list(range(len(top_transitions))),
+                    y=top_transitions['count'],
+                    mode='markers+lines',
+                    marker=dict(size=8, color='#ff6b6b'),
+                    name="Transition Frequency"
+                ),
+                row=2, col=1
+            )
+
+        # Execution efficiency gauge
+        execution_timespan = summary.get('execution_timespan', 1)
+        total_execution_time = summary.get('total_execution_time', 0)
+        efficiency = (total_execution_time / execution_timespan * 100) if execution_timespan > 0 else 0
+
+        fig.add_trace(
+            go.Indicator(
+                mode="gauge+number+delta",
+                value=efficiency,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                title={'text': "Efficiency %"},
+                gauge={
+                    'axis': {'range': [None, 100]},
+                    'bar': {'color': "#4A90E2"},
+                    'steps': [
+                        {'range': [0, 25], 'color': "#FFF0F0"},
+                        {'range': [25, 50], 'color': "#FFF8E7"},
+                        {'range': [50, 75], 'color': "#F0FFF4"},
+                        {'range': [75, 100], 'color': "#E8F5E8"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#E74C3C", 'width': 2},
+                        'thickness': 0.75,
+                        'value': 10
+                    }
+                }
+            ),
+            row=2, col=2
+        )
+
+        fig.update_layout(height=800, title_text="Communication vs Tool Call Analysis")
+        return fig
+
+    def _create_task_analysis_plot(self, summary, tool_perf, state_analysis):
+        """Create a plot showing task success correlation with complexity."""
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+
+        fig = make_subplots(
+            rows=1, cols=3,
+            subplot_titles=("Task Success Overview", "Complexity vs Success", "State Operations Impact"),
+            specs=[[{"type": "indicator"}, {"type": "scatter"}, {"type": "bar"}]]
+        )
+
+        # Task success gauge
+        task_success_rate = summary.get('task_success_rate', 0)
+        fig.add_trace(
+            go.Indicator(
+                mode="gauge+number",
+                value=task_success_rate * 100,
+                title={'text': "Task Success Rate"},
+                gauge={
+                    'axis': {'range': [None, 100]},
+                    'bar': {'color': "#4A90E2"},
+                    'steps': [
+                        {'range': [0, 40], 'color': "#FFF0F0"},
+                        {'range': [40, 70], 'color': "#FFF8E7"},
+                        {'range': [70, 100], 'color': "#F0FFF4"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#E74C3C", 'width': 2},
+                        'thickness': 0.75,
+                        'value': 80
+                    }
+                }
+            ),
+            row=1, col=1
+        )
+
+        # Complexity vs success scatter
+        if not tool_perf.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=tool_perf['total_calls'],
+                    y=tool_perf['success_rate'],
+                    mode='markers+text',
+                    marker=dict(
+                        size=tool_perf['total_calls'] / 2,
+                        color=tool_perf['state_change_rate'],
+                        colorscale='Viridis',
+                        showscale=True,
+                        colorbar=dict(title="State Change Rate")
+                    ),
+                    text=tool_perf['tool_name'],
+                    name="Tools"
+                ),
+                row=1, col=2
+            )
+
+            # State operations impact
+            if not state_analysis.empty:
+                state_changing = state_analysis[state_analysis['state_changed'] == True]
+                read_only = state_analysis[state_analysis['state_changed'] == False]
+
+                categories = []
+                success_rates = []
+                colors = []
+
+                if not state_changing.empty:
+                    categories.append('State-Changing')
+                    success_rates.append(state_changing['success_rate'].mean())
+                    colors.append('#ff6b6b')
+
+                if not read_only.empty:
+                    categories.append('Read-Only')
+                    success_rates.append(read_only['success_rate'].mean())
+                    colors.append('#4ecdc4')
+
+                if categories:
+                    fig.add_trace(
+                        go.Bar(x=categories, y=success_rates, marker_color=colors,
+                               name="Success by Type"),
+                        row=1, col=3
+                    )
+
+        fig.update_layout(height=400, title_text="Task & Simulation Success Analysis")
+        return fig
+
+    def _create_execution_patterns_plot(self, summary, tool_perf, sequence_analysis):
+        """Create a plot showing execution patterns and workflow analysis."""
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=("Tool Call Timeline", "Self-Loop Analysis",
+                          "Usage Concentration", "Performance Distribution"),
+            specs=[[{"type": "bar"}, {"type": "pie"}],
+                   [{"type": "bar"}, {"type": "histogram"}]]
+        )
+
+        if not tool_perf.empty:
+            # Tool usage over time (simulated timeline)
+            fig.add_trace(
+                go.Bar(
+                    x=tool_perf['tool_name'],
+                    y=tool_perf['total_calls'],
+                    marker_color=tool_perf['success_rate'],
+                    marker_colorscale='RdYlGn',
+                    name="Call Frequency"
+                ),
+                row=1, col=1
+            )
+
+            # Usage concentration
+            total_calls = tool_perf['total_calls'].sum()
+            most_used_pct = (tool_perf.iloc[0]['total_calls'] / total_calls * 100) if len(tool_perf) > 0 else 0
+
+            fig.add_trace(
+                go.Bar(
+                    x=['Most Used Tool', 'Other Tools'],
+                    y=[most_used_pct, 100 - most_used_pct],
+                    marker_color=['#ff6b6b', '#4ecdc4'],
+                    name="Usage Distribution"
+                ),
+                row=2, col=1
+            )
+
+            # Performance distribution histogram
+            fig.add_trace(
+                go.Histogram(
+                    x=tool_perf['success_rate'],
+                    nbinsx=10,
+                    marker_color='#007bff',
+                    name="Success Rate Distribution"
+                ),
+                row=2, col=2
+            )
+
+        # Self-loop analysis
+        if not sequence_analysis.empty:
+            self_loops = sequence_analysis[sequence_analysis['source'] == sequence_analysis['target']]
+            other_transitions = sequence_analysis[sequence_analysis['source'] != sequence_analysis['target']]
+
+            if not self_loops.empty or not other_transitions.empty:
+                labels = []
+                values = []
+
+                if not self_loops.empty:
+                    labels.append('Self-Loops')
+                    values.append(self_loops['count'].sum())
+
+                if not other_transitions.empty:
+                    labels.append('Tool Transitions')
+                    values.append(other_transitions['count'].sum())
+
+                if labels:
+                    fig.add_trace(
+                        go.Pie(labels=labels, values=values, name="Transition Types"),
+                        row=1, col=2
+                    )
+
+        fig.update_layout(height=800, title_text="Execution Patterns & Workflow Analysis")
+        return fig
+
+    def _generate_performance_issues_analysis_html(self, summary, tool_perf, failures):
+        """Generate HTML content for performance issues analysis."""
+        total_calls = summary.get('total_tool_calls', 0)
+        success_rate = summary.get('tool_success_rate', 0)
+
+        html = f"""
+        <div class="key-metric">
+            Overall Performance Assessment: {success_rate:.1%} ({self._get_performance_category(success_rate)})
+        </div>
+        """
+
+        if not tool_perf.empty:
+            state_changing = tool_perf[tool_perf['state_change_rate'] > 0]
+            read_only = tool_perf[tool_perf['state_change_rate'] == 0]
+
+            if not state_changing.empty and not read_only.empty:
+                state_avg = state_changing['success_rate'].mean()
+                read_avg = read_only['success_rate'].mean()
+                performance_drop = read_avg - state_avg
+
+                if performance_drop > 0.2:
+                    html += f"""
+                    <div class="performance-issue">
+                        <strong>Critical Performance Drop:</strong> {performance_drop:.0%}pp drop when state changes are required
+                        ({read_avg:.1%} → {state_avg:.1%} success)
+                    </div>
+                    """
+                else:
+                    html += f"""
+                    <div class="performance-good">
+                        <strong>Consistent Performance:</strong> State-changing and read-only operations show similar success rates
+                    </div>
+                    """
+
+        return html
+
+    def _generate_communication_analysis_html(self, summary, tool_perf, sequence_analysis):
+        """Generate HTML content for communication analysis."""
+        total_calls = summary.get('total_tool_calls', 0)
+
+        html = ""
+
+        # Transfer analysis
+        transfer_tools = tool_perf[tool_perf['tool_name'].str.contains('transfer|human', case=False, na=False)]
+        if not transfer_tools.empty:
+            transfer_calls = transfer_tools['total_calls'].sum()
+            transfer_rate = (transfer_calls / total_calls * 100) if total_calls > 0 else 0
+            transfer_success = transfer_tools['success_rate'].mean()
+
+            html += f"""
+            <div class="key-metric">
+                Transfer to Human: {transfer_calls} calls ({transfer_rate:.1f}% of total) with {transfer_success:.1%} success
+            </div>
+            """
+
+            if transfer_rate > 20:
+                html += f"""
+                <div class="performance-issue">
+                    <strong>High Transfer Rate:</strong> {transfer_rate:.1f}% transfer rate may indicate agent limitations
+                </div>
+                """
+
+        # Communication tools
+        comm_tools = tool_perf[tool_perf['tool_name'].str.contains('send|message|communicate', case=False, na=False)]
+        if not comm_tools.empty:
+            comm_calls = comm_tools['total_calls'].sum()
+            comm_rate = (comm_calls / total_calls * 100) if total_calls > 0 else 0
+            comm_success = comm_tools['success_rate'].mean()
+
+            html += f"""
+            <div class="key-metric">
+                Communication Tools: {comm_calls} calls ({comm_rate:.1f}% of total) with {comm_success:.1%} success
+            </div>
+            """
+
+        # Execution efficiency
+        execution_timespan = summary.get('execution_timespan', 1)
+        total_execution_time = summary.get('total_execution_time', 0)
+        efficiency = (total_execution_time / execution_timespan * 100) if execution_timespan > 0 else 0
+
+        html += f"""
+        <div class="key-metric">
+            Execution Efficiency: {efficiency:.1f}% (time spent in actual tool execution)
+        </div>
+        """
+
+        if efficiency < 1:
+            html += f"""
+            <div class="performance-issue">
+                <strong>Low Efficiency:</strong> High wait times or communication delays detected
+            </div>
+            """
+
+        return html
+
+    def _generate_task_analysis_html(self, summary, tool_perf, state_analysis):
+        """Generate HTML content for task analysis."""
+        total_sims = summary.get('total_simulations', 0)
+        task_success_rate = summary.get('task_success_rate', 0)
+
+        html = f"""
+        <div class="key-metric">
+            Task Completion: {task_success_rate:.1%} success rate across {total_sims} simulations
+        </div>
+        """
+
+        if task_success_rate >= 0.8:
+            html += f"""
+            <div class="performance-good">
+                <strong>Excellent Task Performance:</strong> System demonstrates high reliability
+            </div>
+            """
+        elif task_success_rate < 0.5:
+            html += f"""
+            <div class="performance-issue">
+                <strong>Critical Task Issues:</strong> Low success rate requires immediate attention
+            </div>
+            """
+
+        # Complexity analysis
+        if not tool_perf.empty and total_sims > 0:
+            avg_tools_per_sim = len(tool_perf) / total_sims
+            total_tool_calls = summary.get('total_tool_calls', 0)
+            avg_calls_per_sim = total_tool_calls / total_sims
+
+            html += f"""
+            <div class="key-metric">
+                Complexity Metrics: {avg_tools_per_sim:.1f} tools per simulation, {avg_calls_per_sim:.1f} calls per simulation
+            </div>
+            """
+
+            # State-changing vs read-only impact
+            if not state_analysis.empty:
+                state_changing = state_analysis[state_analysis['state_changed'] == True]
+                if not state_changing.empty:
+                    state_calls = state_changing['total_calls'].sum()
+                    state_call_rate = (state_calls / total_tool_calls * 100) if total_tool_calls > 0 else 0
+
+                    if task_success_rate < 0.5 and state_call_rate > 20:
+                        html += f"""
+                        <div class="performance-issue">
+                            <strong>State Change Correlation:</strong> High state-change rate ({state_call_rate:.1f}%)
+                            with low success suggests action execution issues
+                        </div>
+                        """
+
+        return html
+
+    def _generate_execution_patterns_html(self, summary, tool_perf, sequence_analysis):
+        """Generate HTML content for execution patterns analysis."""
+        html = ""
+
+        # Timeline analysis
+        execution_timespan = summary.get('execution_timespan', 0)
+        total_execution_time = summary.get('total_execution_time', 0)
+        total_calls = summary.get('total_tool_calls', 0)
+
+        if execution_timespan > 0:
+            call_rate = total_calls / execution_timespan
+            html += f"""
+            <div class="key-metric">
+                Execution Timeline: {execution_timespan:.1f}s total, {call_rate:.2f} calls/second
+            </div>
+            """
+
+        # Self-loop analysis
+        if not sequence_analysis.empty:
+            self_loops = sequence_analysis[sequence_analysis['source'] == sequence_analysis['target']]
+            if not self_loops.empty:
+                total_transitions = sequence_analysis['count'].sum()
+                self_loop_count = self_loops['count'].sum()
+                self_loop_rate = (self_loop_count / total_transitions * 100) if total_transitions > 0 else 0
+
+                html += f"""
+                <div class="key-metric">
+                    Self-Loop Pattern: {self_loop_rate:.1f}% of transitions are repeated calls
+                </div>
+                """
+
+                if self_loop_rate > 30:
+                    html += f"""
+                    <div class="performance-issue">
+                        <strong>High Self-Loop Rate:</strong> May indicate retry logic or iterative processing patterns
+                    </div>
+                    """
+
+        # Usage concentration
+        if not tool_perf.empty:
+            total_calls = tool_perf['total_calls'].sum()
+            most_used_calls = tool_perf.iloc[0]['total_calls'] if len(tool_perf) > 0 else 0
+            concentration = (most_used_calls / total_calls * 100) if total_calls > 0 else 0
+
+            html += f"""
+            <div class="key-metric">
+                Usage Concentration: {concentration:.1f}% of calls go to most-used tool
+            </div>
+            """
+
+        return html
+
+    def _generate_tool_performance_deep_dive_html(self, tool_perf, failures):
+        """Generate HTML content for tool performance deep dive."""
+        if tool_perf.empty:
+            return "<p>No tool performance data available.</p>"
+
+        html = """
+        <h3>🏆 Performance Tier Analysis</h3>
+        """
+
+        # Categorize tools by performance
+        excellent_tools = tool_perf[tool_perf['performance_category'] == 'excellent']
+        poor_tools = tool_perf[tool_perf['performance_category'] == 'poor']
+
+        if not excellent_tools.empty:
+            html += f"""
+            <div class="performance-good">
+                <h4>Excellent Performance ({len(excellent_tools)} tools)</h4>
+                <ul>
+            """
+            for _, tool in excellent_tools.head(5).iterrows():
+                html += f"<li><strong>{tool['tool_name']}</strong>: {tool['success_rate']:.1%} success, {tool['avg_execution_time']*1000:.2f}ms avg time</li>"
+            html += "</ul></div>"
+
+        if not poor_tools.empty:
+            html += f"""
+            <div class="performance-issue">
+                <h4>Poor Performance ({len(poor_tools)} tools)</h4>
+                <ul>
+            """
+            for _, tool in poor_tools.head(5).iterrows():
+                html += f"<li><strong>{tool['tool_name']}</strong>: {tool['success_rate']:.1%} success, {tool['avg_execution_time']*1000:.2f}ms avg time</li>"
+            html += "</ul></div>"
+
+        # High-impact poor performers
+        high_usage_poor = poor_tools[poor_tools['total_calls'] >= 5]
+        if not high_usage_poor.empty:
+            html += """
+            <h3>🚨 Critical Performance Issues</h3>
+            <div class="performance-issue">
+                <h4>High-Usage Poor Performers</h4>
+            """
+            for _, tool in high_usage_poor.iterrows():
+                failed_calls = int(tool['total_calls'] * (1 - tool['success_rate']))
+                impact_score = tool['total_calls'] * (1 - tool['success_rate'])
+                html += f"""
+                <p><strong>{tool['tool_name']}</strong>: {tool['success_rate']:.1%} success rate,
+                {int(tool['total_calls'])} total calls, {failed_calls} failed calls,
+                Impact Score: {impact_score:.1f}</p>
+                """
+            html += "</div>"
+
+        return html
+
+    def _get_performance_category(self, success_rate):
+        """Get performance category description."""
+        if success_rate >= 0.9:
+            return "excellent"
+        elif success_rate >= 0.7:
+            return "good"
+        elif success_rate >= 0.5:
+            return "concerning"
+        else:
+            return "critical"
 

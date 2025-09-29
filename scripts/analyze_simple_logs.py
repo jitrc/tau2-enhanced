@@ -88,8 +88,9 @@ def analyze_logs(log_file: Path, output_dir: Path):
                     standard_data = json.load(f)
                 print(f"  ✅ Loaded standard results file for simulation data")
 
-                # Add simulation data to the enhanced logs for analysis
+                # Add simulation data and tasks to the enhanced logs for analysis
                 data['simulations'] = standard_data.get('simulations', [])
+                data['tasks'] = standard_data.get('tasks', [])
 
             except (FileNotFoundError, json.JSONDecodeError) as e:
                 print(f"  ⚠️  Could not load standard results file: {e}")
@@ -212,12 +213,18 @@ def analyze_logs(log_file: Path, output_dir: Path):
         visualizer.create_markdown_report(str(markdown_path), log_file.name)
         print(f"  ✅ Markdown analysis report saved to: {markdown_path}")
 
+        # Enhanced Analysis Report
+        enhanced_report_path = output_dir / "enhanced_analysis_report.html"
+        visualizer.create_enhanced_analysis_report(str(enhanced_report_path), log_file.name)
+        print(f"  ✅ Enhanced analysis report with plots saved to: {enhanced_report_path}")
+
     except Exception as e:
         print(f"  ❌ Error during visualization: {e}")
 
     print("\n🎉 Analysis complete!")
     print(f"\n📄 For a comprehensive overview, open: {output_dir / 'report.html'}")
     print(f"🛠️ For a detailed tool analysis, open: {output_dir / 'tool_report.html'}")
+    print(f"🚀 For enhanced analysis with interactive plots, open: {output_dir / 'enhanced_analysis_report.html'}")
     print(f"📋 For a markdown summary report, see: {output_dir / 'analysis_report.md'}")
 
 
