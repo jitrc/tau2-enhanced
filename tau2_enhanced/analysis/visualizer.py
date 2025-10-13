@@ -50,7 +50,6 @@ class LogVisualizer:
                 go.Indicator(
                     mode="gauge+number",
                     value=summary.get('task_success_rate', 0) * 100,
-                    title={'text': "Task Success %"},
                     gauge={
                         'axis': {'range': [0, 100]},
                         'bar': {'color': "#4A90E2"},
@@ -64,8 +63,7 @@ class LogVisualizer:
                             'thickness': 0.75,
                             'value': 80
                         }
-                    },
-                    domain={'x': [0, 1], 'y': [0, 1]}
+                    }
                 ),
                 row=1, col=1
             )
@@ -74,7 +72,6 @@ class LogVisualizer:
                 go.Indicator(
                     mode="gauge+number",
                     value=summary.get('tool_success_rate', 0) * 100,
-                    title={'text': "Tool Success %"},
                     gauge={
                         'axis': {'range': [0, 100]},
                         'bar': {'color': "#4A90E2"},
@@ -88,7 +85,7 @@ class LogVisualizer:
                             'thickness': 0.75,
                             'value': 80
                         }
-                    },
+                    }
                 ),
                 row=1, col=2
             )
@@ -108,7 +105,6 @@ class LogVisualizer:
                 go.Indicator(
                     mode="gauge+number",
                     value=summary.get('tool_success_rate', 0) * 100,
-                    title={'text': "Tool Success %"},
                     gauge={
                         'axis': {'range': [0, 100]},
                         'bar': {'color': "#4A90E2"},
@@ -122,7 +118,7 @@ class LogVisualizer:
                             'thickness': 0.75,
                             'value': 80
                         }
-                    },
+                    }
                 ),
                 row=1, col=1
             )
@@ -135,7 +131,6 @@ class LogVisualizer:
                 go.Indicator(
                     mode="gauge+number",
                     value=task_success,
-                    title={'text': "Overall Success %"},
                     gauge={
                         'axis': {'range': [0, 100]},
                         'bar': {'color': "#4A90E2"},
@@ -149,7 +144,7 @@ class LogVisualizer:
                             'thickness': 0.75,
                             'value': 80
                         }
-                    },
+                    }
                 ),
                 row=1, col=2
             )
@@ -162,7 +157,8 @@ class LogVisualizer:
                     name='Success Rate',
                     marker_color='green',
                     text=[f"{rate:.1%}" for rate in tool_perf['success_rate']],
-                    textposition='outside'
+                    textposition='outside',
+                    orientation='v'
                 ),
                 row=2, col=1
             )
@@ -173,7 +169,8 @@ class LogVisualizer:
                     name='Avg. Time (ms)',
                     marker_color='blue',
                     text=[f"{time*1000:.2f}ms" for time in tool_perf['avg_execution_time']],
-                    textposition='outside'
+                    textposition='outside',
+                    orientation='v'
                 ),
                 row=2, col=2
             )
@@ -233,16 +230,16 @@ class LogVisualizer:
         )
 
         # 1. Failure count by tool (top-left)
-        tool_failures = failures.groupby('tool_name')['count'].sum().sort_values(ascending=True)
+        tool_failures = failures.groupby('tool_name')['count'].sum().sort_values(ascending=False)
         fig.add_trace(
             go.Bar(
-                y=tool_failures.index,
-                x=tool_failures.values,
-                orientation='h',
+                x=tool_failures.index,
+                y=tool_failures.values,
                 name='Failure Count',
                 marker_color='crimson',
                 text=tool_failures.values,
-                textposition='outside'
+                textposition='outside',
+                orientation='v'
             ),
             row=1, col=1
         )
@@ -297,7 +294,8 @@ class LogVisualizer:
                 name='Error Count',
                 marker_color='orange',
                 text=[f"{count}<br>({count/error_types.sum():.1%})" for count in error_types.values],
-                textposition='outside'
+                textposition='outside',
+                orientation='v'
             ),
             row=2, col=1
         )
@@ -351,8 +349,8 @@ class LogVisualizer:
         )
 
         # Update axes
-        fig.update_xaxes(title_text="Failure Count", row=1, col=1)
-        fig.update_yaxes(title_text="Tools", row=1, col=1)
+        fig.update_xaxes(title_text="Tools", row=1, col=1)
+        fig.update_yaxes(title_text="Failure Count", row=1, col=1)
         fig.update_xaxes(title_text=x_title, row=1, col=2)
         fig.update_yaxes(title_text="Failure Rate", row=1, col=2, tickformat='.0%')
         fig.update_xaxes(title_text="Error Category", row=2, col=1)
@@ -401,6 +399,7 @@ class LogVisualizer:
                 marker_cmax=1,
                 text=state_analysis_df[state_analysis_df['state_changed'] == True]['total_calls'],
                 textposition='outside',
+                orientation='v',
                 hovertemplate=(
                     '<b>%{x}</b><br>' +
                     'Calls: %{y}<br>' +
@@ -423,6 +422,7 @@ class LogVisualizer:
                 marker_cmax=1,
                 text=state_analysis_df[state_analysis_df['state_changed'] == False]['total_calls'],
                 textposition='outside',
+                orientation='v',
                 hovertemplate=(
                     '<b>%{x}</b><br>' +
                     'Calls: %{y}<br>' +
@@ -445,6 +445,7 @@ class LogVisualizer:
                     marker_color='lightgreen',
                     text=[f"{rate:.1%}" for rate in state_changing['success_rate']],
                     textposition='outside',
+                    orientation='v',
                     showlegend=False
                 ),
                 row=2, col=1
@@ -461,6 +462,7 @@ class LogVisualizer:
                     marker_color='lightblue',
                     text=[f"{rate:.1%}" for rate in read_only['success_rate']],
                     textposition='outside',
+                    orientation='v',
                     showlegend=False
                 ),
                 row=2, col=2
@@ -2909,7 +2911,7 @@ class LogVisualizer:
             fig.add_trace(
                 go.Bar(x=perf_categories.index, y=perf_categories.values,
                        marker_color=['#28a745', '#17a2b8', '#ffc107', '#dc3545'],
-                       name="Tools by Category"),
+                       name="Tools by Category", orientation='v'),
                 row=1, col=1
             )
 
@@ -2957,7 +2959,8 @@ class LogVisualizer:
                     x=failure_rates['tool_name'],
                     y=failure_rates['failure_rate'],
                     marker_color='#dc3545',
-                    name="Failure Rate"
+                    name="Failure Rate",
+                    orientation='v'
                 ),
                 row=2, col=2
             )
@@ -3007,7 +3010,7 @@ class LogVisualizer:
             if categories:
                 fig.add_trace(
                     go.Bar(x=categories, y=values, marker_color=colors,
-                           name="Communication Tools"),
+                           name="Communication Tools", orientation='v'),
                     row=1, col=2
                 )
 
@@ -3034,8 +3037,6 @@ class LogVisualizer:
             go.Indicator(
                 mode="gauge+number+delta",
                 value=efficiency,
-                domain={'x': [0, 1], 'y': [0, 1]},
-                title={'text': "Efficiency %"},
                 gauge={
                     'axis': {'range': [None, 100]},
                     'bar': {'color': "#4A90E2"},
@@ -3075,7 +3076,6 @@ class LogVisualizer:
             go.Indicator(
                 mode="gauge+number",
                 value=task_success_rate * 100,
-                title={'text': "Task Success Rate"},
                 gauge={
                     'axis': {'range': [None, 100]},
                     'bar': {'color': "#4A90E2"},
@@ -3136,7 +3136,7 @@ class LogVisualizer:
                 if categories:
                     fig.add_trace(
                         go.Bar(x=categories, y=success_rates, marker_color=colors,
-                               name="Success by Type"),
+                               name="Success by Type", orientation='v'),
                         row=1, col=3
                     )
 
@@ -3164,7 +3164,8 @@ class LogVisualizer:
                     y=tool_perf['total_calls'],
                     marker_color=tool_perf['success_rate'],
                     marker_colorscale='RdYlGn',
-                    name="Call Frequency"
+                    name="Call Frequency",
+                    orientation='v'
                 ),
                 row=1, col=1
             )
@@ -3178,7 +3179,8 @@ class LogVisualizer:
                     x=['Most Used Tool', 'Other Tools'],
                     y=[most_used_pct, 100 - most_used_pct],
                     marker_color=['#ff6b6b', '#4ecdc4'],
-                    name="Usage Distribution"
+                    name="Usage Distribution",
+                    orientation='v'
                 ),
                 row=2, col=1
             )
