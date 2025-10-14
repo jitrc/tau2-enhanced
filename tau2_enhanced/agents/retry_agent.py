@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 
 from tau2.agent.llm_agent import LLMAgent
-from tau2.data_model.message import Message, SystemMessage
+from tau2.data_model.message import Message, SystemMessage, UserMessage, ToolMessage
 from tau2_enhanced.logging import ExecutionLogger
 
 
@@ -62,6 +62,10 @@ class RetryManagedLLMAgent(LLMAgent):
         self.retry_delay_base = 0.5  # Base delay in seconds
         self.retry_sequences: List[RetrySequence] = []
 
+        # Track retry attempts per tool call ID to prevent infinite loops
+        self.retry_counts: Dict[str, int] = {}  # tool_call_id -> attempt_count
+        self.tool_error_history: List[Dict[str, Any]] = []  # Track all tool errors
+
         # Initialize execution logger for retry tracking
         self.retry_logger = ExecutionLogger(
             log_file=None,  # Will be set by environment if needed
@@ -105,50 +109,109 @@ class RetryManagedLLMAgent(LLMAgent):
         """
         Override to add retry logic for tool execution failures.
 
-        This method wraps the original message generation with retry logic
-        that can recover from validation errors in tool calls.
+        This method intercepts ToolMessages with errors and adds retry guidance
+        to help the LLM recover from validation errors.
         """
-        try:
-            return super().generate_next_message(message, state)
-        except Exception as e:
-            # Check if this is a retryable validation error
-            if self._is_retryable_error(e):
-                return self._handle_retry_scenario(message, state, e)
-            else:
-                # Re-raise non-retryable errors
-                raise
 
-    def _is_retryable_error(self, error: Exception) -> bool:
+        # Check if this is a ToolMessage with an error
+        if isinstance(message, ToolMessage):
+            if message.error:
+                # Check if this error is retryable and hasn't exceeded max retries
+                if self._should_retry_tool_error(message, state):
+                    state = self._add_retry_guidance_to_state(message, state)
+
+        # Call parent's generate_next_message with potentially modified state
+        result = super().generate_next_message(message, state)
+        return result
+
+    def _should_retry_tool_error(self, tool_message: ToolMessage, state) -> bool:
         """
-        Determine if an error is retryable based on its type and message.
+        Determine if a tool error should be retried.
 
         Args:
-            error: The exception that occurred
+            tool_message: The ToolMessage with an error
+            state: Current conversation state
 
         Returns:
-            True if the error can be retried with modifications
+            True if the error should be retried
         """
-        error_message = str(error).lower()
-        error_type = type(error).__name__
+        tool_call_id = tool_message.id
+        error_content = tool_message.content or ""
+
+        # Check retry count
+        current_retry_count = self.retry_counts.get(tool_call_id, 0)
+        if current_retry_count >= self.max_retries:
+            print(f"[RETRY_AGENT]   Max retries ({self.max_retries}) reached for tool call {tool_call_id}")
+            return False
+
+        # Check if error message indicates a retryable error
+        error_message = error_content.lower()
 
         # Common retryable error patterns
         retryable_patterns = [
             'validation', 'parameter', 'argument', 'format',
-            'type', 'value', 'range', 'choice', 'required'
+            'type', 'value', 'range', 'choice', 'required',
+            'invalid', 'missing', 'expected', 'error:'
         ]
 
-        # Check if error message contains retryable keywords
-        for pattern in retryable_patterns:
-            if pattern in error_message:
-                return True
+        is_retryable = any(pattern in error_message for pattern in retryable_patterns)
+        return is_retryable
 
-        # Check specific error types that are usually retryable
-        retryable_types = [
-            'ValidationError', 'ValueError', 'TypeError',
-            'KeyError', 'AttributeError'
-        ]
+    def _add_retry_guidance_to_state(self, tool_message: ToolMessage, state):
+        """
+        Add retry guidance to the conversation state to help the LLM recover.
 
-        return error_type in retryable_types
+        Args:
+            tool_message: The ToolMessage with an error
+            state: Current conversation state
+
+        Returns:
+            Modified state with retry guidance
+        """
+        tool_call_id = tool_message.id
+        error_content = tool_message.content or ""
+
+        # Increment retry count
+        current_retry_count = self.retry_counts.get(tool_call_id, 0)
+        self.retry_counts[tool_call_id] = current_retry_count + 1
+        attempt_number = self.retry_counts[tool_call_id]
+
+        # Record error in history
+        error_record = {
+            'tool_call_id': tool_call_id,
+            'attempt_number': attempt_number,
+            'error_content': error_content,
+            'timestamp': time.time()
+        }
+        self.tool_error_history.append(error_record)
+
+        # Determine recovery strategy based on error content
+        recovery_strategy = self._determine_recovery_strategy_from_message(error_content)
+
+        # Create retry guidance message
+        guidance_message = self._create_retry_guidance_from_tool_error(
+            error_content, recovery_strategy, attempt_number
+        )
+
+        # Add guidance to state
+        state.messages.append(guidance_message)
+
+        # Log retry attempt
+        self.retry_logger.log_tool_execution(
+            tool_name=f"retry_guidance_{attempt_number}",
+            success=True,
+            execution_time=0,
+            tool_args={
+                "tool_call_id": tool_call_id,
+                "error_content": error_content[:200],
+                "recovery_strategy": recovery_strategy,
+                "attempt": attempt_number
+            },
+            result={"guidance_added": True}
+        )
+
+        return state
+
 
     def _handle_retry_scenario(self, message, state, original_error: Exception):
         """
@@ -174,6 +237,8 @@ class RetryManagedLLMAgent(LLMAgent):
         start_time = time.time()
 
         for attempt in range(self.max_retries):
+            print(f"\n[RETRY_AGENT] ───── RETRY ATTEMPT {attempt + 1}/{self.max_retries} ─────")
+
             try:
                 # Create retry attempt record
                 retry_attempt = RetryAttempt(
@@ -213,7 +278,6 @@ class RetryManagedLLMAgent(LLMAgent):
                 # Attempt the operation again
                 result = super().generate_next_message(message, modified_state)
 
-                # Success! Record and return
                 retry_attempt.success = True
                 retry_sequence.attempts.append(retry_attempt)
                 retry_sequence.final_success = True
@@ -249,6 +313,7 @@ class RetryManagedLLMAgent(LLMAgent):
                     original_error = e  # Update error for next attempt
                 else:
                     # Final attempt failed
+
                     retry_sequence.final_success = False
                     retry_sequence.total_duration = time.time() - start_time
                     self.retry_sequences.append(retry_sequence)
@@ -270,26 +335,27 @@ class RetryManagedLLMAgent(LLMAgent):
                     # Re-raise the final error
                     raise
 
-    def _determine_recovery_strategy(self, error: Exception) -> str:
+    def _determine_recovery_strategy_from_message(self, error_message: str) -> str:
         """
-        Determine the best recovery strategy based on the error type and message.
+        Determine the best recovery strategy based on the error message.
 
         Args:
-            error: The error that occurred
+            error_message: The error message content
 
         Returns:
             String identifier for the recovery strategy to use
         """
-        error_message = str(error).lower()
+        error_msg_lower = error_message.lower()
 
         # Check error patterns to classify the error type
         for error_type, patterns in self.error_patterns.items():
             for pattern in patterns:
-                if re.search(pattern, error_message):
+                if re.search(pattern, error_msg_lower):
                     return self._get_strategy_for_error_type(error_type)
 
         # Fallback strategy
         return 'generic_simplification'
+
 
     def _get_strategy_for_error_type(self, error_type: str) -> str:
         """
@@ -372,7 +438,119 @@ class RetryManagedLLMAgent(LLMAgent):
         # Remove optional parameters, use simpler values
         return state
 
-    def _create_retry_guidance_message(self, error: Exception, strategy: str, attempt: int) -> SystemMessage:
+    def _create_retry_guidance_from_tool_error(self, error_content: str, strategy: str, attempt: int) -> UserMessage:
+        """
+        Create a guidance message to help the agent recover from a tool error.
+
+        Args:
+            error_content: The error message from the ToolMessage
+            strategy: Recovery strategy being applied
+            attempt: Current attempt number
+
+        Returns:
+            User message with retry guidance
+        """
+        # Extract the actual error message (remove "Error: " prefix if present)
+        error_msg = error_content
+        if error_msg.startswith("Error: "):
+            error_msg = error_msg[7:]
+
+        guidance_templates = {
+            'parameter_completion': f"""
+🔄 RETRY ATTEMPT {attempt}/3 - Parameter Error Recovery
+
+The tool call failed with: {error_msg}
+
+Recovery guidance:
+1. Check if all REQUIRED parameters are provided
+2. Review the tool's parameter requirements carefully
+3. Ensure parameter names are spelled correctly
+4. If a parameter is missing, add it with an appropriate value
+5. Try using simpler, more straightforward parameter values
+
+Please retry the tool call with the corrected parameters.
+""",
+            'type_correction': f"""
+🔄 RETRY ATTEMPT {attempt}/3 - Type Error Recovery
+
+The tool call failed with: {error_msg}
+
+Recovery guidance:
+1. Check the expected data types for each parameter
+2. Convert values to the correct type (e.g., strings to numbers, strings to booleans)
+3. Use true/false for boolean values, not "true"/"false" strings
+4. Use integers/floats for numeric parameters, not strings
+5. Ensure dates are in the correct format (e.g., ISO format)
+
+Please retry the tool call with correctly typed parameters.
+""",
+            'format_correction': f"""
+🔄 RETRY ATTEMPT {attempt}/3 - Format Error Recovery
+
+The tool call failed with: {error_msg}
+
+Recovery guidance:
+1. Check the expected format for each parameter (dates, emails, phone numbers, etc.)
+2. Use standard formats (ISO 8601 for dates, valid email addresses)
+3. Remove any invalid characters from string parameters
+4. Verify list and dictionary structures are correct
+5. Follow the exact format shown in the tool documentation
+
+Please retry the tool call with correctly formatted parameters.
+""",
+            'value_adjustment': f"""
+🔄 RETRY ATTEMPT {attempt}/3 - Value Error Recovery
+
+The tool call failed with: {error_msg}
+
+Recovery guidance:
+1. Use values that are within the valid range or allowed set
+2. Check for minimum/maximum limits on numeric parameters
+3. Use reasonable, realistic values (avoid extremes or edge cases)
+4. If a parameter has constraints, respect them
+5. Consider using default or commonly-used values
+
+Please retry the tool call with valid parameter values.
+""",
+            'enum_correction': f"""
+🔄 RETRY ATTEMPT {attempt}/3 - Choice/Enum Error Recovery
+
+The tool call failed with: {error_msg}
+
+Recovery guidance:
+1. Use ONLY the allowed values from the predefined set
+2. Check for exact spelling and case sensitivity (e.g., "active" vs "ACTIVE")
+3. Review the available options in the tool documentation
+4. Common mistake: using similar but incorrect values
+5. Select the most appropriate choice from the valid options
+
+Please retry the tool call with a valid choice from the allowed values.
+""",
+            'generic_simplification': f"""
+🔄 RETRY ATTEMPT {attempt}/3 - Error Recovery
+
+The tool call failed with: {error_msg}
+
+Recovery guidance:
+1. Carefully read the error message to understand what went wrong
+2. Simplify the tool call by using basic, straightforward values
+3. Remove any optional parameters that might be causing issues
+4. Double-check all parameter names and values
+5. If unsure, try a more conservative approach
+
+Please retry the tool call with the corrections applied.
+Use anotehr tool if necessary, like for calculations or data retrieval.
+"""
+        }
+
+        guidance = guidance_templates.get(strategy, guidance_templates['generic_simplification'])
+
+        return UserMessage(
+            role="user",
+            content=guidance.strip()
+        )
+
+    def _create_retry_guidance_message(self, error: Exception, strategy: str, attempt: int) -> UserMessage:
         """
         Create a guidance message to help the agent recover from the error.
 
@@ -382,7 +560,7 @@ class RetryManagedLLMAgent(LLMAgent):
             attempt: Current attempt number
 
         Returns:
-            System message with retry guidance
+            User message with retry guidance (as feedback about the error)
         """
         error_msg = str(error)
 
@@ -451,8 +629,8 @@ Recovery guidance:
 
         guidance = guidance_templates.get(strategy, guidance_templates['generic_simplification'])
 
-        return SystemMessage(
-            role="system",
+        return UserMessage(
+            role="user",
             content=guidance.strip()
         )
 
@@ -507,3 +685,54 @@ Recovery guidance:
                 attempt.error_type for seq in self.retry_sequences for attempt in seq.attempts
             ))
         }
+
+    def print_retry_summary(self):
+        """Print a summary of all retry activity."""
+        print(f"\n{'='*80}")
+        print(f"[RETRY_AGENT] RETRY STATISTICS SUMMARY")
+        print(f"{'='*80}")
+
+        # Print tool error statistics
+        if self.tool_error_history:
+            print(f"\n[RETRY_AGENT] Tool Error Statistics:")
+            print(f"[RETRY_AGENT]   Total tool errors encountered: {len(self.tool_error_history)}")
+            print(f"[RETRY_AGENT]   Unique tool calls with errors: {len(self.retry_counts)}")
+
+            # Count retries by tool call
+            retry_distribution = {}
+            for tool_id, count in self.retry_counts.items():
+                retry_distribution[count] = retry_distribution.get(count, 0) + 1
+
+            print(f"[RETRY_AGENT]   Retry distribution:")
+            for num_retries in sorted(retry_distribution.keys()):
+                count = retry_distribution[num_retries]
+                print(f"[RETRY_AGENT]     {num_retries} retries: {count} tool call(s)")
+
+        # Print legacy retry sequence statistics
+        if not self.retry_sequences and not self.tool_error_history:
+            print(f"[RETRY_AGENT] No retry activity recorded")
+            print(f"{'='*80}\n")
+            return
+
+        if self.retry_sequences:
+            stats = self.get_retry_statistics()
+
+            print(f"\n[RETRY_AGENT] Legacy Retry Sequences:")
+            print(f"[RETRY_AGENT]   Total retry sequences: {stats['total_retry_sequences']}")
+            print(f"[RETRY_AGENT]   Successful recoveries: {stats['successful_sequences']}")
+            print(f"[RETRY_AGENT]   Success rate: {stats['success_rate']:.1%}")
+            print(f"[RETRY_AGENT]   Average attempts per sequence: {stats['average_attempts']:.1f}")
+            print(f"[RETRY_AGENT]   Total time spent retrying: {stats['total_time_spent']:.2f}s")
+
+            if stats['strategy_effectiveness']:
+                print(f"\n[RETRY_AGENT]   Strategy Effectiveness:")
+                for strategy, eff in stats['strategy_effectiveness'].items():
+                    print(f"[RETRY_AGENT]     {strategy}:")
+                    print(f"[RETRY_AGENT]       - Used: {eff['times_used']} times")
+                    print(f"[RETRY_AGENT]       - Successful: {eff['successful_recoveries']} times")
+                    print(f"[RETRY_AGENT]       - Success rate: {eff['success_rate']:.1%}")
+
+            if stats.get('error_types_encountered'):
+                print(f"\n[RETRY_AGENT]   Error types encountered: {', '.join(stats['error_types_encountered'])}")
+
+        print(f"{'='*80}\n")

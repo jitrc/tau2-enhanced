@@ -19,7 +19,7 @@ except ImportError:
     print("Warning: tiktoken not available. Using approximate token counting.")
 
 from tau2.agent.llm_agent import LLMAgent
-from tau2.data_model.message import Message, SystemMessage, UserMessage, AssistantMessage
+from tau2.data_model.message import Message, SystemMessage, UserMessage, AssistantMessage, ToolMessage
 from tau2_enhanced.logging import ExecutionLogger
 
 
@@ -64,7 +64,7 @@ class ContextManagedLLMAgent(LLMAgent):
     while preserving essential information.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, use_simplified_context: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Context management configuration
@@ -72,6 +72,10 @@ class ContextManagedLLMAgent(LLMAgent):
         self.warning_threshold = 0.8  # Start reduction at 80% of limit
         self.critical_threshold = 0.95  # Emergency reduction at 95%
         self.min_context_reserve = 500  # Reserve tokens for response generation
+
+        # Strategy configuration
+        self.use_simplified_context = use_simplified_context  # Use new LLM-based summarization
+        self.keep_recent_messages = 8  # Number of recent messages to keep in simplified mode
 
         # Token estimation
         if TIKTOKEN_AVAILABLE:
@@ -192,6 +196,244 @@ class ContextManagedLLMAgent(LLMAgent):
         # Approximate: 4 characters per token (varies by language/content)
         return int(total_chars / 4) + len(messages) * 10  # +10 tokens per message overhead
 
+    def _find_safe_split_point(self, messages: List[Message], target_index: int) -> int:
+        """
+        Find a safe split point that doesn't break tool call/response pairs.
+
+        Strategy: Scan backwards from target to find the nearest UserMessage,
+        but ensure we don't have orphaned ToolMessages (without their tool calls).
+
+        Args:
+            messages: List of messages to split
+            target_index: Desired split index (keep messages from this index onwards)
+
+        Returns:
+            Adjusted split index that preserves tool call/response integrity
+        """
+        if target_index <= 0:
+            return 0
+        if target_index >= len(messages):
+            return len(messages)
+
+        # Build a map of tool_call_id -> index of AssistantMessage that made the call
+        tool_call_origins = {}
+        for i, msg in enumerate(messages):
+            if isinstance(msg, (AssistantMessage, UserMessage)):
+                if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                    for tc in msg.tool_calls:
+                        tool_call_origins[tc.id] = i
+
+        # Scan backwards from target to find a safe UserMessage
+        for i in range(target_index, -1, -1):
+            if i == 0:
+                return 0
+
+            current_msg = messages[i]
+
+            # Check if this is a UserMessage (potential split point)
+            if isinstance(current_msg, UserMessage):
+                # Verify that no ToolMessages after this point reference tool calls before this point
+                # This ensures we don't have orphaned ToolMessages
+                is_safe = True
+
+                for j in range(i, len(messages)):
+                    if isinstance(messages[j], ToolMessage):
+                        tool_msg = messages[j]
+                        # Check if the tool call that this responds to is before our split point
+                        origin_index = tool_call_origins.get(tool_msg.id)
+                        if origin_index is not None and origin_index < i:
+                            # This ToolMessage would be orphaned - not safe to split here
+                            is_safe = False
+                            break
+
+                if is_safe:
+                    return i
+
+        # If no safe UserMessage found, keep everything
+        return 0
+
+    def _simplified_context_reduction(self, messages: List[Message], keep_recent: int = 5) -> List[Message]:
+        """
+        SIMPLIFIED APPROACH: LLM-based summarization with safe message splitting.
+
+        This is the proposed simplified strategy that:
+        1. Keeps all system messages
+        2. Keeps last N recent messages (with tool call/response integrity)
+        3. Summarizes everything in between using the LLM
+
+        Args:
+            messages: All conversation messages
+            keep_recent: Number of recent messages to keep (default 5)
+
+        Returns:
+            Reduced message list with summary
+        """
+        # Step 1: Separate system messages
+        system_msgs = [msg for msg in messages if isinstance(msg, SystemMessage)]
+        non_system_msgs = [msg for msg in messages if not isinstance(msg, SystemMessage)]
+
+        if len(non_system_msgs) <= keep_recent:
+            # No need to reduce - not enough messages
+            return messages
+
+        # Step 2: Find safe split point to keep last N messages
+        target_split_index = len(non_system_msgs) - keep_recent
+        safe_split_index = self._find_safe_split_point(non_system_msgs, target_split_index)
+
+        # Step 3: Split messages at safe boundary
+        old_msgs = non_system_msgs[:safe_split_index]
+        recent_msgs = non_system_msgs[safe_split_index:]
+
+        # Step 4: Generate summary of old messages using LLM
+        summary_text = self._generate_llm_summary(old_msgs)
+
+        # Step 5: Create summary as UserMessage instead of SystemMessage
+        # Gemini requires SystemMessages only at the start, so we use UserMessage
+        # to inject the summary without breaking message ordering rules
+        summary_msg = UserMessage(
+            role="user",
+            content=f"[Previous conversation summary - {len(old_msgs)} messages compressed]:\n{summary_text}"
+        )
+
+        # Step 6: Validate that recent_msgs doesn't start with a ToolMessage
+        # If it does, the safe split point logic should have prevented this,
+        # but we double-check to avoid Gemini API errors
+        if recent_msgs and isinstance(recent_msgs[0], ToolMessage):
+            print(f"[CONTEXT_AGENT] WARNING: recent_msgs starts with ToolMessage!")
+            print(f"[CONTEXT_AGENT] This indicates a safe split point issue.")
+            print(f"[CONTEXT_AGENT] Keeping all messages to avoid API errors.")
+            return messages  # Return original messages to be safe
+
+        # Step 7: Combine: system messages + summary + recent messages
+        # System messages stay at the top, then summary, then recent conversation
+        reduced_messages = system_msgs + [summary_msg] + recent_msgs
+        return reduced_messages
+
+    def _generate_llm_summary(self, messages: List[Message]) -> str:
+        """
+        Generate an intelligent summary of messages using the LLM itself.
+
+        This calls the LLM with a summarization prompt to create a concise
+        summary that preserves key information while reducing token usage.
+
+        Args:
+            messages: Messages to summarize
+
+        Returns:
+            LLM-generated summary text
+        """
+        if not messages:
+            return "No previous conversation."
+
+        # Build conversation history for summarization
+        conversation_text = self._format_messages_for_summary(messages)
+
+        # Create summarization prompt
+        summary_prompt = f"""Please provide a concise summary of the following conversation history.
+Focus on:
+- Key information exchanged between user and assistant
+- Important tool calls and their results
+- Any errors or issues encountered
+- Current context needed to continue the conversation
+
+Keep the summary brief (3-5 sentences) but preserve critical details.
+
+Conversation to summarize:
+{conversation_text}
+
+Summary:"""
+
+        try:
+            # Create temporary state with just system messages and summary prompt
+            from tau2.agent.llm_agent import LLMAgentState
+
+            temp_state = LLMAgentState(
+                system_messages=[SystemMessage(
+                    role="system",
+                    content="You are a helpful assistant that summarizes conversations concisely."
+                )],
+                messages=[]
+            )
+
+            # Create user message with summary request
+            summary_request = UserMessage(
+                role="user",
+                content=summary_prompt
+            )
+
+            # Call parent's generate_next_message to get summary
+            summary_response, _ = super().generate_next_message(summary_request, temp_state)
+
+            # Extract summary text from response
+            summary_text = summary_response.content if summary_response.content else ""
+            return summary_text.strip()
+
+        except Exception as e:
+            print(f"[CONTEXT_AGENT] LLM summarization failed: {e}")
+            print(f"[CONTEXT_AGENT] Falling back to simple summary")
+            return self._create_simple_summary(messages)
+
+    def _format_messages_for_summary(self, messages: List[Message]) -> str:
+        """
+        Format messages into readable text for summarization prompt.
+
+        Args:
+            messages: Messages to format
+
+        Returns:
+            Formatted conversation text
+        """
+        formatted_lines = []
+
+        for i, msg in enumerate(messages, 1):
+            if isinstance(msg, UserMessage):
+                content = msg.content[:500] if msg.content else "[no content]"
+                formatted_lines.append(f"{i}. USER: {content}")
+
+            elif isinstance(msg, AssistantMessage):
+                if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                    tool_names = [tc.name for tc in msg.tool_calls]
+                    formatted_lines.append(f"{i}. ASSISTANT: Called tools: {', '.join(tool_names)}")
+                elif msg.content:
+                    content = msg.content[:500]
+                    formatted_lines.append(f"{i}. ASSISTANT: {content}")
+
+            elif isinstance(msg, ToolMessage):
+                error_status = "ERROR" if msg.error else "SUCCESS"
+                content_preview = msg.content[:200] if msg.content else ""
+                formatted_lines.append(f"{i}. TOOL ({error_status}): {content_preview}")
+
+        return "\n".join(formatted_lines)
+
+    def _create_simple_summary(self, messages: List[Message]) -> str:
+        """
+        Create a simple summary of messages (fallback when LLM summarization fails).
+
+        Args:
+            messages: Messages to summarize
+
+        Returns:
+            Summary text
+        """
+        summary_lines = []
+
+        for msg in messages:
+            if isinstance(msg, UserMessage):
+                content_preview = msg.content[:100] if msg.content else "[no content]"
+                summary_lines.append(f"- User: {content_preview}")
+            elif isinstance(msg, AssistantMessage):
+                if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                    tool_names = [tc.name for tc in msg.tool_calls]
+                    summary_lines.append(f"- Assistant called tools: {', '.join(tool_names)}")
+                elif msg.content:
+                    content_preview = msg.content[:100]
+                    summary_lines.append(f"- Assistant: {content_preview}")
+            elif isinstance(msg, ToolMessage):
+                error_status = "ERROR" if msg.error else "SUCCESS"
+                summary_lines.append(f"- Tool response: {error_status}")
+
+        return "\n".join(summary_lines[:20])  # Limit to first 20 entries
+
     def _apply_context_reduction(self, state, token_stats: TokenUsageStats):
         """
         Apply context reduction strategies based on current token usage.
@@ -206,19 +448,28 @@ class ContextManagedLLMAgent(LLMAgent):
         start_time = time.time()
         original_messages = state.messages.copy()
 
-        # Choose reduction strategy based on severity
-        if token_stats.is_critical:
-            # Emergency reduction - aggressive strategies
-            reduced_messages = self._emergency_context_reduction(original_messages)
-            strategy = "emergency_reduction"
-        elif token_stats.is_warning:
-            # Warning level - moderate reduction
-            reduced_messages = self._moderate_context_reduction(original_messages)
-            strategy = "moderate_reduction"
+        # Choose reduction approach based on configuration
+        if self.use_simplified_context:
+            # Use new simplified LLM-based summarization
+            reduced_messages = self._simplified_context_reduction(
+                original_messages,
+                keep_recent=self.keep_recent_messages
+            )
+            strategy = "simplified_llm_summarization"
         else:
-            # Preventive reduction
-            reduced_messages = self._preventive_context_reduction(original_messages)
-            strategy = "preventive_reduction"
+            # Use legacy multi-strategy approach
+            if token_stats.is_critical:
+                # Emergency reduction - aggressive strategies
+                reduced_messages = self._emergency_context_reduction(original_messages)
+                strategy = "emergency_reduction"
+            elif token_stats.is_warning:
+                # Warning level - moderate reduction
+                reduced_messages = self._moderate_context_reduction(original_messages)
+                strategy = "moderate_reduction"
+            else:
+                # Preventive reduction
+                reduced_messages = self._preventive_context_reduction(original_messages)
+                strategy = "preventive_reduction"
 
         # Create modified state
         modified_state = copy.deepcopy(state)
@@ -262,12 +513,6 @@ class ContextManagedLLMAgent(LLMAgent):
             strategy_used=strategy,
             trigger_reason="context_limit_exceeded"
         )
-
-        # Log significant reductions
-        if original_tokens > reduced_tokens + 100:
-            print(f"Context reduced: {original_tokens} → {reduced_tokens} tokens "
-                  f"({len(original_messages)} → {len(reduced_messages)} messages) "
-                  f"using {strategy}")
 
         return modified_state
 
@@ -530,3 +775,34 @@ class ContextManagedLLMAgent(LLMAgent):
         """
         self.warning_threshold = warning
         self.critical_threshold = critical
+
+    def print_context_summary(self):
+        """Print a summary of context management activity."""
+        print(f"\n{'='*80}")
+        print(f"[CONTEXT_AGENT] CONTEXT MANAGEMENT SUMMARY")
+        print(f"{'='*80}")
+
+        if not self.reduction_history:
+            print(f"[CONTEXT_AGENT] No context reductions occurred")
+            print(f"{'='*80}\n")
+            return
+
+        stats = self.get_context_statistics()
+
+        print(f"[CONTEXT_AGENT] Total reductions: {stats['total_reductions']}")
+        print(f"[CONTEXT_AGENT] Average token savings: {stats['average_token_savings']:.0f} tokens")
+        print(f"[CONTEXT_AGENT] Max token savings: {stats['max_token_savings']:.0f} tokens")
+        print(f"[CONTEXT_AGENT] Total messages dropped: {stats['total_messages_dropped']}")
+        print(f"[CONTEXT_AGENT] Total bytes saved: {stats['total_bytes_saved']:,}")
+        print(f"[CONTEXT_AGENT] Average info preservation: {stats['average_information_preservation']:.1%}")
+        print(f"[CONTEXT_AGENT] Total processing time: {stats['total_processing_time']:.2f}s")
+
+        if stats['strategy_usage']:
+            print(f"\n[CONTEXT_AGENT] Strategy Usage:")
+            for strategy, usage_stats in stats['strategy_usage'].items():
+                print(f"[CONTEXT_AGENT]   {strategy}:")
+                print(f"[CONTEXT_AGENT]     - Used: {usage_stats['count']} times")
+                print(f"[CONTEXT_AGENT]     - Avg token savings: {usage_stats['average_token_savings']:.0f}")
+                print(f"[CONTEXT_AGENT]     - Avg info preservation: {usage_stats['average_information_preservation']:.1%}")
+
+        print(f"{'='*80}\n")
