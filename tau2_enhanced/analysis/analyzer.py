@@ -547,6 +547,12 @@ class LogAnalyzer:
             # Build failure analysis from action check data
             failed_actions = []
 
+            # Import action check analysis functions
+            from tau2_enhanced.analysis.action_check_analysis import (
+                analyze_action_check,
+                get_failure_summary
+            )
+
             # Extract failed actions from simulations
             simulations = self.raw_log_data.get('simulations', [])
             sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
@@ -554,19 +560,42 @@ class LogAnalyzer:
             for sim in sim_iterator:
                 reward_info = sim.get('reward_info', {})
                 action_checks = reward_info.get('action_checks')
+                # Get trajectory/messages for detailed analysis
+                trajectory = sim.get('trajectory', sim.get('messages', []))
 
                 if action_checks and isinstance(action_checks, list):
                     for check in action_checks:
                         if isinstance(check, dict) and not check.get('action_match', False):
                             action = check.get('action', {})
-                            failed_actions.append({
+
+                            # Perform detailed analysis if trajectory available
+                            detailed_analysis = None
+                            if trajectory:
+                                try:
+                                    analysis = analyze_action_check(check, trajectory)
+                                    detailed_analysis = get_failure_summary(analysis)
+                                except Exception:
+                                    # Fallback if analysis fails
+                                    pass
+
+                            failed_action = {
                                 'tool_name': action.get('name', 'unknown'),
                                 'error_category': 'ActionCheckFailure',
                                 'simulation_id': sim.get('id', 'unknown'),
                                 'task_id': sim.get('task_id', 'unknown'),
                                 'action_reward': check.get('action_reward', 0.0),
                                 'arguments': str(action.get('arguments', {}))[:100] + '...' if len(str(action.get('arguments', {}))) > 100 else str(action.get('arguments', {}))
-                            })
+                            }
+
+                            # Add detailed analysis if available
+                            if detailed_analysis:
+                                failed_action['failure_category'] = detailed_analysis.get('category', 'unknown')
+                                failed_action['similarity'] = detailed_analysis.get('similarity', 0.0)
+                                failed_action['expected_args'] = detailed_analysis.get('expected_args', {})
+                                failed_action['actual_args'] = detailed_analysis.get('actual_args', {})
+                                failed_action['diff'] = detailed_analysis.get('diff', {})
+
+                            failed_actions.append(failed_action)
 
             if failed_actions:
                 # Create DataFrame from failed actions
@@ -1278,6 +1307,79 @@ class LogAnalyzer:
         analysis['quality_analysis'] = quality_metrics
 
         return analysis
+
+    def get_simulation_report_data(self) -> List[Dict[str, Any]]:
+        """
+        Get structured data for comprehensive simulation report.
+
+        Returns:
+            List of simulation dictionaries with action check analysis
+        """
+        from tau2_enhanced.analysis.action_check_analysis import (
+            analyze_action_check,
+            get_failure_summary
+        )
+
+        if not hasattr(self, 'raw_log_data') or not self.raw_log_data:
+            return []
+
+        simulations = self.raw_log_data.get('simulations', [])
+        if isinstance(simulations, dict):
+            simulations = list(simulations.values())
+
+        report_data = []
+
+        for sim in simulations:
+            sim_data = {
+                'id': sim.get('id'),
+                'task_id': sim.get('task_id'),
+                'trial': sim.get('trial', sim.get('trial_idx', 0)),
+                'reward': sim.get('reward_info', {}).get('reward', 0),
+                'duration': sim.get('duration', 0),
+                'termination_reason': sim.get('termination_reason', 'unknown'),
+                'messages': sim.get('messages', sim.get('trajectory', [])),
+                'action_checks': []
+            }
+
+            # Add task information if available
+            tasks = self.raw_log_data.get('tasks', [])
+            task = next((t for t in tasks if t.get('id') == sim_data['task_id']), None)
+            if task:
+                sim_data['task_description'] = task.get('description', task.get('goal', ''))
+
+            # Process action checks
+            reward_info = sim.get('reward_info', {})
+            action_checks = reward_info.get('action_checks')
+
+            if action_checks and isinstance(action_checks, list):
+                trajectory = sim.get('trajectory', sim.get('messages', []))
+
+                for check in action_checks:
+                    check_data = {
+                        'action': check.get('action', {}),
+                        'action_match': check.get('action_match', False),
+                        'action_reward': check.get('action_reward', 0.0),
+                        'detailed_analysis': None
+                    }
+
+                    # Add detailed analysis for failures
+                    if not check_data['action_match'] and trajectory:
+                        try:
+                            analysis = analyze_action_check(check, trajectory)
+                            check_data['detailed_analysis'] = {
+                                'expected': analysis['expected'],
+                                'closest_match': analysis['closest_match'],
+                                'category': get_failure_summary(analysis).get('category'),
+                                'all_tool_calls_with_name': analysis['all_tool_calls_with_name']
+                            }
+                        except Exception:
+                            pass
+
+                    sim_data['action_checks'].append(check_data)
+
+            report_data.append(sim_data)
+
+        return report_data
 
     def _interpret_correlation(self, correlation: float) -> str:
         """Interpret correlation coefficient."""

@@ -212,10 +212,11 @@ def analyze_logs(log_file: Path, output_dir: Path):
         # bottleneck_path = output_dir / "performance_bottlenecks.html"
         # bottleneck_fig.write_html(bottleneck_path)
         # print(f"  ✅ Performance bottleneck plot saved to: {bottleneck_path}")
-        #
-        # report_path = output_dir / "simulation_report.html"
-        # visualizer.create_comprehensive_report(str(report_path), log_file.name)
-        # print(f"  ✅ Comprehensive simulation report saved to: {report_path}")
+
+        # Comprehensive simulation report with action check analysis
+        sim_report_path = output_dir / "simulation_report.html"
+        visualizer.create_comprehensive_simulation_report_html(str(sim_report_path))
+        print(f"  ✅ Comprehensive simulation report saved to: {sim_report_path}")
 
     except Exception as e:
         print(f"  ❌ Error during visualization: {e}")
@@ -224,6 +225,7 @@ def analyze_logs(log_file: Path, output_dir: Path):
     print(f"\n🛠️ For a detailed tool analysis, open: {output_dir / 'tool_report.html'}")
     print(f"🚀 For enhanced analysis with interactive plots, open: {output_dir / 'enhanced_analysis_report.html'}")
     print(f"📋 For a markdown summary report, see: {output_dir / 'analysis_report.md'}")
+    print(f"📊 For simulation-level action check analysis, open: {output_dir / 'simulation_report.html'}")
 
 
 def main():

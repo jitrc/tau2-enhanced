@@ -3486,3 +3486,536 @@ class LogVisualizer:
         else:
             return "critical"
 
+    def create_comprehensive_simulation_report_html(self, output_path: str) -> str:
+        """
+        Create comprehensive simulation report with collapsible tasks,
+        full message logs, and action check details with diffs.
+
+        Args:
+            output_path: Path to save the HTML report
+
+        Returns:
+            Path to the generated report
+        """
+        import json
+        from datetime import datetime
+        from pathlib import Path
+
+        # Get simulation data with action check analysis
+        sim_data = self.analyzer.get_simulation_report_data()
+
+        if not sim_data:
+            print("No simulation data available for report")
+            return output_path
+
+        # Calculate summary stats
+        summary = self.analyzer.get_summary_metrics()
+        total_sims = len(sim_data)
+        successful_sims = sum(1 for s in sim_data if s['reward'] > 0)
+        task_success_rate = (successful_sims / total_sims * 100) if total_sims > 0 else 0
+
+        # Count action check stats
+        total_action_checks = sum(len(s['action_checks']) for s in sim_data)
+        failed_action_checks = sum(
+            sum(1 for ac in s['action_checks'] if not ac['action_match'])
+            for s in sim_data
+        )
+        action_success_rate = ((total_action_checks - failed_action_checks) / total_action_checks * 100) if total_action_checks > 0 else 0
+
+        # Build HTML
+        html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Simulation Report</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }}
+
+        .container {{
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+
+        h1 {{
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }}
+
+        .summary-stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+
+        .stat-card {{
+            padding: 20px;
+            border-radius: 6px;
+            text-align: center;
+            border: 2px solid;
+        }}
+
+        .stat-card.success {{ background: #d5f4e6; border-color: #27ae60; }}
+        .stat-card.error {{ background: #fab1a0; border-color: #e17055; }}
+        .stat-card.info {{ background: #dfe6e9; border-color: #74b9ff; }}
+
+        .stat-value {{ font-size: 2.5em; font-weight: bold; margin-bottom: 5px; }}
+        .stat-label {{ font-size: 0.9em; color: #2c3e50; }}
+
+        .controls {{ margin-bottom: 20px; }}
+        .btn {{ padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px; }}
+        .btn:hover {{ background: #2980b9; }}
+
+        .task-section {{
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }}
+
+        .task-header {{
+            background: #3498db;
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }}
+
+        .task-header:hover {{ background: #2980b9; }}
+        .task-header.failed {{ background: #e74c3c; }}
+        .task-header.failed:hover {{ background: #c0392b; }}
+
+        .task-title {{ font-size: 1.2em; font-weight: 600; }}
+        .expand-icon {{ transition: transform 0.3s; font-size: 1.5em; }}
+        .task-section.expanded .expand-icon {{ transform: rotate(180deg); }}
+
+        .task-content {{
+            display: none;
+            padding: 20px;
+            background: #fafafa;
+        }}
+
+        .task-section.expanded .task-content {{ display: block; }}
+
+        .section-title {{
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 20px 0 15px 0;
+            padding: 10px 0;
+            border-bottom: 2px solid #3498db;
+        }}
+
+        .detail-grid {{
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 10px 20px;
+            margin-bottom: 20px;
+        }}
+
+        .detail-label {{ font-weight: 600; color: #7f8c8d; }}
+        .detail-value {{ color: #2c3e50; }}
+
+        .action-failure {{
+            background: white;
+            border: 2px solid #e74c3c;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 15px 0;
+        }}
+
+        .action-success {{
+            background: white;
+            border: 2px solid #27ae60;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }}
+
+        .expected-section, .actual-section {{
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+        }}
+
+        .expected-section {{ background: #fff3cd; border-left: 4px solid #ffc107; }}
+        .actual-section {{ background: #f8d7da; border-left: 4px solid #e74c3c; }}
+
+        .code-block {{
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 8px 0;
+        }}
+
+        .diff-match {{ color: #27ae60; margin: 5px 0; }}
+        .diff-different {{ color: #e74c3c; margin: 5px 0; }}
+        .diff-missing {{ color: #f39c12; margin: 5px 0; }}
+
+        .similarity-badge {{
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }}
+
+        .similarity-high {{ background: #d5f4e6; color: #27ae60; }}
+        .similarity-medium {{ background: #ffeaa7; color: #d68910; }}
+        .similarity-low {{ background: #fab1a0; color: #e74c3c; }}
+
+        .message-log {{
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }}
+
+        .message {{
+            margin: 10px 0;
+            padding: 12px;
+            border-left: 4px solid #3498db;
+            background: #f9f9f9;
+        }}
+
+        .message.assistant {{ border-left-color: #3498db; }}
+        .message.user {{ border-left-color: #27ae60; }}
+        .message.tool {{ border-left-color: #9b59b6; }}
+
+        .message-role {{ font-weight: bold; margin-bottom: 8px; color: #2c3e50; }}
+        .message-content {{ white-space: pre-wrap; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Comprehensive Simulation Report</h1>
+
+        <div class="summary-stats">
+            <div class="stat-card info">
+                <div class="stat-value">{total_sims}</div>
+                <div class="stat-label">Total Simulations</div>
+            </div>
+            <div class="stat-card {'success' if task_success_rate >= 70 else 'error'}">
+                <div class="stat-value">{task_success_rate:.1f}%</div>
+                <div class="stat-label">Task Success Rate</div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-value">{total_action_checks}</div>
+                <div class="stat-label">Action Checks</div>
+            </div>
+            <div class="stat-card {'success' if action_success_rate >= 70 else 'error'}">
+                <div class="stat-value">{action_success_rate:.1f}%</div>
+                <div class="stat-label">Action Success Rate</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="toggleAll()">Expand/Collapse All</button>
+            <button class="btn" onclick="showFailedOnly()">Show Failed Only</button>
+            <button class="btn" onclick="showCalledWithDiff()">Show Called w/ Diff Only</button>
+            <button class="btn" onclick="showAll()">Show All</button>
+        </div>
+
+        <div style="margin: 15px 0; padding: 12px; background: #e3f2fd; border-radius: 6px; border-left: 4px solid #2196f3;">
+            <span style="font-weight: 600; color: #1976d2;">Showing:</span>
+            <span id="task-counter" style="font-size: 1.1em; font-weight: bold; color: #0d47a1;">0 / 0 tasks</span>
+        </div>
+
+        <div id="simulations">
+"""
+
+        # Generate task sections
+        for idx, sim in enumerate(sim_data):
+            has_failures = any(not ac['action_match'] for ac in sim['action_checks'])
+
+            # Check if any failures have the tool actually called (not "never_called")
+            has_called_failures = False
+            for ac in sim['action_checks']:
+                if not ac['action_match'] and ac.get('detailed_analysis'):
+                    category = ac['detailed_analysis'].get('category', 'unknown')
+                    if category != 'never_called':
+                        has_called_failures = True
+                        break
+
+            header_class = 'task-header failed' if has_failures else 'task-header'
+            status_icon = '❌' if sim['reward'] == 0 else '✅'
+
+            failed_checks = sum(1 for ac in sim['action_checks'] if not ac['action_match'])
+            total_checks = len(sim['action_checks'])
+
+            html += f"""
+        <div class="task-section" data-has-failures="{str(has_failures).lower()}" data-has-called-failures="{str(has_called_failures).lower()}" id="task-{idx}">
+            <div class="{header_class}">
+                <div class="task-title">{status_icon} Task {sim['task_id']} | Trial {sim['trial']}</div>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <span style="background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px;">
+                        Actions: {failed_checks}/{total_checks} Failed
+                    </span>
+                    <span class="expand-icon">▼</span>
+                </div>
+            </div>
+
+            <div class="task-content">
+                <div class="section-title">📋 Task Details</div>
+                <div class="detail-grid">
+                    <div class="detail-label">Task ID:</div>
+                    <div class="detail-value"><code>{sim['task_id']}</code></div>
+                    <div class="detail-label">Trial:</div>
+                    <div class="detail-value">{sim['trial']}</div>
+                    <div class="detail-label">Reward:</div>
+                    <div class="detail-value" style="color: {'#27ae60' if sim['reward'] > 0 else '#e74c3c'};">{sim['reward']:.2f}</div>
+                    <div class="detail-label">Duration:</div>
+                    <div class="detail-value">{sim['duration']:.2f}s</div>
+                    <div class="detail-label">Termination:</div>
+                    <div class="detail-value">{sim['termination_reason']}</div>
+"""
+
+            if 'task_description' in sim:
+                html += f"""
+                    <div class="detail-label">Description:</div>
+                    <div class="detail-value">{sim['task_description']}</div>
+"""
+
+            html += """
+                </div>
+
+                <div class="section-title">🎯 Action Checks</div>
+"""
+
+            # Action checks
+            if sim['action_checks']:
+                for ac in sim['action_checks']:
+                    if not ac['action_match']:
+                        # Failed action check with detailed analysis
+                        action = ac['action']
+                        detailed = ac.get('detailed_analysis')
+
+                        html += f"""
+                <div class="action-failure">
+                    <div style="font-size: 1.1em; font-weight: 600; margin-bottom: 15px; color: #e74c3c;">
+                        ❌ Action Check Failure: {action['name']}
+                    </div>
+
+                    <div class="expected-section">
+                        <div style="font-weight: 600; margin-bottom: 10px;">📋 EXPECTED</div>
+                        <div><strong>Action ID:</strong> {action['action_id']}</div>
+                        <div><strong>Tool:</strong> <code>{action['name']}</code></div>
+                        <div><strong>Expected Arguments:</strong></div>
+                        <div class="code-block">{json.dumps(action['arguments'], indent=2)}</div>
+                    </div>
+"""
+
+                        if detailed and detailed.get('closest_match'):
+                            closest = detailed['closest_match']
+                            similarity = closest.get('similarity', 0)
+                            sim_class = 'similarity-high' if similarity >= 0.8 else ('similarity-medium' if similarity >= 0.5 else 'similarity-low')
+
+                            html += f"""
+                    <div class="actual-section">
+                        <div style="font-weight: 600; margin-bottom: 10px;">🔍 ACTUAL BEHAVIOR</div>
+                        <div>Tool was called but with incorrect arguments</div>
+                        <div style="margin: 10px 0;">
+                            Similarity: <span class="{sim_class} similarity-badge">{similarity:.0%}</span>
+                        </div>
+
+                        <div style="margin-top: 15px;"><strong>Argument Comparison:</strong></div>
+"""
+
+                            if closest['comparison']['matches']:
+                                html += "<div style='margin-top: 10px;'><strong style='color: #27ae60;'>✓ Matching:</strong></div>"
+                                for key, val in closest['comparison']['matches'].items():
+                                    html += f"<div class='diff-match'>  ✓ {key}: {json.dumps(val)}</div>"
+
+                            if closest['comparison']['different']:
+                                html += "<div style='margin-top: 10px;'><strong style='color: #e74c3c;'>✗ Different:</strong></div>"
+                                for key, vals in closest['comparison']['different'].items():
+                                    html += f"""
+                        <div class='diff-different'>
+                            ✗ {key}:<br>
+                            &nbsp;&nbsp;Expected: {json.dumps(vals['expected'])}<br>
+                            &nbsp;&nbsp;Actual: {json.dumps(vals['actual'])}
+                        </div>
+"""
+
+                            if closest['comparison']['missing']:
+                                html += "<div style='margin-top: 10px;'><strong style='color: #f39c12;'>⚠ Missing:</strong></div>"
+                                for key, val in closest['comparison']['missing'].items():
+                                    html += f"<div class='diff-missing'>  ⚠ {key}: {json.dumps(val)} (not provided)</div>"
+
+                            html += f"""
+                        <div style="margin-top: 15px;"><strong>Full Actual Arguments:</strong></div>
+                        <div class="code-block">{json.dumps(closest['tool_call']['arguments'], indent=2)}</div>
+                    </div>
+"""
+                        else:
+                            # Tool never called or no match
+                            category = detailed.get('category', 'unknown') if detailed else 'unknown'
+                            html += f"""
+                    <div class="actual-section">
+                        <div style="font-weight: 600; margin-bottom: 10px;">🔍 ACTUAL BEHAVIOR</div>
+                        <div style="color: #e74c3c; font-weight: 600;">
+                            ❌ Tool '{action['name']}' was {'NEVER called' if category == 'never_called' else 'called but did not match'}
+                        </div>
+                    </div>
+"""
+
+                        html += "</div>"
+
+                    else:
+                        # Successful action check
+                        action = ac['action']
+                        html += f"""
+                <div class="action-success">
+                    ✅ <strong>Action Passed:</strong> {action['action_id']} - <code>{action['name']}</code>
+                </div>
+"""
+
+            else:
+                html += "<div style='padding: 20px; text-align: center; color: #7f8c8d;'>No action checks for this simulation</div>"
+
+            # Message log
+            html += """
+                <div class="section-title">💬 Message Log</div>
+                <div class="message-log">
+"""
+
+            for msg in sim['messages']:
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+
+                html += f"""
+                    <div class="message {role}">
+                        <div class="message-role">{role.capitalize()}</div>
+                        <div class="message-content">{content if content else '(empty)'}</div>
+"""
+
+                if msg.get('tool_calls'):
+                    for tc in msg['tool_calls']:
+                        html += f"""
+                        <div style="background: #eee; padding: 8px; margin-top: 8px; border-radius: 4px;">
+                            <strong>🔧 Tool Call:</strong> {tc.get('name')}<br>
+                            <code style="font-size: 0.85em;">{json.dumps(tc.get('arguments', {}), indent=2)}</code>
+                        </div>
+"""
+
+                html += "                    </div>\n"
+
+            html += """
+                </div>
+            </div>
+        </div>
+"""
+
+        # Close HTML
+        html += """
+        </div>
+    </div>
+
+    <script>
+        // Update task counter
+        function updateTaskCounter() {
+            const allTasks = document.querySelectorAll('.task-section');
+            const visibleTasks = Array.from(allTasks).filter(task => {
+                return task.style.display !== 'none';
+            });
+
+            const counter = document.getElementById('task-counter');
+            counter.textContent = `${visibleTasks.length} / ${allTasks.length} tasks`;
+        }
+
+        // Toggle individual task
+        document.querySelectorAll('.task-header').forEach(header => {
+            header.addEventListener('click', function() {
+                this.parentElement.classList.toggle('expanded');
+            });
+        });
+
+        // Toggle all tasks
+        function toggleAll() {
+            const allTasks = document.querySelectorAll('.task-section');
+            const anyExpanded = Array.from(allTasks).some(task => task.classList.contains('expanded'));
+
+            allTasks.forEach(task => {
+                if (anyExpanded) {
+                    task.classList.remove('expanded');
+                } else {
+                    task.classList.add('expanded');
+                }
+            });
+        }
+
+        // Show only failed tasks
+        function showFailedOnly() {
+            document.querySelectorAll('.task-section').forEach(task => {
+                if (task.dataset.hasFailures === 'true') {
+                    task.style.display = 'block';
+                } else {
+                    task.style.display = 'none';
+                }
+            });
+            updateTaskCounter();
+        }
+
+        // Show only tasks with called failures (tool was called but with wrong args - excludes "NEVER called")
+        function showCalledWithDiff() {
+            document.querySelectorAll('.task-section').forEach(task => {
+                if (task.dataset.hasCalledFailures === 'true') {
+                    task.style.display = 'block';
+                } else {
+                    task.style.display = 'none';
+                }
+            });
+            updateTaskCounter();
+        }
+
+        // Show all tasks
+        function showAll() {
+            document.querySelectorAll('.task-section').forEach(task => {
+                task.style.display = 'block';
+            });
+            updateTaskCounter();
+        }
+
+        // Initialize counter on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTaskCounter();
+        });
+    </script>
+</body>
+</html>
+"""
+
+        # Write to file
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_path, 'w') as f:
+            f.write(html)
+
+        print(f"✅ Comprehensive simulation report generated: {output_path}")
+        return str(output_path)
+
