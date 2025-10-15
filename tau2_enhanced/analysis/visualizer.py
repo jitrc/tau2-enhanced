@@ -3735,7 +3735,8 @@ class LogVisualizer:
 
         <div class="controls">
             <button class="btn" onclick="toggleAll()">Expand/Collapse All</button>
-            <button class="btn" onclick="showFailedOnly()">Show Failed Only</button>
+            <button class="btn" onclick="showTaskFailedOnly()">Show Task Failed Only</button>
+            <button class="btn" onclick="showActionFailedOnly()">Show Action Failed Only</button>
             <button class="btn" onclick="showCalledWithDiff()">Show Called w/ Diff Only</button>
             <button class="btn" onclick="showAll()">Show All</button>
         </div>
@@ -3761,14 +3762,17 @@ class LogVisualizer:
                         has_called_failures = True
                         break
 
+            # Check if task failed (reward == 0)
+            task_failed = sim['reward'] == 0
+
             header_class = 'task-header failed' if has_failures else 'task-header'
-            status_icon = '❌' if sim['reward'] == 0 else '✅'
+            status_icon = '❌' if task_failed else '✅'
 
             failed_checks = sum(1 for ac in sim['action_checks'] if not ac['action_match'])
             total_checks = len(sim['action_checks'])
 
             html += f"""
-        <div class="task-section" data-has-failures="{str(has_failures).lower()}" data-has-called-failures="{str(has_called_failures).lower()}" id="task-{idx}">
+        <div class="task-section" data-has-failures="{str(has_failures).lower()}" data-has-called-failures="{str(has_called_failures).lower()}" data-task-failed="{str(task_failed).lower()}" id="task-{idx}">
             <div class="{header_class}">
                 <div class="task-title">{status_icon} Task {sim['task_id']} | Trial {sim['trial']}</div>
                 <div style="display: flex; gap: 15px; align-items: center;">
@@ -4065,8 +4069,20 @@ class LogVisualizer:
             });
         }
 
-        // Show only failed tasks
-        function showFailedOnly() {
+        // Show only tasks that failed (reward == 0)
+        function showTaskFailedOnly() {
+            document.querySelectorAll('.task-section').forEach(task => {
+                if (task.dataset.taskFailed === 'true') {
+                    task.style.display = 'block';
+                } else {
+                    task.style.display = 'none';
+                }
+            });
+            updateTaskCounter();
+        }
+
+        // Show only tasks with action failures
+        function showActionFailedOnly() {
             document.querySelectorAll('.task-section').forEach(task => {
                 if (task.dataset.hasFailures === 'true') {
                     task.style.display = 'block';
