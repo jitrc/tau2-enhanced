@@ -2901,7 +2901,7 @@ class LogVisualizer:
             rows=2, cols=2,
             subplot_titles=("Performance by Category", "State-Changing vs Read-Only",
                           "Success Rate vs Calls", "Failure Rate Analysis"),
-            specs=[[{"type": "bar"}, {"type": "box"}],
+            specs=[[{"type": "bar"}, {"type": "bar"}],
                    [{"type": "scatter"}, {"type": "bar"}]]
         )
 
@@ -2915,41 +2915,89 @@ class LogVisualizer:
                 row=1, col=1
             )
 
-            # State-changing vs read-only performance
+            # State-changing vs read-only performance - using bar chart for better visibility
             state_changing = tool_perf[tool_perf['state_change_rate'] > 0]
             read_only = tool_perf[tool_perf['state_change_rate'] == 0]
 
             if not state_changing.empty:
                 fig.add_trace(
-                    go.Box(y=state_changing['success_rate'], name="State-Changing",
-                           marker_color="#ff6b6b"),
+                    go.Bar(
+                        x=['State-Changing'],
+                        y=[state_changing['success_rate'].mean()],
+                        name="State-Changing",
+                        marker_color="#ff6b6b",
+                        error_y=dict(
+                            type='data',
+                            array=[state_changing['success_rate'].std()] if len(state_changing) > 1 else [0]
+                        ),
+                        text=[f"{state_changing['success_rate'].mean():.1%}"],
+                        textposition='outside',
+                        hovertemplate=(
+                            '<b>State-Changing Tools</b><br>' +
+                            'Avg Success Rate: %{y:.2%}<br>' +
+                            f'Tool Count: {len(state_changing)}<br>' +
+                            f'Total Calls: {state_changing["total_calls"].sum()}<extra></extra>'
+                        )
+                    ),
                     row=1, col=2
                 )
             if not read_only.empty:
                 fig.add_trace(
-                    go.Box(y=read_only['success_rate'], name="Read-Only",
-                           marker_color="#4ecdc4"),
+                    go.Bar(
+                        x=['Read-Only'],
+                        y=[read_only['success_rate'].mean()],
+                        name="Read-Only",
+                        marker_color="#4ecdc4",
+                        error_y=dict(
+                            type='data',
+                            array=[read_only['success_rate'].std()] if len(read_only) > 1 else [0]
+                        ),
+                        text=[f"{read_only['success_rate'].mean():.1%}"],
+                        textposition='outside',
+                        hovertemplate=(
+                            '<b>Read-Only Tools</b><br>' +
+                            'Avg Success Rate: %{y:.2%}<br>' +
+                            f'Tool Count: {len(read_only)}<br>' +
+                            f'Total Calls: {read_only["total_calls"].sum()}<extra></extra>'
+                        )
+                    ),
                     row=1, col=2
                 )
 
-            # Success rate vs calls scatter
+            # Success rate vs calls scatter with better configuration
             fig.add_trace(
                 go.Scatter(
                     x=tool_perf['total_calls'],
                     y=tool_perf['success_rate'],
                     mode='markers+text',
                     marker=dict(
-                        size=10,
+                        size=12,
                         color=tool_perf['success_rate'],
                         colorscale='RdYlGn',
-                        showscale=True
+                        cmin=0,
+                        cmax=1,
+                        showscale=True,
+                        colorbar=dict(title="Success<br>Rate", x=0.46)
                     ),
                     text=tool_perf['tool_name'],
                     textposition="top center",
-                    name="Success vs Usage"
+                    textfont=dict(size=9),
+                    name="Tools",
+                    hovertemplate=(
+                        '<b>%{text}</b><br>' +
+                        'Calls: %{x}<br>' +
+                        'Success Rate: %{y:.2%}<extra></extra>'
+                    )
                 ),
                 row=2, col=1
             )
+
+            # Update scatter plot axes for better visibility
+            fig.update_xaxes(title_text="Total Calls", type="log" if tool_perf['total_calls'].max() > 100 else "linear", row=2, col=1)
+            fig.update_yaxes(title_text="Success Rate", range=[-0.05, 1.05], tickformat='.0%', row=2, col=1)
+
+            # Update state-changing vs read-only axes
+            fig.update_yaxes(title_text="Success Rate", range=[0, 1.1], tickformat='.0%', row=1, col=2)
 
         # Failure rate analysis
         if not failures.empty:
