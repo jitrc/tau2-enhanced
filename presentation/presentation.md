@@ -20,7 +20,6 @@ style: |
   }
 ---
 
----
 
 # Evaluating Grok on tau2-bench
 ## Analysis, Critique & Improvements
@@ -29,14 +28,17 @@ style: |
 
 ---
 
-# Agenda (30 min)
+# Agenda
 
-1. **Overview of Benchmark** (3 min)
-2. **Analysis Results + Methodology** (8 min)
-3. **Failure Visualizations** (5 min)
-4. **Improvements + Rationale** (8 min)
-5. **Live Demo** (4 min)
-6. **Next Steps** (2 min)
+**Presentation (30 min):**
+1. **Overview of Benchmark**
+2. **Analysis Results + Methodology** 
+3. **Failure Visualizations**
+4. **Improvements + Rationale**
+5. **Live Demo**
+6. **Next Steps & Key Takeaways**
+
+**Q&A Session:** 15 minutes
 
 ---
 
@@ -52,7 +54,7 @@ style: |
 
 **Key Features:**
 - Multi-turn conversations with state management
-- Tool calling: Complex tools needstobe called in correct sequence
+- Tool calling: Complex tools need to be called in correct sequence
 - Real-world complexity: Database operations, constraints, error handling
 
 **Domains:**
@@ -88,33 +90,21 @@ style: |
 
 ---
 
-# tau2-bench Metrics
+# tau2-bench Metrics & Evaluation
 
 **Primary Metrics:**
 - **Task Success Rate:** Did the agent complete the user's goal?
 - **Action Accuracy:** Were state-changing operations correct?
 - **Tool Usage:** Efficiency and correctness of API calls
-```
-│ Reward: ❌ 0.0000 (COMMUNICATE: 1.0, DB: 0.0)       │
-│ DB Check:❌ 0.0                                     │
-│ Action Checks:                                      │
-│ - 0: cancel_reservation ❌ 0.0                      │
-│ - 1: search_direct_flight ✅ 1.0                    │
-```
 
----
-# tau2-bench Airline Eval
-
-
-**Evaluation:**
-- 50 tasks for domain Airline
-- Multiple trials per task (typically 4)
+**Evaluation Setup:**
+- 50 tasks for Airline domain
+- 4 trials per task (200 simulations)
 - Binary success/failure scoring
 
-**Why**
-
+**Why tau2-bench?**
 ✅ Real-world deployment scenarios
-✅ Tests sustained reasoning
+✅ Tests sustained reasoning & multi-step planning
 ✅ Industry-adopted benchmark
 
 ---
@@ -141,56 +131,33 @@ Log file [baseline_airline_xai_grok3_gemini2_5_flash](enhanced_logs/archive/tau2
 
 ---
 
-# Key Finding: The Planning Gap
+# Key Finding: The Execution Gap
 
-**Observation:**
-- Total Tool Calls 1162
-- Tool Success: 65.3%
-- Task Success: 57.5%
-- **Gap: 7.8 percentage points**
-
-**What This Means:**
-- Agent can execute tools correctly
-- But chooses wrong sequence or wrong tools
-- Indicates planning issue, not execution issue
----
+**Critical Evidence:**
 ```
-Analyzing 85 failed simulations...
-🔍 Primary Failure Modes:
-  Communication failures: 6/85 (7.1%)
-  Database failures: 85/85 (100.0%)
+🔍 Primary Failure Modes (85 failed simulations):
+  Communication failures: 6/85 (7.1%)  ✓ Understanding intact
+  Database failures: 85/85 (100.0%)    ✗ Action execution
   Action execution failures: 76/85 (89.4%)
 
-⚠️  Critical Insights:
-  No-action tasks succeed at 93.8% rate
-  Action-required tasks succeed at 32.8% rate
-  → 61.1percentage point performance drop when actions required
+⚠️  Performance Cliff:
+  No-action tasks: 93.8% success
+  Action-required tasks: 32.8% success
+  → 61.1pp drop when actions required
 
-🚨 Most Problematic Actions (min 5 attempts):
-  book_reservation: 84.8% failure rate (33.0 attempts)
-  search_direct_flight: 78.8% failure rate (80.0 attempts)
-  send_certificate: 66.7% failure rate (12.0 attempts)
-  update_reservation_baggages: 62.5% failure rate (24.0 attempts)
-  update_reservation_flights: 54.8% failure rate (84.0 attempts)
+🚨 Most Problematic Actions:
+  book_reservation: 84.8% failure (33 attempts)
+  search_direct_flight: 78.8% failure (80 attempts)
+  update_reservation_flights: 54.8% failure (84 attempts)
 ```
+
+**Root Cause:** 100% ActionCheckFailure (validation errors, not reasoning)
+
 <span class="small">
 python scripts/non_enhanced/failure_analysis.py enhanced_logs/archive/tau2-bench-jit/baseline_airline_xai_grok3_gemini2_5_flash.json
 </span>
 
 ---
-# Key Finding: The Execution Gap
-**But wait...**
-- 89.4% action execution failures
-- This IS an execution problem for state-changing tools
-
-**Critical Evidence:**
-- **97.0% communication success** (understanding is fine)
-- **100% ActionCheckFailure** (validation errors, not reasoning)
-- **93.8% success without actions** → 32.8% with actions
-- **This is an execution gap, not a reasoning problem**
-
----
-
 
 # Critical Finding: Performance Cliff
 
@@ -231,70 +198,22 @@ Grok-3's 61.1 percentage point drop is the largest among the flagship models, si
 
 ---
 
-Complexity vs Success
-==================================================
-Success rates by number of write actions required:
-| Actions | Count | Success Rate | Communication Success | Database Success |
-|:-------:|:-----:|:------------:|:--------------------:|:----------------:|
-|   0     |  81   |   93.8%      |      100.0%          |    93.8%         |
-|   1     |  64   |   40.6%      |      100.0%          |    40.6%         |
-|   2     |  28   |   25.0%      |      85.7%           |    25.0%         |
-|   3     |  16   |   25.0%      |      93.8%           |    25.0%         |
-|   4     |   7   |    0.0%      |      85.7%           |     0.0%         |
-|   5     |   4   |   50.0%      |      100.0%          |    50.0%         |
+# Action Failure Cascade & Secondary Root Cause
 
----
-
-# Action Failure Cascade
-
-The performance drop isn't gradual—it's a catastrophic cliff after just one action.
-
-| Task Type | Success Rate | Drop from Previous |
+**The Cascade Effect:**
+| Actions Required | Success Rate | Drop |
 |:---|:---:|:---:|
-| No actions | 93.8% | - (baseline) |
-| Single action | 40.6% | **-53.2pp** ⚠️ |
-| Multi-action | 0-25% | -15 to -40 ❌ |
+| 0 actions | 93.8% | baseline |
+| 1 action | 40.6% | **-53.2pp** ⚠️ |
+| 2-4 actions | 0-25% | catastrophic ❌ |
 
+**Secondary: Context Length Pressure**
+- Failed simulations use **1.3x more tokens** (3,431 vs 2,601)
+- Each tool call + retry: ~200-500 tokens → vicious cycle
 
-**Implication:** The agent struggles to recover from even a single complex action, leading to a cascade of failures in multi-step tasks.
-
----
-### Secondary Root Cause: Context Length Pressure
-
-**Context Limit Analysis:**
-- Average context: 2,989 tokens per simulation
-- Failed simulations use **1.3x more tokens** (3,431 vs 2,601 tokens)
-
-**Performance Cliffs Identified:**
-- **1,500-2,000 tokens**: 27% performance drop (72.7% → 45.5% success)
-- **3,000-3,500 tokens**: 53% performance drop (71.4% → 18.2% success)
-
-**Context Growth Pattern:**
-- Each tool call + response: ~200-500 tokens
-- Error recovery attempts amplify context growth
-
-----
-
-# Trial Consistency Issues
-
-```
-Trial 0: █████████████░░░░░░░ 66%
-Trial 1: ████████████░░░░░░░░ 58%
-Trial 2: ███████████░░░░░░░░░ 56%
-Trial 3: ██████████░░░░░░░░░░ 50%
-```
-
-🏆 Standard Metrics:
-```
-Average reward: 0.575
-Pass@1: 0.575
-Pass@2: 0.460
-Pass@3: 0.405
-Pass@4: 0.380
-Average agent cost: $0.2318
-```
-
-The model's performance is inconsistent across repeated attempts, suggesting a lack of robustness.
+**Trial Inconsistency:**
+- Trial 0: 66% → Trial 3: 50% (16pp degradation)
+- Pass@4: 0.380 (shows lack of robustness)
 
 ---
 # Standard tau2-bench Limitations
@@ -319,42 +238,18 @@ The model's performance is inconsistent across repeated attempts, suggesting a l
 
 **Solution:** Add comprehensive observability without modifying tau2-bench
 
-**Captures:**
-- Every tool call with full context
-- Argument complexity scores (0-1 scale)
-- Validation errors and error types
-- State changes and diffs
-- Execution timing
+**Captures:** Every tool call with full context, validation errors, state changes, timing
+**Enables:** 15+ analysis methods, root cause analysis, performance bottleneck identification
 
-**Enables:**
-- 15+ analysis methods
-- Root cause analysis
-- Performance bottleneck identification
-- Correlation analysis
-
----
-
-# Analysis Methodology
-
-**Data Collection:**
+**Methodology:**
 ```python
-# Non-invasive interception
-LoggingEnvironment wraps original Environment
+LoggingEnvironment wraps Environment (non-invasive)
   ↓
 Intercepts make_tool_call()
   ↓
-Captures: args, result, timing, state changes
+Captures: args, result, timing, state changes → Structured JSON
   ↓
-Structured events in JSON format
-```
-
-**Analysis Pipeline:**
-```python
-LogAnalyzer loads events
-  ↓
-15+ analysis methods
-  ↓
-HTML reports + CSV exports
+LogAnalyzer → 15+ analysis methods → HTML reports
 ```
 
 ---
@@ -365,46 +260,16 @@ HTML reports + CSV exports
 
 ---
 
-# Failure Category Breakdown
+# Failure Analysis Deep Dive
 
-**Error Distribution:**
-```
-ActionCheckFailure: ████████████████████████████████ 100%
-                    (204 occurrences)
-```
+**Error Distribution:** ActionCheckFailure: 100% (204 occurrences)
 
-**What is ActionCheckFailure?**
-- Parameter validation errors
-- Missing required fields
-- Wrong parameter types
-- Invalid values
-
-**Key Insight:** 100% of categorized failures are validation errors, not reasoning errors
-
----
-
-# Primary Failure Modes (Grok-3)
-
-When a task fails, what is the primary cause?
-
-| Failure Mode | % of Failed Simulations |
-| :--- | :---: |
-| **Database Failure** | **100%** |
-| **Action Execution Failure** | 89.4% |
-| **Communication Failure** | 7.1% |
-
-**Key Insight:** Every single failed task (85/85) for Grok-3 involved a database failure. This confirms the issue is not what the agent *says*, but what it *does* (or fails to do). The low communication failure rate (7.1%) highlights its conversational strength.
-
----
-
-# Failure Subcategories
-
-| Error Type | Count | % of Failures |
-|------------|-------|---------------|
-| Missing required fields | ~80 | 39% |
-| Wrong parameter types | ~70 | 34% |
-| Invalid values | ~54 | 26% |
-| Other validation errors | ~0 | 1% |
+**Failure Subcategories:**
+| Error Type | % of Failures |
+|------------|---------------|
+| Missing required fields | 39% |
+| Wrong parameter types | 34% |
+| Invalid values | 26% |
 
 **Example:**
 ```json
@@ -415,62 +280,26 @@ When a task fails, what is the primary cause?
 }
 ```
 
----
-
-# Critical Tool Failures
-
-**Top Failing Tools** (minimum 5 attempts):
-
-| Tool | Failure Rate | Attempts |
-|------|--------------|----------|
-| `calculate` | 100.0% | 4 |
-| `book_reservation` | 84.8% | 33 |
-| `search_direct_flight` | 78.8% | 80 |
-| `send_certificate` | 66.7% | 12 |
-
-**Pattern:** State-changing tools fail at much higher rates than read-only tools
+**Key Insight:** Issue is not what the agent *says*, but what it *does*. Validation errors, not reasoning errors.
 
 ---
 
-# State-Changing vs Read-Only Tools
+# Critical Tool Failures & Patterns
 
-**State-Changing Tools:**
-- Modify database (book, cancel, update)
-- Average success: ~55%
-- High ActionCheckFailure rate
+**Top Failing Tools:**
+| Tool | Failure Rate | Attempts | Type |
+|------|--------------|----------|------|
+| `calculate` | 100.0% | 4  | Read-Only |
+| `book_reservation` | 84.8% | 33 | State-changing |
+| `search_direct_flight` | 78.8% | 80 | Read-Only |
+| `send_certificate` | 66.7% | 12 | State-changing |
 
-**Read-Only Tools:**
-- Query information (get, search)
-- Average success: ~95%
-- Low error rate
+**Pattern:** State-changing tools (~55% success) vs Read-only tools (~95% success)
 
-**Write Action Accuracy:** Only 43.5% of attempted state changes succeed
-
----
-
-# Complete Failure Tasks
-<style scoped>
-  {
-    font-size: 20px;
-  }
-</style>
-
-**Tasks with 100% Failure Rate:**
-
-**Task 14:** Payment optimization
-- *"Book cheapest flight using gift cards and certificate"*
-- Requires complex payment parameter structure
-- 0/4 trials successful
-
-**Task 17:** Multiple simultaneous updates
-- *"Update passenger, baggage, and flight details"*
-- Requires coordinated changes
-- 0/4 trials successful
-
-**Task 20:** Constrained booking
-- *"Book flight with time and payment constraints"*
-- Simple 1-action task but complex validation
-- 0/4 trials successful
+**100% Failure Tasks (0/4 trials):**
+- **Task 14:** "Book cheapest flight using gift cards and certificate" → Complex payment structure
+- **Task 17:** "Update passenger, baggage, and flight details" → Coordinated changes
+- **Task 20:** "Book flight with time and payment constraints" → Complex validation
 
 ---
 
@@ -553,24 +382,15 @@ The two root causes amplify each other, creating a vicious cycle that leads to t
 |----------|------|------|---------|
 | Better prompts | Easy | Doesn't fix validation | ❌ |
 | Few-shot examples | Improves patterns | Limited to seen cases | ❌ |
-| RAG/retrieval | Adds context | Doesn't address execution | ❌ |
 | Fine-tuning | Model improvement | Needs data/compute | ❌ |
 | **Retry logic** | **Addresses root cause** | **Efficiency cost** | ✅ |
 | **Context mgmt** | **Prevents degradation** | **Needs tuning** | ✅ |
 
----
-
-# Decision Rationale: Why Retry Logic?
-
-**Observation:**
-- Validation errors are systematic, not random
-- Agent often has correct intent but wrong JSON structure
-- Errors are recoverable with clarification
-
-**Why Retry Logic Wins:**
-- ✅ Addresses root cause: parameter construction
+**Decision Rationale:**
+- Validation errors are systematic and recoverable with clarification
+- ✅ Addresses root cause: parameter construction errors
 - ✅ Generalizes across all tools and domains
-- ✅ Measurable improvement
+- ✅ Measurable improvement (proven in POC)
 - ✅ Low overhead: Only triggers on failures
 
 ---
@@ -615,39 +435,18 @@ The two root causes amplify each other, creating a vicious cycle that leads to t
 ---
 
 
-# ContextManagedAgent: Strategies
+# ContextManagedAgent & EnhancedLLMAgent
 
-**1. Sliding Window (Preferred):**
-```
-Keep:
-  - System message
-  - Task description
-  - Last N messages (N = context_limit * 0.3)
+**Context Management Strategies:**
+1. **Sliding Window:** Keep system message, task description, last N messages; drop middle history
+2. **Compression:** Summarize old messages to maintain state consistency
 
-Drop:
-  - Middle conversation history
-```
+**EnhancedLLMAgent = RetryManagedAgent + ContextManagedAgent**
 
-**2. Compression:**
-```
-Summarize old messages:
-  "Previous 10 turns: User requested flight change,
-   agent searched options, user selected new flight."
-```
-
----
-
-# EnhancedLLMAgent: Combined Solution
-
-**Best of Both Worlds:**
-```python
-EnhancedLLMAgent = RetryManagedAgent + ContextManagedAgent
-```
-
-**Coordination:**
-1. Context management happens proactively (before generation)
-2. Retry logic happens reactively (after failure)
-3. No interference between mechanisms
+**How They Work Together:**
+- Context management: Proactive (before generation)
+- Retry logic: Reactive (after failure)
+- No interference: Clean separation of concerns
 
 ---
 
@@ -675,55 +474,19 @@ EnhancedLLMAgent = RetryManagedAgent + ContextManagedAgent
 
 # Key Design Decisions
 
-**Decision 1: Non-invasive Monkey Patching**
+**1. Non-invasive Monkey Patching**
+- ✅ Backward compatible, no fork needed
+- ✅ Users don't switch frameworks
 
-**Why not fork tau2-bench?**
-- ✅ Backward compatible with existing installations
-- ✅ Can upgrade tau2-bench independently
-- ✅ Users don't need to switch frameworks
-- ✅ Contributions can be upstreamed
-
-**How it works:**
-```python
-# Intercept environment creation
-original_get_env = registry.get_env_constructor
-def patched_get_env():
-    env = original_get_env()
-    return LoggingEnvironment(env)
-registry.get_env_constructor = patched_get_env
-```
-
----
-
-# Key Design Decisions
-
-**Decision 2: Structured Logging vs Simple Metrics**
-
-**Why capture everything?**
-- ✅ Enables re-analysis with new hypotheses
+**2. Structured Logging vs Simple Metrics**
+- ✅ Capture everything: tool execution, state changes, timing
 - ✅ 15+ analysis methods from single data collection
-- ✅ Future-proof for new metric development
-- ✅ Root cause analysis requires full context
+- ✅ Future-proof for new hypotheses
 
-**What we capture:**
-- Tool execution events (args, results, timing)
-- State change events (pre/post hashes, diffs)
-- Context reduction events (tokens saved, strategy)
-
----
-
-# Key Design Decisions
-
-**Decision 3: Three Agent Variants**
-
-**Why separate agents?**
-- `retry_agent`: Isolated retry testing
-- `context_agent`: Isolated context testing
+**3. Three Agent Variants (A/B Testing)**
+- `retry_agent`: Isolated retry mechanism testing
+- `context_agent`: Isolated context management testing
 - `enhanced_agent`: Combined optimization
-
-**Benefits:**
-- ✅ A/B testing of mechanisms
-- ✅ Incremental adoption
 - ✅ Clear attribution of improvements
 
 ---
@@ -737,83 +500,56 @@ registry.get_env_constructor = patched_get_env
 # Demo Overview
 
 **What We'll Show:**
-1. Run analysis on captured logs
-2. Explore interactive HTML reports
-4. Quick Sim generation run using Grok API
-
-**Files We'll Use:**
-
-- Enhanced: 
-  - `enhanced_logs/archive/tau2-bench-jit/baseline_airline_xai_grok3_gemini2_5_flash.json`
-  - `samples/logs/airline_gemini2_5_flash_10tasks_2t_retry_agent_enhanced_logs.json`
-  - `enhanced_logs/archive/airline_llm_agent_xai_grok3_enhanced_logs.json`
-- Reports: Available at all analysis result directories
+1. Run analysis on captured logs → Generate reports
+2. Explore interactive HTML reports (browser)
+3. Quick simulation run using Grok API
 
 ---
 
-# Demo: Running Analysis
+# Demo 1: Running Analysis
 
-**Command (enhanced):**
+**Command:**
 ```bash
 python scripts/analyze_simple_logs.py \
   enhanced_logs/archive/tau2-bench-jit/baseline_airline_xai_grok3_gemini2_5_flash.json
 ```
 
-**What It Does:**
-1. Loads tool execution events
-2. Runs 15+ analysis methods
-3. Generates 3 reports:
-   - `analysis_report.md` (executive summary)
-   - `enhanced_analysis_report.html` (interactive viz)
-   - `tool_report.html` (tool-specific metrics)
-   - `simulation_report.html`(Full simulation log of every Task/Trail and Results)
+**Output:** 3 comprehensive reports
+- `enhanced_analysis_report.html` (interactive visualizations)
+- `tool_report.html` (per-tool success rates & errors)
+- `simulation_report.html` (full task/trial logs)
 
 ---
 
-# Demo: Running Analysis Baseline (Skip)
-- Baseline: `scripts/non_enhanced/baseline_airline_grok3.json`
-**Command (Non-enhanced):**
-```bash
-python scripts/non_enhanced/analyze_breakdown.py --results scripts/non_enhanced/baseline_airline_grok3.json
-python scripts/non_enhanced/failure_analysis.py scripts/non_enhanced/baseline_airline_grok3.json
-```
-**Output:** *(show terminal output)*
+# Demo 2: Interactive HTML Reports
 
----
-# Demo: Interactive HTML Reports
-
-**enhanced_analysis_report.html:**
-- Tool performance
-- Temporal trend analysis
-- Success rate breakdowns 
-
-**tool_report.html:**
-- Per-tool success rates
+**Live Navigation in Browser:**
+- Tool performance trends
+- Temporal analysis
+- Success rate breakdowns
 - Error categorization
-
-**simulation_report.html:**
-- Task and Tool Call details
-
-**Live Navigation:** *(switch to browser)*
+- Full simulation logs
 
 ---
 
-# Demo: Enhanced logging using Grok 3
+# Demo 3: Live Simulation Run
 
-**Single Task**
+**Single Task with Retry Agent:**
 ```bash
 ./tau2-enhanced run --domain airline_enhanced --agent retry_agent \
 --agent-llm xai/grok-3 --user-llm xai/grok-4-fast-reasoning \
 --num-trials 1 --save-to demo_1_task --task-ids 20
 ```
 
-**10 Tasks**
+**10 Tasks (Optional)**
 ```bash
 ./tau2-enhanced run --domain airline_enhanced --agent llm_agent \
 --agent-llm xai/grok-3 --user-llm xai/grok-4-fast-reasoning \
 --num-trials 1 --save-to demo_10_task \
 --max-concurrency 5 --num-tasks 10
 ```
+
+**What happens:** Real-time tool execution with enhanced logging
 
 ---
 
@@ -822,92 +558,29 @@ python scripts/non_enhanced/failure_analysis.py scripts/non_enhanced/baseline_ai
 *Future Work & Extensions*
 
 ---
+<style scoped>
+  {
+    font-size: 20px;
+  }
+</style>
+# Next Steps: Validation & Optimization
 
-# Immediate Validation Steps
-
-**1. Proof-of-Concept Completed (on Gemini)**
+**1. Proof-of-Concept Completed (Gemini)**
 - ✅ `retry_agent`: **+11.1pp** improvement
-- ✅ `context_agent`: **+1.9pp** improvement
 - ✅ `enhanced_agent`: **+13.0pp** improvement
 
-**2. Next Steps: Model-Specific Optimization**
-- **Analyze failure patterns** per model (error signatures differ)
-- **Tune retry strategies** based on model-specific error types
-- **Optimize context thresholds** per model architecture
-- **Cross-domain validation** on retail and telecom domains
+**2. Model-Specific Optimization**
+- Analyze failure patterns per model (error signatures differ)
+- Tune retry strategies & context thresholds per model
+- Cross-domain validation (retail, telecom)
 
----
+**3. Proposed Training Strategy**
+- **Structured Output Training (~50k examples):** Reduce ActionCheckFailure from 89% to <45%
+  - Focus: Payment structures, nested objects, parameter validation
+- **Error Recovery Training:** Build error signature → recovery strategy mappings, train on retry patterns 
+- **Context Management Dataset (~25k):** Prevent performance cliffs and confusion
 
-# Proposed Training Strategy
-
-## 1. Structured Output Training (~50k examples)
-
-**Goal:** Reduce validation errors from root cause
-
-**Focus Areas (from actual failure analysis):**
-- `book_reservation`: 88.9% failure → Payment parameter structure
-- `search_direct_flight`: 78.8% failure → Search parameter validation
-- `update_reservation_flights`: 100% failure → Nested object handling
-
-**Data Generation:**
-```python
-{
-  "correct": {"payment": {"gift_card_ids": [...], "certificate_id": "..."}},
-  "error": {"payment": {"method": "split", "cards": [...], "cert": "..."}}
-}
-```
-
-**Target:** Reduce ActionCheckFailure from 89% to <45%
-
----
-
-# Proposed Training Strategy (continued)
-
-## 2. Model-Specific Error Recovery Training
-
-**Approach:**
-- Train on retry patterns that succeeded for each model
-- Build error signature → recovery strategy mappings
-- Adaptive strategies that switch based on error type
-
-**Training Data:**
-```python
-{
-  "error": "ActionCheckFailure: payment_id required",
-  "failed_retry": {"payment": {"id": "cert_123", "amount": 348}},
-  "successful_retry": {"payment_id": "cert_123", "amount": 348}
-}
-```
-
-## 3. Context Management Dataset (~25k examples)
-
-**Goal:** Prevent performance cliffs and confusion
-**Focus:** Long conversations with state consistency
-**Validation:** Monitor self-loop rate (<35%) and efficiency metrics
-
-**Expected Outcomes:**
-- Structural: +5-10pp from better parameter formatting
-- Recovery: +3-5pp from intelligent retry strategies
-- Efficiency: -15% tool calls through better planning
-
----
-
-# Research Directions (Near-term)
-
-**1. Multi-modal Evaluation:**
-- Add tasks with image/document processing
-- Test vision capabilities (receipt scanning, ID verification)
-- Measure multi-modal reasoning
-
-**2. Quality Metrics:**
-- Implement politeness scoring
-- Add bias detection
-- Measure proactive behavior
-
-**3. Adversarial Robustness:**
-- Fault injection testing
-- Edge case generation
-- Stress test with ambiguous queries
+**Expected Outcomes:** +5-15pp improvement, -15% tool calls through better planning
 
 ---
 
@@ -943,29 +616,24 @@ python scripts/non_enhanced/failure_analysis.py scripts/non_enhanced/baseline_ai
 
 ---
 
-# Q&A Highlights
+# Final Slide: Q&A Preparation
 
-### Exceptional Technical Accomplishments
+**3 Exceptional Technical Accomplishments:**
 
-*   **Acubed (Airbus):** Advanced aircraft localization from TRL 3 to 4 in one year with a reduced team.
-    *   Improved localization performance from **30% to 98%**.
-    *   Reduced pipeline complexity and latency while boosting performance.
-*   **Waymo:**
-    *   Generated synthetic degraded data to estimate LIDAR data quality.
-    *   Coordinated between LIDAR hardware, perception software, and external customers.
-*   **Auro (CTO):**
-    *   Initiated a data-driven Reinforcement Learning environment for a learned driving policy in 2019.
+1. **Acubed (Airbus):** Advanced aircraft localization from TRL 3 to 4 in one year
+   - Improved performance from **30% to 98%** while reducing pipeline complexity and latency
 
-### Hardest Technical Problem Solved
+2. **Waymo:** Generated synthetic degraded data to estimate LIDAR quality
+   - Coordinated across hardware, perception software, and external customers
 
-> Building a full-stack self-driving car (perception, planning, controls, sim, UI) from scratch in 3 months after moving to the USA.
+3. **Auro (CTO):** Initiated data-driven RL environment for learned driving policy (2019)
+   - Built foundation for autonomous driving behavior https://aurobots.com/blog/
 
-### Career Guidance
+**Hardest Technical Problem Solved:** Building a full-stack self-driving car (perception, planning, controls, sim) from in 3 months after moving to the USA.
 
-> A drive to contribute to hard, AI-based autonomous solutions at scale—from robotics and self-driving cars to AI agents.
+**Career Decisions:** Drive to contribute to hard, AI-based autonomous solutions at scale—from robotics and self-driving cars to AI agents.
 
 ---
-
 
 # Questions?
 
@@ -1105,3 +773,33 @@ The benchmark tests for four distinct and sophisticated categories of failure.
 **4. Complex Intent Handling** (7% of failures)
   - **Tests:** Can the agent handle multi-part requests, context switching, and evolving user goals?
   - **Example:** User asks to cancel two bookings and modify a third, then adds a new request mid-conversation.
+---
+
+
+# Backup Demo: Running Analysis Baseline (Skip)
+- Baseline: `scripts/non_enhanced/baseline_airline_grok3.json`
+**Command (Non-enhanced):**
+```bash
+python scripts/non_enhanced/analyze_breakdown.py --results scripts/non_enhanced/baseline_airline_grok3.json
+python scripts/non_enhanced/failure_analysis.py scripts/non_enhanced/baseline_airline_grok3.json
+```
+**Output:** *(show terminal output)*
+
+---
+
+# Backup: Research Directions (Near-term)
+
+**1. Multi-modal Evaluation:**
+- Add tasks with image/document processing
+- Test vision capabilities (receipt scanning, ID verification)
+- Measure multi-modal reasoning
+
+**2. Quality Metrics:**
+- Implement politeness scoring
+- Add bias detection
+- Measure proactive behavior
+
+**3. Adversarial Robustness:**
+- Fault injection testing
+- Edge case generation
+- Stress test with ambiguous queries
