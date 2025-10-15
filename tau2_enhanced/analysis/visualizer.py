@@ -3794,6 +3794,18 @@ class LogVisualizer:
                     <div class="detail-value">{sim['termination_reason']}</div>
 """
 
+            # Add agent and user costs if available
+            if sim.get('agent_cost') is not None:
+                html += f"""
+                    <div class="detail-label">Agent Cost:</div>
+                    <div class="detail-value">${sim['agent_cost']:.4f}</div>
+"""
+            if sim.get('user_cost') is not None:
+                html += f"""
+                    <div class="detail-label">User Cost:</div>
+                    <div class="detail-value">${sim['user_cost']:.4f}</div>
+"""
+
             if 'task_description' in sim:
                 html += f"""
                     <div class="detail-label">Description:</div>
@@ -3802,7 +3814,92 @@ class LogVisualizer:
 
             html += """
                 </div>
+"""
 
+            # Add reward breakdown section
+            if sim.get('reward_breakdown'):
+                html += """
+                <div class="section-title">💰 Reward Breakdown</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+"""
+                breakdown = sorted(sim['reward_breakdown'].items())
+                for reward_type, reward_value in breakdown:
+                    html += f"""
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                        <span style="font-weight: 600; color: #2c3e50;">{reward_type}:</span>
+                        <span style="color: {'#27ae60' if reward_value > 0 else '#7f8c8d'};">{reward_value:.2f}</span>
+                    </div>
+"""
+                html += """
+                </div>
+"""
+
+            # Add DB check section
+            if sim.get('db_check') is not None:
+                db_check = sim['db_check']
+                status_icon = '✅' if db_check['db_match'] else '❌'
+                status_color = '#27ae60' if db_check['db_match'] else '#e74c3c'
+                html += f"""
+                <div class="section-title">🗄️ Database Check</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid {status_color};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 1.1em;"><strong>Status:</strong> {status_icon} {'Match' if db_check['db_match'] else 'No Match'}</span>
+                        <span style="font-weight: 600; color: {status_color};">Reward: {db_check['db_reward']:.2f}</span>
+                    </div>
+                </div>
+"""
+
+            # Add communication checks section
+            if sim.get('communicate_checks'):
+                html += """
+                <div class="section-title">💬 Communication Checks</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+"""
+                for i, check in enumerate(sim['communicate_checks']):
+                    status_icon = '✅' if check['met'] else '❌'
+                    status_color = '#27ae60' if check['met'] else '#e74c3c'
+                    html += f"""
+                    <div style="padding: 10px; margin: 8px 0; border-left: 4px solid {status_color}; background: #fafafa;">
+                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">
+                            {status_icon} Check {i}: {check['info']}
+                        </div>
+"""
+                    if check.get('justification'):
+                        html += f"""
+                        <div style="color: #7f8c8d; font-size: 0.9em; margin-left: 20px;">
+                            {check['justification']}
+                        </div>
+"""
+                    html += """
+                    </div>
+"""
+                html += """
+                </div>
+"""
+
+            # Add expected actions section (full list from task)
+            if sim.get('expected_actions'):
+                html += """
+                <div class="section-title">📝 Expected Actions (Ground Truth)</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+"""
+                for i, action in enumerate(sim['expected_actions']):
+                    html += f"""
+                    <div style="padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;">
+                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
+                            {i + 1}. {action['action_id']} - <code>{action['name']}</code>
+                        </div>
+                        <div style="margin-left: 20px;">
+                            <strong>Arguments:</strong>
+                            <div class="code-block">{json.dumps(action['arguments'], indent=2)}</div>
+                        </div>
+                    </div>
+"""
+                html += """
+                </div>
+"""
+
+            html += """
                 <div class="section-title">🎯 Action Checks</div>
 """
 

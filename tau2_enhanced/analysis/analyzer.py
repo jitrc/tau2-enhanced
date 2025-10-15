@@ -1330,22 +1330,74 @@ class LogAnalyzer:
         report_data = []
 
         for sim in simulations:
+            reward_info = sim.get('reward_info', {})
+
             sim_data = {
                 'id': sim.get('id'),
                 'task_id': sim.get('task_id'),
                 'trial': sim.get('trial', sim.get('trial_idx', 0)),
-                'reward': sim.get('reward_info', {}).get('reward', 0),
+                'reward': reward_info.get('reward', 0),
                 'duration': sim.get('duration', 0),
                 'termination_reason': sim.get('termination_reason', 'unknown'),
                 'messages': sim.get('messages', sim.get('trajectory', [])),
-                'action_checks': []
+                'action_checks': [],
+                'agent_cost': sim.get('agent_cost'),
+                'user_cost': sim.get('user_cost'),
             }
+
+            # Add reward breakdown
+            if reward_info.get('reward_breakdown'):
+                sim_data['reward_breakdown'] = {
+                    k.value if hasattr(k, 'value') else str(k): v
+                    for k, v in reward_info['reward_breakdown'].items()
+                }
+            else:
+                sim_data['reward_breakdown'] = {}
+
+            # Add DB check
+            if reward_info.get('db_check'):
+                db_check = reward_info['db_check']
+                sim_data['db_check'] = {
+                    'db_match': db_check.get('db_match', False),
+                    'db_reward': db_check.get('db_reward', 0.0)
+                }
+            else:
+                sim_data['db_check'] = None
+
+            # Add communication checks
+            if reward_info.get('communicate_checks'):
+                sim_data['communicate_checks'] = [
+                    {
+                        'info': check.get('info', ''),
+                        'met': check.get('met', False),
+                        'justification': check.get('justification', '')
+                    }
+                    for check in reward_info['communicate_checks']
+                ]
+            else:
+                sim_data['communicate_checks'] = []
 
             # Add task information if available
             tasks = self.raw_log_data.get('tasks', [])
             task = next((t for t in tasks if t.get('id') == sim_data['task_id']), None)
             if task:
                 sim_data['task_description'] = task.get('description', task.get('goal', ''))
+
+                # Add full list of expected actions from task
+                eval_criteria = task.get('evaluation_criteria', {})
+                if eval_criteria.get('actions'):
+                    sim_data['expected_actions'] = [
+                        {
+                            'action_id': action.get('action_id', ''),
+                            'name': action.get('name', ''),
+                            'arguments': action.get('arguments', {})
+                        }
+                        for action in eval_criteria['actions']
+                    ]
+                else:
+                    sim_data['expected_actions'] = []
+            else:
+                sim_data['expected_actions'] = []
 
             # Process action checks
             reward_info = sim.get('reward_info', {})
