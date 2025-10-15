@@ -691,10 +691,31 @@ class LogAnalyzer:
             max_execution_time=('execution_time', 'max')
         ).reset_index()
 
-        # Calculate derived metrics
-        state_analysis['failed_calls'] = (
-            state_analysis['total_calls'] - state_analysis['successful_calls']
-        )
+        # Try to use action check success rates for per-tool metrics
+        action_check_metrics = self._calculate_action_check_success_rates()
+
+        if action_check_metrics['has_action_checks']:
+            # Override success rates with action check results
+            tool_action_stats = action_check_metrics['tool_action_stats']
+
+            for idx, row in state_analysis.iterrows():
+                tool_name = row['tool_name']
+                if tool_name in tool_action_stats:
+                    stats = tool_action_stats[tool_name]
+                    state_analysis.at[idx, 'successful_calls'] = stats['successful']
+                    state_analysis.at[idx, 'failed_calls'] = stats['failed']
+                else:
+                    # No action checks for this tool, keep execution success
+                    state_analysis.at[idx, 'failed_calls'] = (
+                        state_analysis.at[idx, 'total_calls'] - state_analysis.at[idx, 'successful_calls']
+                    )
+        else:
+            # Calculate derived metrics using execution success
+            state_analysis['failed_calls'] = (
+                state_analysis['total_calls'] - state_analysis['successful_calls']
+            )
+
+        # Calculate success and error rates
         state_analysis['success_rate'] = (
             state_analysis['successful_calls'] / state_analysis['total_calls']
         )
