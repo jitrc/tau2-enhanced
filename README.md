@@ -331,6 +331,42 @@ Detailed environment snapshots captured at key moments:
 
 ## Analysis Capabilities
 
+### Advanced Visualization & Reporting 🆕
+
+tau2-enhanced includes a comprehensive suite of **9 interactive visualizations and reports**:
+
+#### **Interactive Plotly Visualizations**
+
+1. **Summary Dashboard** - Gauges and bars showing task/tool success rates and execution times
+2. **Failure Analysis Plot** - Multi-panel dashboard with failure counts, rates, and error types
+3. **State Change Plot** - Analysis of state-changing vs read-only tools with performance metrics
+4. **Tool Flow Sankey** - Visual diagram showing tool execution sequences and transitions
+5. **Performance Bottleneck Plot** - Box plots identifying slow tools and execution outliers
+
+#### **Comprehensive HTML Reports**
+
+6. **Tool Report** (`tool_report.html`) - Detailed tool-level analysis with interactive tables
+7. **Enhanced Analysis Report** (`enhanced_analysis_report.html`) - All 5 plots embedded in one report
+8. **Simulation Report** (`simulation_report.html`) - Simulation-level details featuring:
+   - **Action Check Failures Summary Table** - Comprehensive view of all validation failures with similarity scores (collapsible)
+   - **Error Pattern Clustering** - Groups common error patterns with occurrence counts and affected simulations (collapsible)
+   - Per-simulation expandable sections with message logs and detailed action check analysis
+   - Smart filters: Show Failed Only, Action Failed Only, Called w/ Diff Only
+9. **Markdown Report** (`analysis_report.md`) - Text-based summary for documentation
+
+#### **Quick Analysis**
+
+```bash
+# Analyze any enhanced log file
+python scripts/analyze_simple_logs.py enhanced_logs/your_log_file.json
+
+# Outputs generated automatically:
+# - analysis_results/your_log_file/tool_report.html
+# - analysis_results/your_log_file/enhanced_analysis_report.html
+# - analysis_results/your_log_file/simulation_report.html (NEW: with action failures & error clustering!)
+# - analysis_results/your_log_file/analysis_report.md
+```
+
 ### Statistical Analysis Methods
 
 1. **Basic Statistics**: Success rates, timing distributions, error counts
