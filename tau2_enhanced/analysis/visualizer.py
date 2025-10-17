@@ -2967,19 +2967,19 @@ class LogVisualizer:
             # Success rate vs calls scatter with better configuration
             fig.add_trace(
                 go.Scatter(
-                    x=tool_perf['total_calls'],
-                    y=tool_perf['success_rate'],
+                    x=tool_perf['total_calls'].tolist(),
+                    y=tool_perf['success_rate'].tolist(),
                     mode='markers+text',
                     marker=dict(
                         size=12,
-                        color=tool_perf['success_rate'],
+                        color=tool_perf['success_rate'].tolist(),
                         colorscale='RdYlGn',
                         cmin=0,
                         cmax=1,
                         showscale=True,
                         colorbar=dict(title="Success<br>Rate", x=0.46)
                     ),
-                    text=tool_perf['tool_name'],
+                    text=tool_perf['tool_name'].tolist(),
                     textposition="top center",
                     textfont=dict(size=9),
                     name="Tools",
@@ -3026,7 +3026,7 @@ class LogVisualizer:
             subplot_titles=("Tool Usage Distribution", "Transfer vs Communication",
                           "Tool Transition Patterns", "Execution Efficiency"),
             specs=[[{"type": "pie"}, {"type": "bar"}],
-                   [{"type": "scatter"}, {"type": "indicator"}]]
+                   [{"type": "bar"}, {"type": "indicator"}]]
         )
 
         if not tool_perf.empty:
@@ -3062,16 +3062,26 @@ class LogVisualizer:
                     row=1, col=2
                 )
 
-        # Tool transition patterns
+        # Tool transition patterns - show top transitions as horizontal bar chart
         if not sequence_analysis.empty:
             top_transitions = sequence_analysis.head(10)
+            # Create readable labels for transitions
+            transition_labels = [f"{row['source'][:15]}→{row['target'][:15]}"
+                               for _, row in top_transitions.iterrows()]
+
             fig.add_trace(
-                go.Scatter(
-                    x=list(range(len(top_transitions))),
-                    y=top_transitions['count'],
-                    mode='markers+lines',
-                    marker=dict(size=8, color='#ff6b6b'),
-                    name="Transition Frequency"
+                go.Bar(
+                    x=top_transitions['count'],
+                    y=transition_labels,
+                    orientation='h',
+                    marker=dict(
+                        color=top_transitions['count'],
+                        colorscale='Reds',
+                        showscale=False
+                    ),
+                    name="Transition Frequency",
+                    text=top_transitions['count'],
+                    textposition='outside'
                 ),
                 row=2, col=1
             )
@@ -3144,19 +3154,25 @@ class LogVisualizer:
 
         # Complexity vs success scatter
         if not tool_perf.empty:
+            # Scale marker sizes to be visible (min 10, max 50)
+            marker_sizes = (tool_perf['total_calls'] / tool_perf['total_calls'].max() * 40 + 10).tolist()
+
             fig.add_trace(
                 go.Scatter(
-                    x=tool_perf['total_calls'],
-                    y=tool_perf['success_rate'],
+                    x=tool_perf['total_calls'].tolist(),
+                    y=tool_perf['success_rate'].tolist(),
                     mode='markers+text',
                     marker=dict(
-                        size=tool_perf['total_calls'] / 2,
-                        color=tool_perf['state_change_rate'],
+                        size=marker_sizes,
+                        color=tool_perf['state_change_rate'].tolist(),
                         colorscale='Viridis',
                         showscale=True,
-                        colorbar=dict(title="State Change Rate")
+                        colorbar=dict(title="State Change Rate"),
+                        line=dict(width=1, color='white')
                     ),
-                    text=tool_perf['tool_name'],
+                    text=tool_perf['tool_name'].tolist(),
+                    textposition='top center',
+                    textfont=dict(size=8),
                     name="Tools"
                 ),
                 row=1, col=2
@@ -3234,12 +3250,22 @@ class LogVisualizer:
             )
 
             # Performance distribution histogram
+            # Use fewer bins for small datasets and add explicit binning
+            num_tools = len(tool_perf)
+            nbins = min(5, num_tools)  # Use fewer bins for small datasets
+
             fig.add_trace(
                 go.Histogram(
-                    x=tool_perf['success_rate'],
-                    nbinsx=10,
+                    x=tool_perf['success_rate'].tolist(),
+                    nbinsx=nbins,
                     marker_color='#007bff',
-                    name="Success Rate Distribution"
+                    name="Success Rate Distribution",
+                    autobinx=False,
+                    xbins=dict(
+                        start=0,
+                        end=1,
+                        size=0.2  # 5 bins: 0-0.2, 0.2-0.4, 0.4-0.6, 0.6-0.8, 0.8-1.0
+                    )
                 ),
                 row=2, col=2
             )
@@ -4177,6 +4203,5 @@ class LogVisualizer:
         with open(output_path, 'w') as f:
             f.write(html)
 
-        print(f"✅ Comprehensive simulation report generated: {output_path}")
         return str(output_path)
 
