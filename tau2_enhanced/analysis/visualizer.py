@@ -2977,7 +2977,14 @@ class LogVisualizer:
                         cmin=0,
                         cmax=1,
                         showscale=True,
-                        colorbar=dict(title="Success<br>Rate", x=0.46)
+                        colorbar=dict(
+                            title="Success<br>Rate",
+                            x=0.46,
+                            len=0.4,
+                            y=0.5,
+                            yanchor='middle',
+                            thickness=15
+                        )
                     ),
                     text=tool_perf['tool_name'].tolist(),
                     textposition="top center",
