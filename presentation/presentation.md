@@ -21,7 +21,7 @@ style: |
 ---
 
 
-# Evaluating Grok on tau2-bench
+# Evaluating Grok on τ2-bench
 ## Analysis, Critique & Improvements
 
 **Jit Ray Chowdhury**
