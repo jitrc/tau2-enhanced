@@ -3838,6 +3838,208 @@ class LogVisualizer:
             </div>
         </div>
 
+        <!-- Action Check Failures Summary Table -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e74c3c;">
+                🚨 Action Check Failures Summary
+            </h2>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Task ID</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Trial</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Task Success</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Action</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Tool</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Failure Type</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Similarity</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+        # Collect all action check failures
+        action_failure_rows = []
+        for sim in sim_data:
+            task_id = sim.get('task_id', 'N/A')
+            trial = sim.get('trial', 'N/A')
+            task_success = '✅' if sim['reward'] > 0 else '❌'
+            task_success_class = 'success' if sim['reward'] > 0 else 'failed'
+
+            for ac in sim['action_checks']:
+                if not ac['action_match']:
+                    action = ac['action']
+                    detailed = ac.get('detailed_analysis', {})
+                    closest = detailed.get('closest_match')
+
+                    failure_type = 'Never Called'
+                    similarity = 'N/A'
+                    similarity_class = 'similarity-low'
+
+                    if closest:
+                        failure_type = 'Called with Different Args'
+                        sim_val = closest.get('similarity', 0)
+                        similarity = f"{sim_val:.0%}"
+                        if sim_val >= 0.8:
+                            similarity_class = 'similarity-high'
+                        elif sim_val >= 0.5:
+                            similarity_class = 'similarity-medium'
+                        else:
+                            similarity_class = 'similarity-low'
+
+                    action_failure_rows.append({
+                        'task_id': task_id,
+                        'trial': trial,
+                        'task_success': task_success,
+                        'task_success_class': task_success_class,
+                        'action_name': action.get('action_id', 'N/A'),
+                        'tool_name': action.get('name', 'N/A'),
+                        'failure_type': failure_type,
+                        'similarity': similarity,
+                        'similarity_class': similarity_class
+                    })
+
+        # Generate table rows
+        for i, row in enumerate(action_failure_rows[:100]):  # Limit to first 100 for performance
+            row_class = 'background: #fef2f2;' if row['task_success_class'] == 'failed' else 'background: #f0fdf4;'
+            html += f"""
+                    <tr style="{row_class} border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>{row['task_id']}</code></td>
+                        <td style="padding: 10px 12px;">{row['trial']}</td>
+                        <td style="padding: 10px 12px; text-align: center;">{row['task_success']}</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">{row['action_name']}</td>
+                        <td style="padding: 10px 12px;"><code>{row['tool_name']}</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                {row['failure_type']}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="{row['similarity_class']}" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                {row['similarity']}
+                            </span>
+                        </td>
+                    </tr>
+"""
+
+        html += """
+                </tbody>
+            </table>
+"""
+
+        if len(action_failure_rows) > 100:
+            html += f"""
+            <p style="color: #64748b; font-style: italic; margin-top: 10px;">
+                Showing first 100 of {len(action_failure_rows)} total action check failures.
+                See individual task details below for complete information.
+            </p>
+"""
+
+        html += """
+        </div>
+
+        <!-- Error Clustering Section -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e67e22;">
+                🔍 Error Pattern Clustering
+            </h2>
+"""
+
+        # Cluster errors by pattern
+        from collections import Counter, defaultdict
+        error_patterns = Counter()
+        error_pattern_details = defaultdict(list)
+
+        for sim in sim_data:
+            task_id = sim.get('task_id', 'N/A')
+            trial = sim.get('trial', 'N/A')
+            sim_id = f"Task {task_id} | Trial {trial}"
+
+            # Look for tool execution errors in messages
+            for msg in sim.get('messages', []):
+                if msg.get('role') == 'tool' and (msg.get('tool_call_status') == 'error' or msg.get('error') is True):
+                    content = str(msg.get('content', ''))
+                    tool_name = msg.get('tool_name', msg.get('requestor', 'unknown'))
+
+                    # Extract error type
+                    if 'Error:' in content:
+                        import re
+                        error_match = re.search(r'Error: (.+?)(?:\\n|$)', content)
+                        if error_match:
+                            error_msg = error_match.group(1).strip()[:60]
+                            pattern_key = f"{tool_name}: {error_msg}"
+                        else:
+                            pattern_key = f"{tool_name}: GenericError"
+                    else:
+                        pattern_key = f"{tool_name}: GenericError"
+
+                    error_patterns[pattern_key] += 1
+                    error_pattern_details[pattern_key].append({
+                        'sim_id': sim_id,
+                        'sample': content[:120]
+                    })
+
+        if error_patterns:
+            html += """
+            <div style="margin-bottom: 20px; padding: 15px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px;">
+                <strong style="color: #ea580c;">📊 Common Error Patterns:</strong>
+                <div style="margin-top: 10px;">
+"""
+            for pattern, count in error_patterns.most_common(5):
+                html += f"""
+                    <div style="margin: 8px 0; padding: 10px; background: white; border-radius: 4px; border-left: 3px solid #f97316;">
+                        <strong>{pattern}</strong>: {count} occurrence(s)
+                        <br>
+                        <em style="color: #64748b; font-size: 0.9em;">Sample: {error_pattern_details[pattern][0]['sample']}</em>
+                    </div>
+"""
+            html += """
+                </div>
+            </div>
+"""
+
+            # Error details table
+            html += """
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Pattern</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Count</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Affected Simulations</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+            for pattern, count in error_patterns.most_common(20):  # Show top 20
+                affected_sims = ', '.join([d['sim_id'] for d in error_pattern_details[pattern][:3]])
+                if len(error_pattern_details[pattern]) > 3:
+                    affected_sims += f", ... (+{len(error_pattern_details[pattern]) - 3} more)"
+
+                html += f"""
+                    <tr style="background: #fff7ed; border-bottom: 1px solid #fdba74;">
+                        <td style="padding: 10px 12px;"><code style="font-size: 0.85em;">{pattern}</code></td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; background: #fed7aa; color: #9a3412; font-weight: 600;">
+                                {count}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">{affected_sims}</td>
+                    </tr>
+"""
+
+            html += """
+                </tbody>
+            </table>
+"""
+        else:
+            html += """
+            <p style="color: #64748b; font-style: italic;">No execution errors found in tool messages.</p>
+"""
+
+        html += """
+        </div>
+
         <div class="controls">
             <button class="btn" onclick="toggleAll()">Expand/Collapse All</button>
             <button class="btn" onclick="showTaskFailedOnly()">Show Task Failed Only</button>
