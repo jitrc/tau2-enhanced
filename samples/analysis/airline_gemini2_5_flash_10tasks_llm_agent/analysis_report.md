@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_enhanced_logs.json`
-**Generated:** 2025-10-14 20:31:20
+**Generated:** 2025-10-17 01:46:49
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -55,8 +55,8 @@
 | get_reservation_details | ActionCheckFailure | 11 | 42.3% |
 | cancel_reservation | ActionCheckFailure | 4 | 66.7% |
 | get_user_details | ActionCheckFailure | 2 | 16.7% |
-| update_reservation_flights | ActionCheckFailure | 2 | 100.0% |
 | send_certificate | ActionCheckFailure | 2 | 100.0% |
+| update_reservation_flights | ActionCheckFailure | 2 | 100.0% |
 | book_reservation | ActionCheckFailure | 1 | 50.0% |
 | search_direct_flight | ActionCheckFailure | 1 | 25.0% |
 
@@ -76,21 +76,21 @@
 
 | Tool Name | Calls | Success Rate | Avg Time (ms) |
 |-----------|-------|--------------|---------------|
-| cancel_reservation | 10 | 100.0% | 0.10 |
-| book_reservation | 6 | 100.0% | 0.18 |
-| send_certificate | 2 | 100.0% | 0.06 |
-| update_reservation_flights | 2 | 100.0% | 0.11 |
+| cancel_reservation | 10 | 20.0% | 0.10 |
+| book_reservation | 6 | 16.7% | 0.18 |
+| send_certificate | 2 | 0.0% | 0.06 |
+| update_reservation_flights | 2 | 0.0% | 0.11 |
 
 ### Read-Only Tools (7 tools)
 
 | Tool Name | Calls | Success Rate | Avg Time (ms) |
 |-----------|-------|--------------|---------------|
-| get_reservation_details | 104 | 90.4% | 0.04 |
-| get_user_details | 34 | 100.0% | 0.04 |
+| get_reservation_details | 104 | 14.4% | 0.04 |
+| get_user_details | 34 | 29.4% | 0.04 |
 | transfer_to_human_agents | 26 | 100.0% | 1.80 |
 | get_flight_status | 10 | 100.0% | 0.04 |
-| search_direct_flight | 10 | 100.0% | 0.18 |
-| book_reservation | 6 | 0.0% | 0.08 |
+| search_direct_flight | 10 | 30.0% | 0.18 |
+| book_reservation | 6 | 16.7% | 0.08 |
 | calculate | 2 | 100.0% | 0.08 |
 
 ---
@@ -108,9 +108,9 @@
 | transfer_to_human_agents | get_reservation_details | 9 |
 | get_reservation_details | get_user_details | 8 |
 | get_reservation_details | search_direct_flight | 8 |
-| get_user_details | transfer_to_human_agents | 6 |
-| search_direct_flight | book_reservation | 6 |
 | book_reservation | book_reservation | 6 |
+| get_reservation_details | get_flight_status | 6 |
+| get_user_details | transfer_to_human_agents | 6 |
 
 ---
 
@@ -124,6 +124,7 @@
 - **get_reservation_details** has the highest failure count with 11 failures
 - **23** failures are due to action validation issues
 - Tool distribution: **4** state-changing, **7** read-only
+- State-changing tools underperform read-only tools (9.2% vs 55.8%)
 - High self-loop rate (35.5%) indicates potential retry patterns
 - Most common pattern: **get_reservation_details** → **get_reservation_details** (59 times)
 
@@ -134,7 +135,8 @@
 - **High Impact Pattern**: High-usage poor performers identified: get_reservation_details, get_user_details, book_reservation, cancel_reservation, search_direct_flight
 - **Performance Pattern**: 7 tools categorized as poor performers based on execution metrics
 - **Action Check Pattern**: 7 action validation failures detected across tool executions
-- **High Failure Rate**: Tools with >50% failure rate detected: cancel_reservation, update_reservation_flights, send_certificate
+- **High Failure Rate**: Tools with >50% failure rate detected: cancel_reservation, send_certificate, update_reservation_flights
+- **State Operation Pattern**: 4 state-changing operations show 9.2% average success rate
 - **System Status**: Overall tool success rate at 57.4% indicates significant reliability challenges
 - **Task Analysis**: Task completion rate at 60.0% indicates workflow execution challenges
 
@@ -164,12 +166,12 @@
 - **get_user_details**: 2 failures (16.7% failure rate)
   - Affected 2 simulation(s)
   - Example args: `{'user_id': 'mei_brown_7075'}`
-- **update_reservation_flights**: 2 failures (100.0% failure rate)
-  - Affected 2 simulation(s)
-  - Example args: `{'reservation_id': 'XEHM4B', 'cabin': 'economy', 'flights': [{'flight_number': 'HAT005', 'date': '20...`
 - **send_certificate**: 2 failures (100.0% failure rate)
   - Affected 2 simulation(s)
   - Example args: `{'user_id': 'noah_muller_9847', 'amount': 50}`
+- **update_reservation_flights**: 2 failures (100.0% failure rate)
+  - Affected 2 simulation(s)
+  - Example args: `{'reservation_id': 'XEHM4B', 'cabin': 'economy', 'flights': [{'flight_number': 'HAT005', 'date': '20...`
 - **book_reservation**: 1 failures (50.0% failure rate)
   - Affected 1 simulation(s)
   - Example args: `{'user_id': 'sophia_silva_7557', 'origin': 'ORD', 'destination': 'PHL', 'flight_type': 'one_way', 'c...`

@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_enhanced_agent_enhanced_logs.json`
-**Generated:** 2025-10-14 20:31:08
+**Generated:** 2025-10-17 01:46:53
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -36,8 +36,8 @@
 | cancel_reservation | 8 | 12.5% | 0.11 | Poor |
 | get_flight_status | 8 | 100.0% | 0.04 | Excellent |
 | update_reservation_flights | 4 | 0.0% | 0.10 | Poor |
-| send_certificate | 2 | 0.0% | 0.05 | Poor |
 | search_onestop_flight | 2 | 100.0% | 2.86 | Excellent |
+| send_certificate | 2 | 0.0% | 0.05 | Poor |
 
 ### Performance Distribution
 
@@ -75,19 +75,19 @@
 
 | Tool Name | Calls | Success Rate | Avg Time (ms) |
 |-----------|-------|--------------|---------------|
-| cancel_reservation | 8 | 100.0% | 0.11 |
-| book_reservation | 6 | 100.0% | 0.16 |
-| update_reservation_flights | 4 | 100.0% | 0.10 |
-| send_certificate | 2 | 100.0% | 0.05 |
+| cancel_reservation | 8 | 12.5% | 0.11 |
+| book_reservation | 6 | 0.0% | 0.16 |
+| update_reservation_flights | 4 | 0.0% | 0.10 |
+| send_certificate | 2 | 0.0% | 0.05 |
 
 ### Read-Only Tools (7 tools)
 
 | Tool Name | Calls | Success Rate | Avg Time (ms) |
 |-----------|-------|--------------|---------------|
-| get_reservation_details | 128 | 89.1% | 0.04 |
-| get_user_details | 34 | 100.0% | 0.04 |
+| get_reservation_details | 128 | 20.3% | 0.04 |
+| get_user_details | 34 | 23.5% | 0.04 |
 | transfer_to_human_agents | 24 | 100.0% | 0.03 |
-| search_direct_flight | 16 | 100.0% | 0.19 |
+| search_direct_flight | 16 | 18.8% | 0.19 |
 | book_reservation | 8 | 0.0% | 0.08 |
 | get_flight_status | 8 | 100.0% | 0.04 |
 | search_onestop_flight | 2 | 100.0% | 2.86 |
@@ -123,6 +123,7 @@
 - **cancel_reservation** has the highest failure count with 5 failures
 - **16** failures are due to action validation issues
 - Tool distribution: **4** state-changing, **7** read-only
+- State-changing tools underperform read-only tools (3.1% vs 51.8%)
 - High self-loop rate (42.7%) indicates potential retry patterns
 - Most common pattern: **get_reservation_details** → **get_reservation_details** (82 times)
 
@@ -134,6 +135,7 @@
 - **Performance Pattern**: 7 tools categorized as poor performers based on execution metrics
 - **Action Check Pattern**: 6 action validation failures detected across tool executions
 - **High Failure Rate**: Tools with >50% failure rate detected: cancel_reservation, book_reservation, send_certificate, update_reservation_flights
+- **State Operation Pattern**: 4 state-changing operations show 3.1% average success rate
 - **System Status**: Overall tool success rate at 70.4% indicates significant reliability challenges
 - **Task Analysis**: Task completion rate at 55.0% indicates workflow execution challenges
 
