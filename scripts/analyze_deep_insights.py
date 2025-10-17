@@ -39,23 +39,39 @@ class DeepInsightsAnalyzer:
     def analyze_state_changes(self):
         """Analyze state changes across simulations."""
         state_data = []
+        detailed_changes = []
 
         for sim in self.simulations:
             sim_id = f"Task {sim.get('task_id', 'N/A')} | Trial {sim.get('trial', 'N/A')}"
             success = sim.get('reward', 0) > 0
 
             snapshots = sim.get('state_snapshots', [])
-            state_changes = sum(1 for s in snapshots if s.get('state_changed', False))
+            state_change_snapshots = [s for s in snapshots if s.get('state_changed', False)]
+
+            # Collect detailed state change info
+            for snapshot in state_change_snapshots:
+                db_diff = snapshot.get('db_diff', {})
+
+                change_detail = {
+                    'sim_id': sim_id,
+                    'success': success,
+                    'step_idx': snapshot.get('step_idx', 0),
+                    'triggered_by': snapshot.get('triggered_by', 'unknown'),
+                    'added': list(db_diff.get('added', {}).keys()) if db_diff.get('added') else [],
+                    'modified': list(db_diff.get('modified', {}).keys()) if db_diff.get('modified') else [],
+                    'removed': list(db_diff.get('removed', {}).keys()) if db_diff.get('removed') else []
+                }
+                detailed_changes.append(change_detail)
 
             state_data.append({
                 'sim_id': sim_id,
                 'success': success,
-                'state_changes': state_changes,
+                'state_changes': len(state_change_snapshots),
                 'total_snapshots': len(snapshots),
                 'reward': sim.get('reward', 0)
             })
 
-        return state_data
+        return state_data, detailed_changes
 
     def analyze_context_usage(self):
         """Analyze context window usage patterns."""
@@ -136,7 +152,7 @@ def create_deep_insights_report(analyzer, output_path, source_file):
     """Create comprehensive HTML report with deep insights."""
 
     # Analyze all aspects
-    state_data = analyzer.analyze_state_changes()
+    state_data, detailed_changes = analyzer.analyze_state_changes()
     context_data = analyzer.analyze_context_usage()
     metrics_data = analyzer.analyze_execution_metrics()
     failure_patterns = analyzer.analyze_failure_patterns()
@@ -379,6 +395,50 @@ def create_deep_insights_report(analyzer, output_path, source_file):
                 margin: 10px 0;
                 line-height: 1.6;
             }}
+            .state-changes-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }}
+            .state-changes-table th {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 12px;
+                text-align: left;
+                font-weight: 600;
+            }}
+            .state-changes-table td {{
+                padding: 10px 12px;
+                border-bottom: 1px solid #e1e8ed;
+            }}
+            .state-changes-table tr:hover {{
+                background: #f8f9ff;
+            }}
+            .success-row {{
+                background: #f0fdf4;
+            }}
+            .failed-row {{
+                background: #fef2f2;
+            }}
+            .change-badge {{
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 0.85em;
+                margin: 2px;
+            }}
+            .added-badge {{
+                background: #d1fae5;
+                color: #065f46;
+            }}
+            .modified-badge {{
+                background: #fef3c7;
+                color: #92400e;
+            }}
+            .removed-badge {{
+                background: #fee2e2;
+                color: #991b1b;
+            }}
         </style>
     </head>
     <body>
@@ -441,6 +501,42 @@ def create_deep_insights_report(analyzer, output_path, source_file):
                     • Successful simulations duration: {failure_patterns['success'].get('avg_duration', 0):.1f}s<br>
                     • Time difference: {abs(failure_patterns['failed'].get('avg_duration', 0) - failure_patterns['success'].get('avg_duration', 0)):.1f}s
                 </div>
+            </div>
+
+            <div class="insights-section">
+                <div class="insight-title">🔄 Detailed State Changes</div>
+                <p style="color: #64748b; margin-bottom: 15px;">
+                    All database modifications tracked during execution. Failed simulations are highlighted in red.
+                </p>
+
+                <table class="state-changes-table">
+                    <thead>
+                        <tr>
+                            <th>Simulation</th>
+                            <th>Success</th>
+                            <th>Step</th>
+                            <th>Triggered By</th>
+                            <th>Changes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {''.join([f'''
+                        <tr class="{'success-row' if change['success'] else 'failed-row'}">
+                            <td>{change['sim_id']}</td>
+                            <td>{'✅ Success' if change['success'] else '❌ Failed'}</td>
+                            <td>{change['step_idx']}</td>
+                            <td><code>{change['triggered_by']}</code></td>
+                            <td>
+                                {''.join([f'<span class="change-badge added-badge">+{item}</span>' for item in change['added']])}
+                                {''.join([f'<span class="change-badge modified-badge">~{item}</span>' for item in change['modified']])}
+                                {''.join([f'<span class="change-badge removed-badge">-{item}</span>' for item in change['removed']])}
+                                {' <em style="color: #94a3b8;">No changes</em>' if not change['added'] and not change['modified'] and not change['removed'] else ''}
+                            </td>
+                        </tr>
+                        ''' for change in detailed_changes[:50]])}  <!-- Limit to first 50 for performance -->
+                    </tbody>
+                </table>
+                {f'<p style="color: #64748b; font-style: italic;">Showing first 50 of {len(detailed_changes)} total state changes.</p>' if len(detailed_changes) > 50 else ''}
             </div>
 
             <div id="visualizations"></div>
