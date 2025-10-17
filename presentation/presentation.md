@@ -348,6 +348,7 @@ Provided: {payment: {method: "split", cards: [...], cert: "..."}}
 | 50% → 66% trial degradation | Consistent decline | Context accumulation | **ContextManagedAgent** |
 
 **Hypothesis:** Combine both → Measurable improvement (model-dependent)
+**POC Result:** Tool-level gains confirmed (+13pp), but task-level optimization requires careful tuning
 
 ---
 
@@ -390,7 +391,7 @@ The two root causes amplify each other, creating a vicious cycle that leads to t
 - Validation errors are systematic and recoverable with clarification
 - ✅ Addresses root cause: parameter construction errors
 - ✅ Generalizes across all tools and domains
-- ✅ Measurable improvement (proven in POC)
+- ✅ Measurable tool-level improvement (proven in POC: +13pp tool success)
 - ✅ Low overhead: Only triggers on failures
 
 ---
@@ -459,11 +460,11 @@ The two root causes amplify each other, creating a vicious cycle that leads to t
 | Agent | Tool Success | Task Success | vs Baseline |
 |:---|:---:|:---:|:---:|
 | llm_agent | 57.4% | 60.0% | - |
-| context_agent | 59.3% | 70.0% | +1.9pp |
+| context_agent | 59.3% | 60.0% | +1.9pp |
 | retry_agent | 68.5% | 60.0% | **+11.1pp** ✓ |
-| **enhanced_agent** | **70.4%** | 70.0% | **+13.0pp** ✓ |
+| **enhanced_agent** | **70.4%** | 55.0% | **+13.0pp** ✓ |
 
-**Initial Takeaway:** Enhanced agents show promising double-digit improvements!
+**Initial Takeaway:** Retry mechanism shows promising double-digit tool success improvements! Context and combined approaches require further investigation.
 
 **Reports:**
 - [llm_agent](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/enhanced_analysis_report.html)
@@ -566,8 +567,9 @@ python scripts/analyze_simple_logs.py \
 # Next Steps: Validation & Optimization
 
 **1. Proof-of-Concept Completed (Gemini)**
-- ✅ `retry_agent`: **+11.1pp** improvement
-- ✅ `enhanced_agent`: **+13.0pp** improvement
+- ✅ `retry_agent`: **+11.1pp** tool success improvement, maintained task success
+- ⚠️ `enhanced_agent`: **+13.0pp** tool success improvement, but -5pp task success regression
+- 🔍 **Key Finding:** Tool-level improvements don't always translate to task-level success
 
 **2. Model-Specific Optimization**
 - Analyze failure patterns per model (error signatures differ)
