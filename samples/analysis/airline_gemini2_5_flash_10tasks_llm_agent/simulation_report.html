@@ -209,7 +209,7 @@
             <h1>🔍 Comprehensive Simulation Report</h1>
             <div class="subtitle">
                 Detailed task-by-task analysis with action checks and message logs<br>
-                Generated on October 17, 2025 at 01:46 AM
+                Generated on October 17, 2025 at 03:11 PM
             </div>
         </div>
 
@@ -229,6 +229,528 @@
             <div class="stat-card info">
                 <div class="stat-value">57.4%</div>
                 <div class="stat-label">Action Success Rate</div>
+            </div>
+        </div>
+
+        <!-- Action Check Failures Summary Table -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e74c3c; cursor: pointer; user-select: none;"
+                onclick="toggleSection('action-failures-section')">
+                <span id="action-failures-toggle">▼</span> 🚨 Action Check Failures Summary
+            </h2>
+            <div id="action-failures-section">
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Task ID</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Trial</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Task Success</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Action</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Tool</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Failure Type</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Similarity</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>2</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">2_1</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>2</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">2_2</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>2</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">2_3</td>
+                        <td style="padding: 10px 12px;"><code>send_certificate</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>4</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">4_1</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>4</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">4_2</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>4</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">4_3</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>4</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">4_4</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>4</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">4_5</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>5</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">5_0</td>
+                        <td style="padding: 10px 12px;"><code>get_user_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>7</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">7_0</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>7</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">7_1</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>7</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">7_2</td>
+                        <td style="padding: 10px 12px;"><code>update_reservation_flights</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>8</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">8_3</td>
+                        <td style="padding: 10px 12px;"><code>book_reservation</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Called with Different Args
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-high" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                82%
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>9</code></td>
+                        <td style="padding: 10px 12px;">0</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">9_0</td>
+                        <td style="padding: 10px 12px;"><code>cancel_reservation</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>2</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">2_2</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>2</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">2_3</td>
+                        <td style="padding: 10px 12px;"><code>send_certificate</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>4</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">4_2</td>
+                        <td style="padding: 10px 12px;"><code>get_reservation_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #f0fdf4; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>5</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">✅</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">5_0</td>
+                        <td style="padding: 10px 12px;"><code>get_user_details</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>7</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">7_2</td>
+                        <td style="padding: 10px 12px;"><code>update_reservation_flights</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>7</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">7_3</td>
+                        <td style="padding: 10px 12px;"><code>cancel_reservation</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>7</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">7_4</td>
+                        <td style="padding: 10px 12px;"><code>cancel_reservation</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>9</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">9_0</td>
+                        <td style="padding: 10px 12px;"><code>cancel_reservation</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>9</code></td>
+                        <td style="padding: 10px 12px;">1</td>
+                        <td style="padding: 10px 12px; text-align: center;">❌</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">9_1</td>
+                        <td style="padding: 10px 12px;"><code>search_direct_flight</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                Never Called
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="similarity-low" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                N/A
+                            </span>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            </div>
+        </div>
+
+        <!-- Error Clustering Section -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e67e22; cursor: pointer; user-select: none;"
+                onclick="toggleSection('error-clustering-section')">
+                <span id="error-clustering-toggle">▼</span> 🔍 Error Pattern Clustering
+            </h2>
+            <div id="error-clustering-section">
+
+            <div style="margin-bottom: 20px; padding: 15px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px;">
+                <strong style="color: #ea580c;">📊 Common Error Patterns:</strong>
+                <div style="margin-top: 10px;">
+
+                    <div style="margin: 8px 0; padding: 10px; background: white; border-radius: 4px; border-left: 3px solid #f97316;">
+                        <strong>assistant: Reservation IFOYFZ not found</strong>: 4 occurrence(s)
+                        <br>
+                        <em style="color: #64748b; font-size: 0.9em;">Sample: Error: Reservation IFOYFZ not found</em>
+                    </div>
+
+                    <div style="margin: 8px 0; padding: 10px; background: white; border-radius: 4px; border-left: 3px solid #f97316;">
+                        <strong>assistant: GenericError</strong>: 3 occurrence(s)
+                        <br>
+                        <em style="color: #64748b; font-size: 0.9em;">Sample: Error: 1 validation error for Payment
+payment_id
+  Field required [type=missing, input_value={'id': 'certificate_8045380</em>
+                    </div>
+
+                    <div style="margin: 8px 0; padding: 10px; background: white; border-radius: 4px; border-left: 3px solid #f97316;">
+                        <strong>assistant: Reservation IFOYZZ not found</strong>: 1 occurrence(s)
+                        <br>
+                        <em style="color: #64748b; font-size: 0.9em;">Sample: Error: Reservation IFOYZZ not found</em>
+                    </div>
+
+                </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Pattern</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Count</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Affected Simulations</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background: #fff7ed; border-bottom: 1px solid #fdba74;">
+                        <td style="padding: 10px 12px;"><code style="font-size: 0.85em;">assistant: Reservation IFOYFZ not found</code></td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; background: #fed7aa; color: #9a3412; font-weight: 600;">
+                                4
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">Task 9 | Trial 0, Task 9 | Trial 0, Task 9 | Trial 1, ... (+1 more)</td>
+                    </tr>
+
+                    <tr style="background: #fff7ed; border-bottom: 1px solid #fdba74;">
+                        <td style="padding: 10px 12px;"><code style="font-size: 0.85em;">assistant: GenericError</code></td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; background: #fed7aa; color: #9a3412; font-weight: 600;">
+                                3
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">Task 8 | Trial 0, Task 8 | Trial 1, Task 8 | Trial 1</td>
+                    </tr>
+
+                    <tr style="background: #fff7ed; border-bottom: 1px solid #fdba74;">
+                        <td style="padding: 10px 12px;"><code style="font-size: 0.85em;">assistant: Reservation IFOYZZ not found</code></td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; background: #fed7aa; color: #9a3412; font-weight: 600;">
+                                1
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">Task 9 | Trial 0</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
             </div>
         </div>
 
@@ -6128,6 +6650,21 @@ Also, please note that I cannot respond to subjective comments. I am here to ass
     </div>
 
     <script>
+        // Toggle collapsible sections
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const toggleId = sectionId.replace('-section', '-toggle');
+            const toggle = document.getElementById(toggleId);
+
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                section.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+
         // Update task counter
         function updateTaskCounter() {
             const allTasks = document.querySelectorAll('.task-section');
