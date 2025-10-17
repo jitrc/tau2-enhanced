@@ -240,13 +240,27 @@ def main():
     parser.add_argument(
         "-o", "--output",
         type=Path,
-        default=Path("analysis_results"),
-        help="Base directory to save analysis plots."
+        default=None,
+        help="Output directory to save analysis results. If not specified, uses 'analysis_results/<log_file_stem>'."
+    )
+    parser.add_argument(
+        "-n", "--name",
+        type=str,
+        default=None,
+        help="Custom name for the output subdirectory. If not specified, uses the log file stem."
     )
     args = parser.parse_args()
 
-    # Create a subfolder in the output directory named after the input file
-    output_subdir = args.output / args.log_file.stem
+    # Determine output directory
+    if args.output:
+        # User specified output directory - use it directly
+        output_subdir = args.output
+    else:
+        # Default behavior: create subfolder based on log file name or custom name
+        base_dir = Path("analysis_results")
+        subdir_name = args.name if args.name else args.log_file.stem
+        output_subdir = base_dir / subdir_name
+
     print(f"💾 Output will be saved to: {output_subdir}")
 
     analyze_logs(args.log_file, output_subdir)
