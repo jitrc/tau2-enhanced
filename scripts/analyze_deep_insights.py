@@ -16,7 +16,8 @@ import json
 from pathlib import Path
 import sys
 from datetime import datetime
-from collections import defaultdict
+from collections import defaultdict, Counter
+import re
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -147,6 +148,203 @@ class DeepInsightsAnalyzer:
             'success_count': len(success_sims)
         }
 
+    def analyze_action_checks(self):
+        """Analyze detailed validation failures from action checks."""
+        action_failures = []
+
+        for sim in self.simulations:
+            sim_id = f"Task {sim.get('task_id', 'N/A')} | Trial {sim.get('trial', 'N/A')}"
+            success = sim.get('reward', 0) > 0
+
+            # Look through messages for validation errors
+            messages = sim.get('messages', [])
+            for idx, msg in enumerate(messages):
+                # Check both error formats: tool_call_status='error' or error=True
+                is_error = (msg.get('role') == 'tool' and
+                           (msg.get('tool_call_status') == 'error' or msg.get('error') is True))
+
+                if is_error:
+                    content = str(msg.get('content', ''))
+                    tool_name = msg.get('tool_name', 'unknown')
+
+                    # Try to extract tool name from requestor field if not present
+                    if tool_name == 'unknown' and msg.get('requestor'):
+                        tool_name = msg.get('requestor')
+
+                    # Extract validation error details
+                    validation_match = re.search(r'ValidationError: (.+)', content)
+                    error_match = re.search(r'Error: (.+)', content)
+
+                    if validation_match:
+                        error_type = 'ValidationError'
+                        error_detail = validation_match.group(1)
+                    elif error_match:
+                        error_type = 'Error'
+                        error_detail = error_match.group(1)
+                    else:
+                        error_type = 'Error'
+                        error_detail = content[:200]
+
+                    action_failures.append({
+                        'sim_id': sim_id,
+                        'success': success,
+                        'tool_name': tool_name,
+                        'error_type': error_type,
+                        'error_detail': error_detail,
+                        'step_idx': msg.get('step_idx', idx)
+                    })
+
+        return action_failures
+
+    def analyze_tool_timeline(self):
+        """Create timeline data for tool call execution flow."""
+        timeline_data = []
+
+        for sim in self.simulations:
+            sim_id = f"Task {sim.get('task_id', 'N/A')} | Trial {sim.get('trial', 'N/A')}"
+            success = sim.get('reward', 0) > 0
+
+            messages = sim.get('messages', [])
+            tool_calls = [m for m in messages if m.get('role') == 'tool']
+
+            for idx, tool_call in enumerate(tool_calls):
+                timeline_data.append({
+                    'sim_id': sim_id,
+                    'success': success,
+                    'step_idx': idx,
+                    'tool_name': tool_call.get('tool_name', 'unknown'),
+                    'status': tool_call.get('tool_call_status', 'unknown'),
+                    'execution_time_ms': tool_call.get('execution_time_ms', 0)
+                })
+
+        return timeline_data
+
+    def analyze_root_causes(self):
+        """Categorize and identify root causes of failures."""
+        root_causes = defaultdict(list)
+
+        for sim in self.simulations:
+            if sim.get('reward', 0) > 0:
+                continue  # Only analyze failures
+
+            sim_id = f"Task {sim.get('task_id', 'N/A')} | Trial {sim.get('trial', 'N/A')}"
+
+            # Categorize by various failure indicators
+            messages = sim.get('messages', [])
+            metrics = sim.get('execution_metrics', {})
+
+            # Check for error patterns - support both error formats
+            error_msgs = [m for m in messages if m.get('role') == 'tool' and
+                         (m.get('tool_call_status') == 'error' or m.get('error') is True)]
+            timeout_errors = [m for m in error_msgs if 'timeout' in str(m.get('content', '')).lower()]
+            validation_errors = [m for m in error_msgs if 'validation' in str(m.get('content', '')).lower()]
+
+            # Categorize
+            if timeout_errors:
+                root_causes['Timeout Errors'].append(sim_id)
+            elif validation_errors:
+                root_causes['Validation Errors'].append(sim_id)
+            elif len(error_msgs) > 5:
+                root_causes['High Error Rate'].append(sim_id)
+            elif metrics.get('total_tool_calls', 0) < 5:
+                root_causes['Insufficient Actions'].append(sim_id)
+            elif metrics.get('state_changes', 0) == 0:
+                root_causes['No State Changes'].append(sim_id)
+            else:
+                root_causes['Other/Complex'].append(sim_id)
+
+        return dict(root_causes)
+
+    def analyze_cost(self):
+        """Analyze token costs broken down by success/failure."""
+        # Pricing per 1M tokens (example rates - adjust as needed)
+        PROMPT_COST_PER_1M = 3.0  # $3 per 1M prompt tokens
+        COMPLETION_COST_PER_1M = 15.0  # $15 per 1M completion tokens
+
+        cost_data = {
+            'success': {'prompt_tokens': 0, 'completion_tokens': 0, 'count': 0},
+            'failed': {'prompt_tokens': 0, 'completion_tokens': 0, 'count': 0}
+        }
+
+        for sim in self.simulations:
+            success = sim.get('reward', 0) > 0
+            key = 'success' if success else 'failed'
+
+            snapshots = sim.get('context_usage_snapshots', [])
+            if snapshots:
+                prompt_tokens = sum(s.get('prompt_tokens', 0) for s in snapshots)
+                completion_tokens = sum(s.get('completion_tokens', 0) for s in snapshots)
+
+                cost_data[key]['prompt_tokens'] += prompt_tokens
+                cost_data[key]['completion_tokens'] += completion_tokens
+                cost_data[key]['count'] += 1
+
+        # Calculate costs
+        for key in cost_data:
+            data = cost_data[key]
+            data['prompt_cost'] = (data['prompt_tokens'] / 1_000_000) * PROMPT_COST_PER_1M
+            data['completion_cost'] = (data['completion_tokens'] / 1_000_000) * COMPLETION_COST_PER_1M
+            data['total_cost'] = data['prompt_cost'] + data['completion_cost']
+            data['avg_cost_per_sim'] = data['total_cost'] / data['count'] if data['count'] > 0 else 0
+
+        return cost_data
+
+    def analyze_error_clustering(self):
+        """Cluster and group common error patterns."""
+        error_patterns = Counter()
+        error_details = defaultdict(list)
+
+        for sim in self.simulations:
+            sim_id = f"Task {sim.get('task_id', 'N/A')} | Trial {sim.get('trial', 'N/A')}"
+            success = sim.get('reward', 0) > 0
+
+            messages = sim.get('messages', [])
+            for msg in messages:
+                # Check both error formats
+                is_error = (msg.get('role') == 'tool' and
+                           (msg.get('tool_call_status') == 'error' or msg.get('error') is True))
+
+                if is_error:
+                    content = str(msg.get('content', ''))
+                    tool_name = msg.get('tool_name', 'unknown')
+
+                    # Try to extract tool name from requestor field if not present
+                    if tool_name == 'unknown' and msg.get('requestor'):
+                        tool_name = msg.get('requestor')
+
+                    # Extract error type and specific message
+                    if 'ValidationError' in content:
+                        error_type = 'ValidationError'
+                    elif 'timeout' in content.lower():
+                        error_type = 'TimeoutError'
+                    elif 'permission' in content.lower():
+                        error_type = 'PermissionError'
+                    elif 'not found' in content.lower():
+                        error_type = 'NotFoundError'
+                    elif 'Error:' in content:
+                        # Extract specific error message after "Error:"
+                        error_match = re.search(r'Error: (.+?)(?:\n|$)', content)
+                        if error_match:
+                            error_msg = error_match.group(1).strip()
+                            # Use the specific error message as the type
+                            error_type = error_msg[:50]  # Truncate if too long
+                        else:
+                            error_type = 'GenericError'
+                    else:
+                        # Try to extract error class
+                        match = re.search(r'(\w+Error)', content)
+                        error_type = match.group(1) if match else 'GenericError'
+
+                    pattern_key = f"{tool_name}: {error_type}"
+                    error_patterns[pattern_key] += 1
+                    error_details[pattern_key].append({
+                        'sim_id': sim_id,
+                        'success': success,
+                        'sample': content[:150]
+                    })
+
+        return error_patterns, error_details
+
 
 def create_deep_insights_report(analyzer, output_path, source_file):
     """Create comprehensive HTML report with deep insights."""
@@ -157,7 +355,14 @@ def create_deep_insights_report(analyzer, output_path, source_file):
     metrics_data = analyzer.analyze_execution_metrics()
     failure_patterns = analyzer.analyze_failure_patterns()
 
-    # Create visualizations
+    # New analyses
+    action_failures = analyzer.analyze_action_checks()
+    timeline_data = analyzer.analyze_tool_timeline()
+    root_causes = analyzer.analyze_root_causes()
+    cost_data = analyzer.analyze_cost()
+    error_patterns, error_details = analyzer.analyze_error_clustering()
+
+    # Create main visualizations
     fig = make_subplots(
         rows=3, cols=2,
         subplot_titles=(
@@ -175,6 +380,88 @@ def create_deep_insights_report(analyzer, output_path, source_file):
         ],
         vertical_spacing=0.12,
         horizontal_spacing=0.15
+    )
+
+    # Create additional figures for new analyses
+    # Figure 2: Root Cause Analysis
+    fig_root_cause = go.Figure()
+    if root_causes:
+        fig_root_cause.add_trace(go.Bar(
+            x=list(root_causes.keys()),
+            y=[len(v) for v in root_causes.values()],
+            marker_color='#e74c3c',
+            text=[len(v) for v in root_causes.values()],
+            textposition='auto',
+        ))
+        fig_root_cause.update_layout(
+            title='Failure Root Cause Distribution',
+            xaxis_title='Root Cause Category',
+            yaxis_title='Number of Failed Simulations',
+            height=400
+        )
+
+    # Figure 3: Cost Analysis
+    fig_cost = go.Figure()
+    fig_cost.add_trace(go.Bar(
+        name='Success',
+        x=['Prompt Cost', 'Completion Cost', 'Total Cost'],
+        y=[cost_data['success']['prompt_cost'],
+           cost_data['success']['completion_cost'],
+           cost_data['success']['total_cost']],
+        marker_color='green'
+    ))
+    fig_cost.add_trace(go.Bar(
+        name='Failed',
+        x=['Prompt Cost', 'Completion Cost', 'Total Cost'],
+        y=[cost_data['failed']['prompt_cost'],
+           cost_data['failed']['completion_cost'],
+           cost_data['failed']['total_cost']],
+        marker_color='red'
+    ))
+    fig_cost.update_layout(
+        title='Cost Analysis: Success vs Failed Simulations',
+        yaxis_title='Cost ($)',
+        barmode='group',
+        height=400
+    )
+
+    # Figure 4: Error Pattern Clustering
+    fig_errors = go.Figure()
+    if error_patterns:
+        top_errors = error_patterns.most_common(10)
+        fig_errors.add_trace(go.Bar(
+            x=[count for _, count in top_errors],
+            y=[pattern for pattern, _ in top_errors],
+            orientation='h',
+            marker_color='#e67e22',
+            text=[count for _, count in top_errors],
+            textposition='auto'
+        ))
+        fig_errors.update_layout(
+            title='Top 10 Error Patterns',
+            xaxis_title='Occurrence Count',
+            yaxis_title='Error Pattern',
+            height=500
+        )
+
+    # Figure 5: Tool Timeline (sample from first few simulations)
+    fig_timeline = go.Figure()
+    sample_sims = list(set([t['sim_id'] for t in timeline_data[:100]]))[:3]  # First 3 sims
+    for sim_id in sample_sims:
+        sim_timeline = [t for t in timeline_data if t['sim_id'] == sim_id]
+        fig_timeline.add_trace(go.Scatter(
+            x=[t['step_idx'] for t in sim_timeline],
+            y=[t['execution_time_ms'] for t in sim_timeline],
+            mode='lines+markers',
+            name=sim_id,
+            text=[t['tool_name'] for t in sim_timeline],
+            hovertemplate='<b>%{text}</b><br>Step: %{x}<br>Time: %{y}ms<extra></extra>'
+        ))
+    fig_timeline.update_layout(
+        title='Tool Call Timeline (Sample)',
+        xaxis_title='Step Index',
+        yaxis_title='Execution Time (ms)',
+        height=400
     )
 
     # 1. State Changes
@@ -540,11 +827,111 @@ def create_deep_insights_report(analyzer, output_path, source_file):
             </div>
 
             <div id="visualizations"></div>
+
+            <!-- NEW SECTIONS -->
+
+            <div class="insights-section">
+                <div class="insight-title">🚨 Action Check Failures</div>
+                <p style="color: #64748b; margin-bottom: 15px;">
+                    Detailed validation errors and tool execution failures.
+                </p>
+
+                <table class="state-changes-table">
+                    <thead>
+                        <tr>
+                            <th>Simulation</th>
+                            <th>Success</th>
+                            <th>Step</th>
+                            <th>Tool</th>
+                            <th>Error Type</th>
+                            <th>Error Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {''.join([f'''
+                        <tr class="{'success-row' if fail['success'] else 'failed-row'}">
+                            <td>{fail['sim_id']}</td>
+                            <td>{'✅' if fail['success'] else '❌'}</td>
+                            <td>{fail['step_idx']}</td>
+                            <td><code>{fail['tool_name']}</code></td>
+                            <td><span class="change-badge removed-badge">{fail['error_type']}</span></td>
+                            <td style="font-size: 0.85em; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">{fail['error_detail']}</td>
+                        </tr>
+                        ''' for fail in action_failures[:50]])}  <!-- Limit to first 50 -->
+                    </tbody>
+                </table>
+                {f'<p style="color: #64748b; font-style: italic;">Showing first 50 of {len(action_failures)} total action failures.</p>' if len(action_failures) > 50 else ''}
+            </div>
+
+            <div class="insights-section">
+                <div class="insight-title">⚡ Tool Call Timeline</div>
+                <div id="timeline-chart"></div>
+            </div>
+
+            <div class="insights-section">
+                <div class="insight-title">🎯 Failure Root Cause Analysis</div>
+                <div id="root-cause-chart"></div>
+
+                <div style="margin-top: 20px;">
+                    <strong>Root Cause Breakdown:</strong>
+                    {''.join([f'<div class="insight-text"><strong>{category}:</strong> {len(sims)} simulation(s) - {", ".join(sims[:3])}{"..." if len(sims) > 3 else ""}</div>' for category, sims in root_causes.items()])}
+                </div>
+            </div>
+
+            <div class="insights-section">
+                <div class="insight-title">💰 Cost Analysis</div>
+                <div id="cost-chart"></div>
+
+                <div class="metrics-grid" style="margin-top: 20px;">
+                    <div class="metric-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <div class="metric-value">${cost_data['success']['avg_cost_per_sim']:.4f}</div>
+                        <div class="metric-label">Avg Cost per Successful Sim</div>
+                    </div>
+                    <div class="metric-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                        <div class="metric-value">${cost_data['failed']['avg_cost_per_sim']:.4f}</div>
+                        <div class="metric-label">Avg Cost per Failed Sim</div>
+                    </div>
+                    <div class="metric-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <div class="metric-value">${cost_data['success']['total_cost'] + cost_data['failed']['total_cost']:.2f}</div>
+                        <div class="metric-label">Total Execution Cost</div>
+                    </div>
+                    <div class="metric-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                        <div class="metric-value">{sum(d['total_tokens'] for d in context_data):,}</div>
+                        <div class="metric-label">Total Tokens</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="insights-section">
+                <div class="insight-title">🔍 Error Pattern Clustering</div>
+                <div id="error-chart"></div>
+
+                <div style="margin-top: 20px;">
+                    <strong>Most Common Error Patterns:</strong>
+                    {''.join([f'''<div class="insight-text">
+                        <strong>{pattern}</strong>: {count} occurrence(s)<br>
+                        <em style="color: #64748b; font-size: 0.9em;">Sample: {error_details[pattern][0]['sample'] if error_details[pattern] else 'N/A'}</em>
+                    </div>''' for pattern, count in (error_patterns.most_common(5) if error_patterns else [])])}
+                </div>
+            </div>
         </div>
 
         <script>
             var plotData = {fig.to_json()};
             Plotly.newPlot('visualizations', plotData.data, plotData.layout);
+
+            // Render additional charts
+            var timelineData = {fig_timeline.to_json()};
+            Plotly.newPlot('timeline-chart', timelineData.data, timelineData.layout);
+
+            var rootCauseData = {fig_root_cause.to_json()};
+            Plotly.newPlot('root-cause-chart', rootCauseData.data, rootCauseData.layout);
+
+            var costData = {fig_cost.to_json()};
+            Plotly.newPlot('cost-chart', costData.data, costData.layout);
+
+            var errorData = {fig_errors.to_json()};
+            Plotly.newPlot('error-chart', errorData.data, errorData.layout);
         </script>
     </body>
     </html>
