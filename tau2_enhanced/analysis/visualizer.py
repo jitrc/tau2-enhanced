@@ -3840,9 +3840,11 @@ class LogVisualizer:
 
         <!-- Action Check Failures Summary Table -->
         <div style="margin: 30px 0;">
-            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e74c3c;">
-                🚨 Action Check Failures Summary
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e74c3c; cursor: pointer; user-select: none;"
+                onclick="toggleSection('action-failures-section')">
+                <span id="action-failures-toggle">▼</span> 🚨 Action Check Failures Summary
             </h2>
+            <div id="action-failures-section">
             <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <thead>
                     <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -3936,13 +3938,16 @@ class LogVisualizer:
 """
 
         html += """
+            </div>
         </div>
 
         <!-- Error Clustering Section -->
         <div style="margin: 30px 0;">
-            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e67e22;">
-                🔍 Error Pattern Clustering
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e67e22; cursor: pointer; user-select: none;"
+                onclick="toggleSection('error-clustering-section')">
+                <span id="error-clustering-toggle">▼</span> 🔍 Error Pattern Clustering
             </h2>
+            <div id="error-clustering-section">
 """
 
         # Cluster errors by pattern
@@ -4038,6 +4043,7 @@ class LogVisualizer:
 """
 
         html += """
+            </div>
         </div>
 
         <div class="controls">
@@ -4344,6 +4350,21 @@ class LogVisualizer:
     </div>
 
     <script>
+        // Toggle collapsible sections
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const toggleId = sectionId.replace('-section', '-toggle');
+            const toggle = document.getElementById(toggleId);
+
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                section.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+
         // Update task counter
         function updateTaskCounter() {
             const allTasks = document.querySelectorAll('.task-section');
