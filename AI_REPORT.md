@@ -249,7 +249,7 @@ Based on Grok's 89.4% action execution failures, we propose three targeted train
 
 **Critical Insights:**
 - **Hidden Benchmark Bias:** Favored conversational over execution skills
-- **State Management Paradox:** Perfect state-changing vs failed read-only operations
+- **State Management Paradox:** State-changing tools (74.6% success) outperform read-only tools (41.5% success) — opposite of expected
 - **Efficiency Patterns:** 37-40% self-loops reveal planning deficiencies
 
 **Impact:** tau2-enhanced demonstrates how systematic benchmark critique drives practical improvements, providing both research insights and production solutions through intelligent agent enhancements and deterministic evaluation methodologies.
