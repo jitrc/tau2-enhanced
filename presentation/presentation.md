@@ -294,7 +294,11 @@ LogAnalyzer → 15+ analysis methods → HTML reports
 | `search_direct_flight` | 78.8% | 80 | Read-Only |
 | `send_certificate` | 66.7% | 12 | State-changing |
 
-**Pattern:** State-changing tools (~55% success) vs Read-only tools (~95% success)
+**Paradox:** State-changing tools (74.6% success) outperform read-only tools (41.5% success) — opposite of expected!
+
+<span class="small">
+Source: [Analysis Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/analysis_report.md) Lines 331-332
+</span>
 
 **100% Failure Tasks (0/4 trials):**
 - **Task 14:** "Book cheapest flight using gift cards and certificate" → Complex payment structure
