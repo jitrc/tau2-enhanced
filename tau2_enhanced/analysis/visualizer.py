@@ -3029,45 +3029,11 @@ class LogVisualizer:
         from plotly.subplots import make_subplots
 
         fig = make_subplots(
-            rows=2, cols=2,
-            subplot_titles=("Tool Usage Distribution", "Transfer vs Communication",
-                          "Tool Transition Patterns", "Execution Efficiency"),
-            specs=[[{"type": "pie"}, {"type": "bar"}],
-                   [{"type": "bar"}, {"type": "indicator"}]]
+            rows=1, cols=2,
+            subplot_titles=("Tool Usage Distribution",
+                          "Tool Transition Patterns"),
+            specs=[[{"type": "bar"},{"type": "pie"}]]
         )
-
-        if not tool_perf.empty:
-            # Tool usage pie chart
-            fig.add_trace(
-                go.Pie(labels=tool_perf['tool_name'], values=tool_perf['total_calls'],
-                       name="Tool Usage"),
-                row=1, col=1
-            )
-
-            # Transfer vs communication tools
-            transfer_tools = tool_perf[tool_perf['tool_name'].str.contains('transfer|human', case=False, na=False)]
-            comm_tools = tool_perf[tool_perf['tool_name'].str.contains('send|message|communicate', case=False, na=False)]
-
-            categories = []
-            values = []
-            colors = []
-
-            if not transfer_tools.empty:
-                categories.extend(transfer_tools['tool_name'].tolist())
-                values.extend(transfer_tools['total_calls'].tolist())
-                colors.extend(['#007bff'] * len(transfer_tools))
-
-            if not comm_tools.empty:
-                categories.extend(comm_tools['tool_name'].tolist())
-                values.extend(comm_tools['total_calls'].tolist())
-                colors.extend(['#28a745'] * len(comm_tools))
-
-            if categories:
-                fig.add_trace(
-                    go.Bar(x=categories, y=values, marker_color=colors,
-                           name="Communication Tools", orientation='v'),
-                    row=1, col=2
-                )
 
         # Tool transition patterns - show top transitions as horizontal bar chart
         if not sequence_analysis.empty:
@@ -3090,38 +3056,49 @@ class LogVisualizer:
                     text=top_transitions['count'],
                     textposition='outside'
                 ),
-                row=2, col=1
+                row=1, col=1
             )
 
-        # Execution efficiency gauge
-        execution_timespan = summary.get('execution_timespan', 1)
-        total_execution_time = summary.get('total_execution_time', 0)
-        efficiency = (total_execution_time / execution_timespan * 100) if execution_timespan > 0 else 0
+        if not tool_perf.empty:
+            
+            # Tool usage pie chart - group small slices for better visibility
+            # Sort by total calls descending
+            tool_perf_sorted = tool_perf.sort_values('total_calls', ascending=False)
 
-        fig.add_trace(
-            go.Indicator(
-                mode="gauge+number+delta",
-                value=efficiency,
-                gauge={
-                    'axis': {'range': [None, 100]},
-                    'bar': {'color': "#4A90E2"},
-                    'steps': [
-                        {'range': [0, 25], 'color': "#FFF0F0"},
-                        {'range': [25, 50], 'color': "#FFF8E7"},
-                        {'range': [50, 75], 'color': "#F0FFF4"},
-                        {'range': [75, 100], 'color': "#E8F5E8"}
-                    ],
-                    'threshold': {
-                        'line': {'color': "#E74C3C", 'width': 2},
-                        'thickness': 0.75,
-                        'value': 10
-                    }
-                }
-            ),
-            row=2, col=2
+            # Group tools with < 3% into "Other Tools"
+            total_calls = tool_perf_sorted['total_calls'].sum()
+            threshold = total_calls * 0.03  # 3% threshold
+
+            major_tools = tool_perf_sorted[tool_perf_sorted['total_calls'] >= threshold]
+            minor_tools = tool_perf_sorted[tool_perf_sorted['total_calls'] < threshold]
+
+            labels = major_tools['tool_name'].tolist()
+            values = major_tools['total_calls'].tolist()
+
+            if not minor_tools.empty:
+                labels.append('Other Tools')
+                values.append(minor_tools['total_calls'].sum())
+
+            fig.add_trace(
+                go.Pie(
+                    labels=labels,
+                    values=values,
+                    name="Tool Usage",
+                    textinfo='label+percent',
+                    textposition='auto',
+                    hovertemplate='<b>%{label}</b><br>' +
+                                  'Calls: %{value}<br>' +
+                                  'Percentage: %{percent}<extra></extra>'
+                ),
+                row=1, col=2
+            )
+
+
+        fig.update_layout(
+            height=300,
+            showlegend=False,
+            title_text="Communication Analysis: Tool Usage & Transitions"
         )
-
-        fig.update_layout(height=800, title_text="Communication vs Tool Call Analysis")
         return fig
 
     def _create_task_analysis_plot(self, summary, tool_perf, state_analysis):
