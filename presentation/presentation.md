@@ -793,6 +793,60 @@ python scripts/non_enhanced/failure_analysis.py scripts/non_enhanced/baseline_ai
 
 ---
 
+# Backup: Proposed Training Strategy
+
+## 1. Structured Output Training (~50k examples)
+
+**Goal:** Reduce validation errors from root cause
+
+**Focus Areas (from actual failure analysis):**
+- `book_reservation`: 88.9% failure → Payment parameter structure
+- `search_direct_flight`: 78.8% failure → Search parameter validation
+- `update_reservation_flights`: 100% failure → Nested object handling
+
+**Data Generation:**
+```python
+{
+  "correct": {"payment": {"gift_card_ids": [...], "certificate_id": "..."}},
+  "error": {"payment": {"method": "split", "cards": [...], "cert": "..."}}
+}
+```
+
+**Target:** Reduce ActionCheckFailure from 89% to <45%
+
+---
+
+# Backup: Proposed Training Strategy (continued)
+
+## 2. Model-Specific Error Recovery Training
+
+**Approach:**
+- Train on retry patterns that succeeded for each model
+- Build error signature → recovery strategy mappings
+- Adaptive strategies that switch based on error type
+
+**Training Data:**
+```python
+{
+  "error": "ActionCheckFailure: payment_id required",
+  "failed_retry": {"payment": {"id": "cert_123", "amount": 348}},
+  "successful_retry": {"payment_id": "cert_123", "amount": 348}
+}
+```
+
+## 3. Context Management Dataset (~25k examples)
+
+**Goal:** Prevent performance cliffs and confusion
+**Focus:** Long conversations with state consistency
+**Validation:** Monitor self-loop rate (<35%) and efficiency metrics
+
+**Expected Outcomes:**
+- Structural: +5-10pp from better parameter formatting
+- Recovery: +3-5pp from intelligent retry strategies
+- Efficiency: -15% tool calls through better planning
+
+---
+
 # Backup: Research Directions (Near-term)
 
 **1. Multi-modal Evaluation:**
