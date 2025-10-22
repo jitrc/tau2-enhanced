@@ -43,6 +43,8 @@ class LogAnalyzer:
             self.df = pd.DataFrame()
         else:
             self.df = self._preprocess(log_data)
+        # Try to use action check success rates first (more accurate for tool effectiveness)
+        self.action_check_metrics = self._calculate_action_check_success_rates()
 
     def _preprocess(self, log_data: Union[List[ToolExecutionEvent], Dict[str, Any]]) -> pd.DataFrame:
         """
@@ -385,14 +387,12 @@ class LogAnalyzer:
         # --- Tool-level metrics ---
         total_calls = len(self.df)
 
-        # Try to use action check success rates first (more accurate for tool effectiveness)
-        action_check_metrics = self._calculate_action_check_success_rates()
 
-        if action_check_metrics['has_action_checks']:
+        if self.action_check_metrics['has_action_checks']:
             # Use action check success rates as the primary tool success metric
-            successful_calls = action_check_metrics['successful_actions']
-            failed_calls = action_check_metrics['failed_actions']
-            tool_success_rate = action_check_metrics['action_check_success_rate']
+            successful_calls = self.action_check_metrics['successful_actions']
+            failed_calls = self.action_check_metrics['failed_actions']
+            tool_success_rate = self.action_check_metrics['action_check_success_rate']
             tool_error_rate = 1 - tool_success_rate
             success_metric_source = 'action_checks'
         else:
@@ -452,7 +452,7 @@ class LogAnalyzer:
             'success_metric_source': success_metric_source
         }
 
-    def get_tool_performance(self) -> pd.DataFrame:
+    def get_tool_performance(self , verbose: bool = False) -> pd.DataFrame:
         """
         Analyze enhanced performance metrics for each individual tool.
 
@@ -476,12 +476,10 @@ class LogAnalyzer:
             avg_result_size=('result_size', lambda x: x.dropna().mean() if x.dropna().any() else 0)
         ).reset_index()
 
-        # Try to use action check success rates for per-tool metrics
-        action_check_metrics = self._calculate_action_check_success_rates()
 
-        if action_check_metrics['has_action_checks']:
+        if self.action_check_metrics['has_action_checks']:
             # Override success rates with action check results
-            tool_action_stats = action_check_metrics['tool_action_stats']
+            tool_action_stats = self.action_check_metrics['tool_action_stats']
 
             for idx, row in tool_performance.iterrows():
                 tool_name = row['tool_name']
@@ -527,6 +525,9 @@ class LogAnalyzer:
 
         tool_performance['performance_category'] = tool_performance.apply(classify_performance, axis=1)
 
+        if verbose:
+            print("Tool Performance: source of success rate - ", success_metric_source)
+
         return tool_performance.sort_values('total_calls', ascending=False)
 
     def get_failure_analysis(self) -> pd.DataFrame:
@@ -540,10 +541,8 @@ class LogAnalyzer:
         if self.df.empty:
             return pd.DataFrame()
 
-        # Try to use action check failures first (more accurate)
-        action_check_metrics = self._calculate_action_check_success_rates()
 
-        if action_check_metrics['has_action_checks']:
+        if self.action_check_metrics['has_action_checks']:
             # Build failure analysis from action check data
             failed_actions = []
 
@@ -609,7 +608,7 @@ class LogAnalyzer:
                 ).reset_index()
 
                 # Add failure rate for each tool
-                tool_action_stats = action_check_metrics['tool_action_stats']
+                tool_action_stats = self.action_check_metrics['tool_action_stats']
                 error_analysis['failure_rate'] = error_analysis.apply(
                     lambda row: row['count'] / tool_action_stats.get(row['tool_name'], {}).get('total', 1), axis=1
                 )
@@ -691,12 +690,10 @@ class LogAnalyzer:
             max_execution_time=('execution_time', 'max')
         ).reset_index()
 
-        # Try to use action check success rates for per-tool metrics
-        action_check_metrics = self._calculate_action_check_success_rates()
 
-        if action_check_metrics['has_action_checks']:
+        if self.action_check_metrics['has_action_checks']:
             # Override success rates with action check results
-            tool_action_stats = action_check_metrics['tool_action_stats']
+            tool_action_stats = self.action_check_metrics['tool_action_stats']
 
             for idx, row in state_analysis.iterrows():
                 tool_name = row['tool_name']
