@@ -24,7 +24,7 @@ class LogVisualizer:
         """
         self.analyzer = analyzer
 
-    def create_summary_dashboard(self, include_task_success=True) -> go.Figure:
+    def create_summary_dashboard(self) -> go.Figure:
         """
         Create a dashboard summarizing overall tool performance.
 
@@ -33,121 +33,64 @@ class LogVisualizer:
         """
         summary = self.analyzer.get_summary_metrics()
         tool_perf = self.analyzer.get_tool_performance()
+        task_success = summary.get('task_success_rate', 0) * 100
+        tool_success = summary.get('tool_success_rate', 0) * 100
 
-        if include_task_success:
-            # Full dashboard with both task and tool success rates
-            fig = make_subplots(
-                rows=2,
-                cols=2,
-                specs=[
-                    [{"type": "indicator"}, {"type": "indicator"}],
-                    [{"type": "bar"}, {"type": "bar"}]
-                ],
-                subplot_titles=("Task Success Rate", "Tool Success Rate", "Tool Success Rates", "Tool Execution Times")
-            )
+        # Full dashboard with both task and tool success rates
+        fig = make_subplots(
+            rows=2,
+            cols=2,
+            specs=[
+                [{"type": "indicator"}, {"type": "indicator"}],
+                [{"type": "bar"}, {"type": "bar"}]
+            ],
+            subplot_titles=("Task Success Rate", "Tool Success Rate", "Tool Success Rates", "Tool Execution Times")
+        )
 
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=summary.get('task_success_rate', 0) * 100,
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#4A90E2"},
-                        'steps': [
-                            {'range': [0, 40], 'color': "#FFF0F0"},
-                            {'range': [40, 70], 'color': "#FFF8E7"},
-                            {'range': [70, 100], 'color': "#F0FFF4"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#E74C3C", 'width': 2},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
+        fig.add_trace(
+            go.Indicator(
+                mode="gauge+number",
+                value=task_success,
+                gauge={
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': "#4A90E2"},
+                    'steps': [
+                        {'range': [0, 40], 'color': "#FFF0F0"},
+                        {'range': [40, 70], 'color': "#FFF8E7"},
+                        {'range': [70, 100], 'color': "#F0FFF4"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#E74C3C", 'width': 2},
+                        'thickness': 0.75,
+                        'value': 80
                     }
-                ),
-                row=1, col=1
-            )
+                }
+            ),
+            row=1, col=1
+        )
 
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=summary.get('tool_success_rate', 0) * 100,
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#4A90E2"},
-                        'steps': [
-                            {'range': [0, 40], 'color': "#FFF0F0"},
-                            {'range': [40, 70], 'color': "#FFF8E7"},
-                            {'range': [70, 100], 'color': "#F0FFF4"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#E74C3C", 'width': 2},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
+        fig.add_trace(
+            go.Indicator(
+                mode="gauge+number",
+                value=tool_success,
+                gauge={
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': "#4A90E2"},
+                    'steps': [
+                        {'range': [0, 40], 'color': "#FFF0F0"},
+                        {'range': [40, 70], 'color': "#FFF8E7"},
+                        {'range': [70, 100], 'color': "#F0FFF4"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#E74C3C", 'width': 2},
+                        'thickness': 0.75,
+                        'value': 80
                     }
-                ),
-                row=1, col=2
-            )
-        else:
-            # Tool-focused dashboard without task success rate
-            fig = make_subplots(
-                rows=2,
-                cols=2,
-                specs=[
-                    [{"type": "indicator"}, {"type": "indicator"}],
-                    [{"type": "bar"}, {"type": "bar"}]
-                ],
-                subplot_titles=("Tool Success Rate", "Total Success", "Tool Success Rates", "Tool Execution Times")
-            )
-
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=summary.get('tool_success_rate', 0) * 100,
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#4A90E2"},
-                        'steps': [
-                            {'range': [0, 40], 'color': "#FFF0F0"},
-                            {'range': [40, 70], 'color': "#FFF8E7"},
-                            {'range': [70, 100], 'color': "#F0FFF4"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#E74C3C", 'width': 2},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
-                    }
-                ),
-                row=1, col=1
-            )
-
-            # Use task success rate as the overall success metric
-            task_success = summary.get('task_success_rate', 0) * 100
-            tool_success = summary.get('tool_success_rate', 0) * 100
-
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=task_success,
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#4A90E2"},
-                        'steps': [
-                            {'range': [0, 40], 'color': "#FFF0F0"},
-                            {'range': [40, 70], 'color': "#FFF8E7"},
-                            {'range': [70, 100], 'color': "#F0FFF4"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#E74C3C", 'width': 2},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
-                    }
-                ),
-                row=1, col=2
-            )
+                }
+            ),
+            row=1, col=2
+        )
+        
 
         if not tool_perf.empty:
             fig.add_trace(
@@ -568,7 +511,7 @@ class LogVisualizer:
         sequence_analysis = self.analyzer.get_tool_sequence_analysis()
 
         # Generate all plots
-        summary_fig = self.create_summary_dashboard(include_task_success=False)  # Don't duplicate task success in tool report
+        summary_fig = self.create_summary_dashboard()  # Don't duplicate task success in tool report
         failure_fig = self.create_failure_analysis_plot()
         state_fig = self.create_state_change_plot()
         sankey_fig = self.create_tool_flow_sankey()
@@ -2534,7 +2477,7 @@ class LogVisualizer:
         recommendations = self._generate_recommendations(summary, tool_perf, failures, state_analysis)
 
         # Create summary dashboard
-        summary_html = self.create_summary_dashboard(include_task_success=True).to_html(full_html=False, include_plotlyjs=False)
+        summary_html = self.create_summary_dashboard().to_html(full_html=False, include_plotlyjs=False)
 
         # Create performance issues analysis plot
         perf_issues_html = self._create_performance_issues_plot(summary, tool_perf, failures).to_html(full_html=False, include_plotlyjs=False)
@@ -3030,9 +2973,10 @@ class LogVisualizer:
 
         fig = make_subplots(
             rows=1, cols=2,
-            subplot_titles=("Tool Usage Distribution",
-                          "Tool Transition Patterns"),
-            specs=[[{"type": "bar"},{"type": "pie"}]]
+            subplot_titles=("Tool Transition Patterns",
+                          "Tool Usage Distribution"),
+            specs=[[{"type": "bar"},{"type": "pie"}]],
+            horizontal_spacing=0.15  # Increase gap between charts (default is 0.2/cols = 0.1)
         )
 
         # Tool transition patterns - show top transitions as horizontal bar chart
@@ -3095,7 +3039,7 @@ class LogVisualizer:
 
 
         fig.update_layout(
-            height=300,
+            height=400,
             showlegend=False,
             title_text="Communication Analysis: Tool Usage & Transitions"
         )
