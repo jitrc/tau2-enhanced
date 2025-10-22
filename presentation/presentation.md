@@ -2,6 +2,7 @@
 marp: true
 theme: default
 paginate: true
+
 style: |
   :root {
     font-size: 24px;
@@ -734,24 +735,18 @@ python scripts/analyze_simple_logs.py \
 
 ---
 
-
 # Backup: Why Not terminal-bench?
-<style scoped>
-  {
-    font-size: 20px;
-  }
-</style>
+
 While `terminal-bench` was considered, `tau2-bench` was chosen for its deeper analytical capabilities.
 
 ### `terminal-bench`: Pros
-  *   **Practical & Broad Coverage:** Evaluates agents on real-world command-line tasks across several categories (e.g., coding, networking).
-  *   **Reproducible:** No LLM-based user simulator means fully deterministic results.
-  *   **Extensible:** Easy to add new tasks, including multi-modal ones.
+- **Practical & Broad Coverage:** Evaluates agents on real-world command-line tasks across several categories (e.g., coding, networking).
+- **Reproducible:** No LLM-based user simulator means fully deterministic results.
+- **Extensible:** Easy to add new tasks, including multi-modal ones.
 
 ### Rationale for Not Selecting
-  *   **Tests Memorization over Agency:** The benchmark's structure can reward "memorized" solutions for specific problems rather than testing true agentic reasoning and problem-solving.
-  *   **Lacks Analytical Depth:** The clean, non-messy environments and lack of diversity within similar tasks make it difficult to perform the deep, systematic failure analysis needed for root cause identification.
-  *   **Superficial Scoring:** The brittle scoring metric can be gamed by superficial agent improvements, not necessarily reflecting an increase in robust capability.
+- **Tests Memorization over Agency:** The benchmark's structure can reward "memorized" solutions for specific problems rather than testing true agentic reasoning and problem-solving.
+- **Lacks Analytical Depth:** The clean, non-messy environments and lack of diversity within similar tasks make it difficult to perform the deep, systematic failure analysis needed for root cause identification.
 
 ---
 
