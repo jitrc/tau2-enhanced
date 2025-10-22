@@ -2477,7 +2477,7 @@ class LogVisualizer:
         recommendations = self._generate_recommendations(summary, tool_perf, failures, state_analysis)
 
         # Create summary dashboard
-        summary_html = self.create_summary_dashboard().to_html(full_html=False, include_plotlyjs=False)
+        summary_html = self.create_summary_dashboard().to_html(full_html=False, include_plotlyjs=True)
 
         # Create performance issues analysis plot
         perf_issues_html = self._create_performance_issues_plot(summary, tool_perf, failures).to_html(full_html=False, include_plotlyjs=False)
