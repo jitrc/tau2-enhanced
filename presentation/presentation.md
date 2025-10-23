@@ -584,7 +584,7 @@ Impact-driven analysis reveals how failures compound:
 ---
 
 
-# Proof-of-Concept: Small-Scale Validation
+# Proof-of-Concept: Small-Scale Validation (Gemini Flash)
 
 **Sample:** 10 tasks × 2 trials = 20 simulations (54 expected actions per task set)
 
@@ -724,7 +724,7 @@ python scripts/analyze_simple_logs.py \
 </style>
 # Next Steps: Validation & Optimization
 
-**1. Proof-of-Concept Completed (Gemini)**
+**1. Proof-of-Concept Completed (Gemini Flash)**
 - ✅ `retry_agent`: **+11.1pp** tool success (57.4% → 68.5%), maintained task success at 60%
 - ⚠️ `enhanced_agent`: **+13.0pp** tool success (57.4% → 70.4%), but -5pp task success (60% → 55%)
 - 🔍 **Key Finding:** Tool-level improvements don't translate to task-level success
@@ -737,10 +737,9 @@ python scripts/analyze_simple_logs.py \
 **Priority 2: "Never Called" Failures (80%)**
 - **Action:** Few-shot examples for tool selection
 
-**Priority 3: Efficiency Crisis (91% wasted actions)**
-- **Problem:** 529 actual vs 54 expected actions (3.78% precision, 91% waste)
+**Priority 3: Efficiency Crisis (62% wasted actions)**
+- **Problem:** 1,084 actual vs 592 expected actions (33.4% precision, 62% waste)
 - **Action:** Early stopping criteria, exploration limits, better planning, state management
-
 ---
 
 # Proposed Training Strategy
