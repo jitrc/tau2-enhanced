@@ -1925,6 +1925,7 @@ class LogAnalyzer:
 
         for sim in sim_iterator:
             task_id = str(sim.get('task_id'))
+            trial = sim.get('trial', 'N/A')
             reward_info = sim.get('reward_info', {})
             task_success = bool(reward_info.get('reward', 0))
             execution_logs = sim.get('execution_logs', [])
@@ -1943,6 +1944,8 @@ class LogAnalyzer:
             comparison = self._compare_single_task_sequence(
                 task_id, expected_actions, execution_logs, task_success
             )
+            # Add trial information to comparison
+            comparison['trial'] = trial
             results.append(comparison)
 
         return results if results else None

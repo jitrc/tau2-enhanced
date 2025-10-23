@@ -4351,9 +4351,9 @@ class LogVisualizer:
         <div style="margin: 30px 0;">
             <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e74c3c; cursor: pointer; user-select: none;"
                 onclick="toggleSection('action-failures-section')">
-                <span id="action-failures-toggle">▼</span> 🚨 Action Check Failures Summary
+                <span id="action-failures-toggle">▶</span> 🚨 Action Check Failures Summary
             </h2>
-            <div id="action-failures-section">
+            <div id="action-failures-section" style="display: none;">
             <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 <thead>
                     <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -4454,9 +4454,9 @@ class LogVisualizer:
         <div style="margin: 30px 0;">
             <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e67e22; cursor: pointer; user-select: none;"
                 onclick="toggleSection('error-clustering-section')">
-                <span id="error-clustering-toggle">▼</span> 🔍 Error Pattern Clustering
+                <span id="error-clustering-toggle">▶</span> 🔍 Error Pattern Clustering
             </h2>
-            <div id="error-clustering-section">
+            <div id="error-clustering-section" style="display: none;">
 """
 
         # Cluster errors by pattern
@@ -4559,9 +4559,9 @@ class LogVisualizer:
         <div style="margin: 30px 0;">
             <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #dc2626; cursor: pointer; user-select: none;"
                 onclick="toggleSection('full-error-list-section')">
-                <span id="full-error-list-toggle">▼</span> 📋 Complete Error List
+                <span id="full-error-list-toggle">▶</span> 📋 Complete Error List
             </h2>
-            <div id="full-error-list-section">
+            <div id="full-error-list-section" style="display: none;">
 """
 
         # Collect all errors with full details
@@ -4674,7 +4674,154 @@ class LogVisualizer:
         html += """
             </div>
         </div>
+"""
 
+        # Add sequence comparison summary section if ground truth is available (BEFORE filters)
+        task_sequence_comparisons = self.analyzer.get_task_sequence_comparisons()
+        if task_sequence_comparisons:
+            html += """
+        <!-- Sequence Comparison Summary -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #3b82f6; cursor: pointer; user-select: none;"
+                onclick="toggleSection('sequence-summary-section')">
+                <span id="sequence-summary-toggle">▶</span> 📊 Sequence Comparison Summary
+            </h2>
+            <div id="sequence-summary-section" style="display: none;">
+                <div style="margin-bottom: 20px; padding: 15px; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 8px;">
+                    <strong style="color: #1e40af;">📋 Overview:</strong>
+                    <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">
+                        This table compares expected action sequences (from ground truth) against actual executed sequences for each task.
+                    </p>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Task ID</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Trial</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Status</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Seq Order</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Expected</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Actual</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">✅ Match</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">❌ Miss</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">⚠️ Extra</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">🔧 Arg Err</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+"""
+
+            for comp in task_sequence_comparisons:
+                # Determine status icon and color
+                status_icon = '✅' if comp['task_success'] else '❌'
+                status_color = '#27ae60' if comp['task_success'] else '#e74c3c'
+
+                # Determine sequence order icon and color
+                order_icon = '✅' if comp['sequence_order_match'] else '⚠️'
+                order_color = '#27ae60' if comp['sequence_order_match'] else '#f39c12'
+
+                # Row background color
+                row_idx = task_sequence_comparisons.index(comp)
+                bg_color = '#ffffff' if row_idx % 2 == 0 else '#f8fafc'
+
+                # Format sequences for display
+                expected_seq = comp['expected_sequence']
+                actual_seq = comp['actual_sequence']
+                expected_seq_str = ' → '.join(expected_seq) if expected_seq else '(none)'
+                actual_seq_str = ' → '.join(actual_seq) if actual_seq else '(none)'
+
+                # Get trial
+                trial = comp.get('trial', 'N/A')
+
+                html += f"""
+                        <tr style="background: {bg_color}; border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <strong style="font-size: 1.1em; color: #2c3e50;">#{comp['task_id']}</strong>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; background: #f3f4f6; color: #374151; font-weight: 600; font-size: 0.9em;">
+                                    {trial}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="font-size: 1.5em;">{status_icon}</span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="font-size: 1.5em;">{order_icon}</span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #dbeafe; color: #1e40af; font-weight: 600;">
+                                    {comp['expected_count']}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #fef3c7; color: #92400e; font-weight: 600;">
+                                    {comp['actual_count']}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #d1fae5; color: #065f46; font-weight: 600;">
+                                    {len(comp['matched_actions'])}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600;">
+                                    {len(comp['missing_actions'])}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #fef3c7; color: #92400e; font-weight: 600;">
+                                    {len(comp['extra_actions'])}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #dbeafe; color: #1e40af; font-weight: 600;">
+                                    {len(comp['argument_mismatches'])}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr style="background: {bg_color};">
+                            <td colspan="10" style="padding: 20px; border-bottom: 2px solid #cbd5e1;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                    <div>
+                                        <div style="font-weight: 600; color: #1e40af; margin-bottom: 10px; font-size: 1.05em;">
+                                            📋 Expected Sequence:
+                                        </div>
+                                        <div style="padding: 15px; background: #eff6ff; border: 1px solid #3b82f6; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.9em; word-wrap: break-word;">
+                                            {expected_seq_str}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; color: #92400e; margin-bottom: 10px; font-size: 1.05em;">
+                                            🔧 Actual Sequence:
+                                        </div>
+                                        <div style="padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.9em; word-wrap: break-word;">
+                                            {actual_seq_str}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+"""
+
+            html += """
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 15px; padding: 12px; background: #f1f5f9; border-radius: 6px; font-size: 0.9em; color: #475569;">
+                    <strong>Legend:</strong>
+                    <span style="margin-left: 10px;">✅ Success/Match</span>
+                    <span style="margin-left: 10px;">❌ Failure/Missing</span>
+                    <span style="margin-left: 10px;">⚠️ Wrong Order/Extra</span>
+                    <span style="margin-left: 10px;">🔧 Argument Errors</span>
+                </div>
+            </div>
+        </div>
+"""
+
+        # Add filter controls and task counter
+        html += """
         <div class="controls">
             <button class="btn" onclick="toggleAll()">Expand/Collapse All</button>
             <button class="btn" onclick="showTaskFailedOnly()">Show Task Failed Only</button>
@@ -5087,6 +5234,20 @@ class LogVisualizer:
             } else {
                 section.style.display = 'none';
                 toggle.textContent = '▶';
+            }
+        }
+
+        // Toggle sequence detail row in summary table
+        function toggleSeqDetail(detailId, rowElement) {
+            const detailRow = document.getElementById(detailId);
+            const toggleSpan = rowElement.querySelector('.seq-toggle');
+
+            if (detailRow.style.display === 'none') {
+                detailRow.style.display = 'table-row';
+                toggleSpan.textContent = '▼';
+            } else {
+                detailRow.style.display = 'none';
+                toggleSpan.textContent = '▶';
             }
         }
 
