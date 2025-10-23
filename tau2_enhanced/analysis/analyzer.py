@@ -1928,7 +1928,55 @@ class LogAnalyzer:
             trial = sim.get('trial', 'N/A')
             reward_info = sim.get('reward_info', {})
             task_success = bool(reward_info.get('reward', 0))
+
+            # Get execution logs - handle both formats
             execution_logs = sim.get('execution_logs', [])
+
+            # If no execution_logs in simulation, try to build from root-level execution_events
+            if not execution_logs and 'execution_events' in self.raw_log_data:
+                # Map events to simulation based on timestamp range
+                from datetime import datetime
+
+                start_time = sim.get('start_time')
+                end_time = sim.get('end_time')
+
+                if start_time and end_time:
+                    # Convert to Unix timestamp if needed
+                    try:
+                        # Try to parse as ISO format first
+                        if isinstance(start_time, str):
+                            start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00')).timestamp()
+                        else:
+                            start_time = float(start_time)
+
+                        if isinstance(end_time, str):
+                            end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00')).timestamp()
+                        else:
+                            end_time = float(end_time)
+                    except (ValueError, TypeError):
+                        start_time = None
+                        end_time = None
+
+                    if start_time and end_time:
+                        # Filter execution events by timestamp range
+                        execution_events = self.raw_log_data.get('execution_events', [])
+                        execution_logs = []
+
+                        for event in execution_events:
+                            event_timestamp = event.get('timestamp')
+                            if event_timestamp:
+                                try:
+                                    event_timestamp = float(event_timestamp)
+                                    if start_time <= event_timestamp <= end_time:
+                                        log_entry = {
+                                            'tool_name': event.get('tool_name'),
+                                            'arguments': event.get('tool_args', {}),
+                                            'success': event.get('success', False),
+                                            'timestamp': event_timestamp
+                                        }
+                                        execution_logs.append(log_entry)
+                                except (ValueError, TypeError):
+                                    continue
 
             # Get ground truth
             gt_task = ground_truth_tasks.get(task_id) or ground_truth_tasks.get(int(task_id))

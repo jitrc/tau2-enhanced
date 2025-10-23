@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_retry_agent_enhanced_logs.json`
-**Generated:** 2025-10-23 02:59:23
+**Generated:** 2025-10-23 03:17:46
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -88,39 +88,44 @@ This section compares actual tool call sequences against expected action sequenc
 
 | Metric | Value |
 |--------|-------|
-| **Precision** | 0.00% |
-| **Recall** | 0.00% |
-| **F1 Score** | 0.00% |
+| **Precision** | 3.27% |
+| **Recall** | 31.48% |
+| **F1 Score** | 5.92% |
 | **Total Tasks Analyzed** | 18 |
-| **Matched Actions** | 0/54 |
+| **Matched Actions** | 17/54 |
 
 ### Task Distribution
 
-- ✅ **Success + Ordered:** 10 tasks (correct sequence, task succeeded)
-- ⚠️  **Success + Unordered:** 0 tasks (wrong order, but task succeeded)
-- ❌ **Failed + Ordered:** 8 tasks (correct sequence, but task failed)
-- 🔴 **Failed + Unordered:** 0 tasks (wrong sequence, task failed)
+- ✅ **Success + Ordered:** 9 tasks (correct sequence, task succeeded)
+- ⚠️  **Success + Unordered:** 1 tasks (wrong order, but task succeeded)
+- ❌ **Failed + Ordered:** 7 tasks (correct sequence, but task failed)
+- 🔴 **Failed + Unordered:** 1 tasks (wrong sequence, task failed)
 
 ### Action-Level Metrics
 
 - **Expected actions:** 54
-- **Actual actions executed:** 0
-- **Correctly matched:** 0
-- **Missing (omitted):** 54
-- **Extra (unexpected):** 0
-- **Argument mismatches:** 0
+- **Actual actions executed:** 520
+- **Correctly matched:** 17
+- **Missing (omitted):** 7
+- **Extra (unexpected):** 473
+- **Argument mismatches:** 30
 
 ### Per-Tool Sequence Accuracy
 
 | Tool | Expected | ✅ Matched | ❌ Missing | 🔧 Arg Err | ⚠️ Extra | Precision | Recall |
 |------|----------|-----------|-----------|-----------|---------|-----------|--------|
-| get_reservation_details | 26 | 0 | 26 | 0 | 0 | 0.0% | 0.0% |
-| get_user_details | 12 | 0 | 12 | 0 | 0 | 0.0% | 0.0% |
-| cancel_reservation | 6 | 0 | 6 | 0 | 0 | 0.0% | 0.0% |
-| search_direct_flight | 4 | 0 | 4 | 0 | 0 | 0.0% | 0.0% |
-| send_certificate | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
-| update_reservation_flights | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
-| book_reservation | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
+| get_reservation_details | 26 | 6 | 0 | 20 | 229 | 2.6% | 23.1% |
+| get_user_details | 12 | 4 | 3 | 5 | 62 | 6.1% | 33.3% |
+| cancel_reservation | 6 | 4 | 1 | 1 | 19 | 17.4% | 66.7% |
+| search_direct_flight | 4 | 2 | 0 | 2 | 13 | 13.3% | 50.0% |
+| send_certificate | 2 | 1 | 1 | 0 | 8 | 11.1% | 50.0% |
+| update_reservation_flights | 2 | 0 | 2 | 0 | 3 | 0.0% | 0.0% |
+| book_reservation | 2 | 0 | 0 | 2 | 16 | 0.0% | 0.0% |
+| transfer_to_human_agents | 0 | 0 | 0 | 0 | 52 | 0.0% | 0.0% |
+| get_flight_status | 0 | 0 | 0 | 0 | 24 | 0.0% | 0.0% |
+| None | 0 | 0 | 0 | 0 | 43 | 0.0% | 0.0% |
+
+*Showing top 10 of 11 tools. See detailed reports for complete data.*
 
 ---
 

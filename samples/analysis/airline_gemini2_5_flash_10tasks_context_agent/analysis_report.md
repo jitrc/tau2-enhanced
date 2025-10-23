@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_context_agent_enhanced_logs.json`
-**Generated:** 2025-10-23 02:59:18
+**Generated:** 2025-10-23 03:17:41
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -87,11 +87,11 @@ This section compares actual tool call sequences against expected action sequenc
 
 | Metric | Value |
 |--------|-------|
-| **Precision** | 0.00% |
-| **Recall** | 0.00% |
-| **F1 Score** | 0.00% |
+| **Precision** | 3.12% |
+| **Recall** | 25.93% |
+| **F1 Score** | 5.58% |
 | **Total Tasks Analyzed** | 18 |
-| **Matched Actions** | 0/54 |
+| **Matched Actions** | 14/54 |
 
 ### Task Distribution
 
@@ -103,23 +103,26 @@ This section compares actual tool call sequences against expected action sequenc
 ### Action-Level Metrics
 
 - **Expected actions:** 54
-- **Actual actions executed:** 0
-- **Correctly matched:** 0
-- **Missing (omitted):** 54
-- **Extra (unexpected):** 0
-- **Argument mismatches:** 0
+- **Actual actions executed:** 448
+- **Correctly matched:** 14
+- **Missing (omitted):** 7
+- **Extra (unexpected):** 401
+- **Argument mismatches:** 33
 
 ### Per-Tool Sequence Accuracy
 
 | Tool | Expected | ✅ Matched | ❌ Missing | 🔧 Arg Err | ⚠️ Extra | Precision | Recall |
 |------|----------|-----------|-----------|-----------|---------|-----------|--------|
-| get_reservation_details | 26 | 0 | 26 | 0 | 0 | 0.0% | 0.0% |
-| get_user_details | 12 | 0 | 12 | 0 | 0 | 0.0% | 0.0% |
-| cancel_reservation | 6 | 0 | 6 | 0 | 0 | 0.0% | 0.0% |
-| search_direct_flight | 4 | 0 | 4 | 0 | 0 | 0.0% | 0.0% |
-| send_certificate | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
-| update_reservation_flights | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
-| book_reservation | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
+| get_reservation_details | 26 | 2 | 0 | 24 | 214 | 0.9% | 7.7% |
+| get_user_details | 12 | 7 | 2 | 3 | 60 | 10.4% | 58.3% |
+| cancel_reservation | 6 | 3 | 0 | 3 | 18 | 14.3% | 50.0% |
+| search_direct_flight | 4 | 2 | 1 | 1 | 5 | 28.6% | 50.0% |
+| send_certificate | 2 | 0 | 2 | 0 | 4 | 0.0% | 0.0% |
+| update_reservation_flights | 2 | 0 | 2 | 0 | 3 | 0.0% | 0.0% |
+| book_reservation | 2 | 0 | 0 | 2 | 9 | 0.0% | 0.0% |
+| transfer_to_human_agents | 0 | 0 | 0 | 0 | 44 | 0.0% | 0.0% |
+| None | 0 | 0 | 0 | 0 | 32 | 0.0% | 0.0% |
+| get_flight_status | 0 | 0 | 0 | 0 | 12 | 0.0% | 0.0% |
 
 ---
 

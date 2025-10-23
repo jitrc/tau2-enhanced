@@ -4728,8 +4728,11 @@ class LogVisualizer:
                 # Format sequences for display
                 expected_seq = comp['expected_sequence']
                 actual_seq = comp['actual_sequence']
-                expected_seq_str = ' → '.join(expected_seq) if expected_seq else '(none)'
-                actual_seq_str = ' → '.join(actual_seq) if actual_seq else '(none)'
+                # Filter out None values and convert to strings
+                expected_seq_filtered = [str(s) for s in expected_seq if s is not None] if expected_seq else []
+                actual_seq_filtered = [str(s) for s in actual_seq if s is not None] if actual_seq else []
+                expected_seq_str = ' → '.join(expected_seq_filtered) if expected_seq_filtered else '(none)'
+                actual_seq_str = ' → '.join(actual_seq_filtered) if actual_seq_filtered else '(none)'
 
                 # Get trial
                 trial = comp.get('trial', 'N/A')
@@ -5009,6 +5012,10 @@ class LogVisualizer:
                         extra = task_comparison['extra_actions']
                         arg_mismatches = task_comparison['argument_mismatches']
 
+                        # Filter out None values and convert to strings
+                        expected_seq_filtered = [str(s) for s in expected_seq if s is not None] if expected_seq else []
+                        actual_seq_filtered = [str(s) for s in actual_seq if s is not None] if actual_seq else []
+
                         # Color code based on match status
                         order_color = '#27ae60' if order_match else '#e67e22'
                         order_icon = '✅' if order_match else '⚠️'
@@ -5024,13 +5031,13 @@ class LogVisualizer:
                         <div>
                             <strong style="color: #2c3e50;">Expected Sequence:</strong>
                             <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
-                                {' → '.join(expected_seq) if expected_seq else '(none)'}
+                                {' → '.join(expected_seq_filtered) if expected_seq_filtered else '(none)'}
                             </div>
                         </div>
                         <div>
                             <strong style="color: #2c3e50;">Actual Sequence:</strong>
                             <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
-                                {' → '.join(actual_seq) if actual_seq else '(none)'}
+                                {' → '.join(actual_seq_filtered) if actual_seq_filtered else '(none)'}
                             </div>
                         </div>
                     </div>
