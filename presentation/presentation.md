@@ -669,7 +669,7 @@ Impact-driven analysis reveals how failures compound:
 **Command:**
 ```bash
 python scripts/analyze_simple_logs.py \
-  enhanced_logs/archive/tau2-bench-jit/baseline_airline_xai_grok3_gemini2_5_flash.json
+  samples/logs/baseline_airline_xai_grok3_gemini2_5_flash_reduced.json
 ```
 
 **Output:** 3 comprehensive reports
