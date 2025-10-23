@@ -840,8 +840,8 @@ python scripts/analyze_simple_logs.py \
        │   - Intercepts tool calls │
        └─────────────┬─────────────┘
                      │
-         ┌───────────┴───────────┐
-         │                       │
+         ┌───────────┴────────────┐
+         │                        │
     ┌────▼─────┐           ┌──────▼──────┐
     │ Execution│           │    State    │
     │  Logger  │           │   Tracker   │
