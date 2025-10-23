@@ -855,6 +855,27 @@ python scripts/analyze_simple_logs.py \
               │   (JSON)    │
               └─────────────┘
 ```
+
+---
+
+# Backup: Action/Function Call Failure Rate Comparison
+
+<style scoped>
+  table {
+    font-size: 20px;
+    line-height: 1.3;
+  }
+</style>
+
+| Action | Grok 3 | GPT-4.1 | Claude 3.7 | O4 Mini | GPT-4.1 Mini | Gemini Flash |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `calculate` | 100% | 100% | 100% | 100% | 100% | 100% |
+| `book_reservation` | 85% | 69% | 58% | 72% | 67% | 100% |
+| `update_reservation_flights` | 55% | 29% | 27% | 44% | 27% | 100% |
+| `search_direct_flight` | **79%** | 28% | 30% | 54% | 24% | 54% |
+| `update_reservation_baggages`| 63% | 71% | 46% | 71% | 67% | 71% |
+| `send_certificate` | 67% | 75% | 33% | 67% | 17% | 92% |
+
 ---
 
 # Backup: Why Not terminal-bench?
