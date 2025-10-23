@@ -122,57 +122,53 @@ style: |
 |--------|-------|-------------------|
 | **Task Success Rate** | 57.5% | 50-59% (comparable) |
 | **Communication Success** | **97.0%** | Shows reasoning is intact ✓ |
-| **Action Execution Failures** | 89.4% | Industry-wide: 48-89% ⚠️ |
-| **Performance Drop (with actions)** | 61.1pp | 8-63pp (Grok is highest) |
+| **Database Success** | **57.5%** | Failing to get to correct state ✓ |
+| **Tool Action Success Rate** | 65.3% (384/588) | Varies 40-75% across models |
+| **Performance Drop (with actions)** | 61.1pp (93.8 -> 32.8) | 8-63pp (Grok is highest) |
 
 **Dataset:** 200 simulations, 50 tasks, 4 trials each
-**Total Tool Calls Analyzed:** 1,162
+**Total Tool Calls Analyzed:** 1,162 (139 state-changing)
 <span class="small">
-Log file [baseline_airline_xai_grok3_gemini2_5_flash](enhanced_logs/archive/tau2-bench-jit/baseline_airline_xai_grok3_gemini2_5_flash.json)</span>
+Log file [baseline_airline_xai_grok3_gemini2_5_flash](samples/logs/baseline_airline_xai_grok3_gemini2_5_flash_reduced.json)</span>
 
 ---
 
 # Key Finding: The Execution Gap
 
-**Critical Evidence:**
-```
-🔍 Primary Failure Modes (85 failed simulations):
-  Communication failures: 6/85 (7.1%)  ✓ Understanding intact
-  Database failures: 85/85 (100.0%)    ✗ Action execution
-  Action execution failures: 76/85 (89.4%)
+**Primary Failure Modes (85/200 failed simulations):**
+- Communication failures: 6/85 (7.1%) ✓ Understanding intact
+- Database failures: 85/85 (100.0%) ✗ Action execution
+- Action execution failures: 76/85 (89.4%) ✗ Root cause
 
-⚠️  Performance Cliff:
-  No-action tasks: 93.8% success
-  Action-required tasks: 32.8% success
-  → 61.1pp drop when actions required
 
-🚨 Most Problematic Actions:
-  book_reservation: 84.8% failure (33 attempts)
-  search_direct_flight: 78.8% failure (80 attempts)
-  update_reservation_flights: 54.8% failure (84 attempts)
-```
 
-**Root Cause:** 100% ActionCheckFailure (validation errors, not reasoning)
+**Why High Communication Success ≠ Task Success:**
+- Agent correctly understood and communicated, but couldn't execute `cancel_reservation`
+- **Gap:** Understanding (97%) → Execution (57.5%) → 40pp execution gap
+- **Gap:** 61.1pp drop when actions required (93.8 No-action, 32.8 Action required)
 
 <span class="small">
-python scripts/non_enhanced/failure_analysis.py enhanced_logs/archive/tau2-bench-jit/baseline_airline_xai_grok3_gemini2_5_flash.json
+Source: scripts/non_enhanced/failure_analysis.py + analyze_breakdown.py
 </span>
 
 ---
 
-# Critical Finding: Performance Cliff
+# Failure Type Distribution
 
-![bg right:40% 100%](presentation_assets/performance_cliff.png)
+**📊 Three Distinct Failure Modes:**
 
-**Without Actions Required:**
-- Success Rate: 93.8%
+| Type | % of Failures | Severity | Root Cause |
+|------|---------------|----------|------------|
+| **Never Called** | 80% (163) | Critical | Agent didn't recognize when to use tool |
+| **Wrong Args** | 13% (27) | Medium | Parameter construction errors |
+| **No Match** | 7% (14) | High | Execution logic mismatch |
 
-**With Actions Required:**
-- Success Rate: 32.8%
+**🚨 Highest Impact Failures:**
+- `book_reservation`: 84.8% failure, **9.3 impact** (22 sims blocked)
+- `update_reservation_flights`: 54.8% failure, **7.9 impact** (29 sims blocked)
+- `search_direct_flight`: 78.8% failure, **7.5 impact** (19 sims blocked)
 
-**Drop: 61.1 percentage points**
-
-Grok-3's 61.1 percentage point drop is the largest among the flagship models, significantly higher than GPT-4.1 (31.7pp) and Claude 3.7 Sonnet (8.3pp).
+**Combined impact of top 3:**  Blocks 30% (61 unique simulations affected) of all failures
 
 ---
 
@@ -199,22 +195,39 @@ Grok-3's 61.1 percentage point drop is the largest among the flagship models, si
 
 ---
 
-# Action Failure Cascade & Secondary Root Cause
+# Action Complexity Impact
 
-**The Cascade Effect:**
-| Actions Required | Success Rate | Drop |
-|:---|:---:|:---:|
-| 0 actions | 93.8% | baseline |
-| 1 action | 40.6% | **-53.2pp** ⚠️ |
-| 2-4 actions | 0-25% | catastrophic ❌ |
+**Success Rate by Write Actions Required:**
 
-**Secondary: Context Length Pressure**
+| Write Actions | Tasks | Success Rate | Drop |
+|:---|:---:|:---:|:---:|
+| **0 actions** | 81 | **93.8%** | baseline |
+| **1 action** | 64 | 40.6% | **-53.2pp** ⚠️ |
+| **2+ actions** | 55 | 0-25% | catastrophic ❌ |
+
+**Key Insight:**
+- First action causes **53.2pp drop** — then plateaus at ~25%
+- **Compounding Tool Success of only: 65.3%** State-changing 74.6%,  Read-only 41.5%
+
+
+<span class="small">
+Source: scripts/non_enhanced/analyze_breakdown.py
+</span>
+
+---
+
+# Secondary Root Causes
+
+**Context Length Pressure & Cost:**
 - Failed simulations use **1.3x more tokens** (3,431 vs 2,601)
+- Average cost per simulation: **$0.23** (failures cost more)
 - Each tool call + retry: ~200-500 tokens → vicious cycle
+- High self-loop rate (37.3%) compounds the problem
 
 **Trial Inconsistency:**
-- Trial 0: 66% → Trial 3: 50% (16pp degradation)
-- Pass@4: 0.380 (shows lack of robustness)
+- Trial 0: 66% → Trial 1: 58% → Trial 2: 56% → Trial 3: 50%
+- **Pass@k metrics:** 0.575 → 0.460 → 0.405 → **0.380**
+- 16pp degradation, Pass@4 only 38% (retrying makes it worse!)
 
 ---
 # Standard tau2-bench Limitations
@@ -240,7 +253,7 @@ Grok-3's 61.1 percentage point drop is the largest among the flagship models, si
 **Solution:** Add comprehensive observability without modifying tau2-bench
 
 **Captures:** Every tool call with full context, validation errors, state changes, timing
-**Enables:** 15+ analysis methods, root cause analysis, performance bottleneck identification
+**Enables:** 15+ analysis methods, root cause analysis, performance bottleneck identification, **ground truth sequence comparison**
 
 **Methodology:**
 ```python
@@ -254,6 +267,38 @@ LogAnalyzer → 15+ analysis methods → HTML reports
 ```
 
 ---
+# 15+ Analysis Methods
+ **Failure Analysis**
+- Impact scores, failure types, high frequency, root causes
+
+**Performance Analysis**
+- Tool success rates, timing, 
+- State Changing vs Read Only, Complexity
+
+**Sequence Analysis**
+ - Ground truth comparison (Precision/Recall/F1)
+ - Tool transitions and self-loops
+
+**Workflow Patterns**
+ - Argument accuracy, error patterns
+
+---
+
+# Impact Score: Prioritizing Failures
+
+**Formula:** `failure_rate × simulations_affected / total_simulations × 100`
+
+**Why Impact Score?**
+- Combines **frequency** (how often it fails) with **reach** (how many simulations affected)
+- Prioritizes failures that block the most user tasks
+- Better than raw failure count alone
+
+**Example:**
+- Tool A: 100% failure, 2/100 sims → Impact **2.0**
+- Tool B: 50% failure, 30/100 sims → Impact **15.0**
+→ **Tool B is higher priority** despite lower failure rate
+
+---
 
 <!-- _class: lead -->
 # Part 3: Failure Visualizations
@@ -261,50 +306,94 @@ LogAnalyzer → 15+ analysis methods → HTML reports
 
 ---
 
-# Failure Analysis Deep Dive
+# Live Links to Reports
 
-**Error Distribution:** ActionCheckFailure: 100% (204 occurrences)
+- [Enhanced Tau2 Analysis Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/enhanced_analysis_report.html)
 
-**Failure Subcategories:**
-| Error Type | % of Failures |
-|------------|---------------|
-| Missing required fields | 39% |
-| Wrong parameter types | 34% |
-| Invalid values | 26% |
+- [Tool Execution Analysis Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/tool_report.html)
 
-**Example:**
-```json
-{
-  "tool": "book_reservation",
-  "error": "Required field 'payment.gift_card_ids' missing",
-  "provided": {"flight_id": "...", "passenger_ids": [...]}
-}
-```
+- [Comprehensive Simulation Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/simulation_report.html)
+
+- [Markdown Report](https://github.com/jitrc/tau2-enhanced/blob/ppt/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/analysis_report.md)
+
+---
+
+
+
+# Failure Analysis: Impact-Ranked
+
+**Top Impact Failures (204 total failures):**
+
+| Tool | Impact | Failure Rate | Affected Sims | Type |
+|------|--------|--------------|---------------|------|
+| `book_reservation` | **9.3** | 84.8% | 22 | Never Called |
+| `update_reservation_flights` | **7.9** | 54.8% | 29 | Never Called |
+| `search_direct_flight` | **7.5** | 78.8% | 19 | Never Called |
+| `update_reservation_baggages` | 4.7 | 62.5% | 15 | Never Called |
+
+**Failure Type Distribution:**
+- **Never Called:** 79.9% (163) — Agent didn't recognize need
+- **Wrong Args:** 13.2% (27) — Parameter construction errors
+- **No Match:** 6.9% (14) — Execution logic mismatch
 
 **Key Insight:** Issue is not what the agent *says*, but what it *does*. Validation errors, not reasoning errors.
 
 ---
 
-# Critical Tool Failures & Patterns
+# Key Insights: Observability Gains
 
-**Top Failing Tools:**
-| Tool | Failure Rate | Attempts | Type |
-|------|--------------|----------|------|
-| `calculate` | 100.0% | 4  | Read-Only |
-| `book_reservation` | 84.8% | 33 | State-changing |
-| `search_direct_flight` | 78.8% | 80 | Read-Only |
-| `send_certificate` | 66.7% | 12 | State-changing |
+**Scale of Analysis:**
+- **13 tools** analyzed across **1,162 calls** in 200 simulations
+- **4 tools** excellent (≥95% success), **9 tools** poor (<75%)
+- **17.6%** overall error rate across all tool calls
 
-**Paradox:** State-changing tools (74.6% success) outperform read-only tools (41.5% success) — opposite of expected!
+**The Self-Loop Problem:**
+- **37.3%** of transitions are self-loops (repeated calls to same tool)
+- `get_reservation_details` → self: **287x** (most common pattern)
+- Indicates retry patterns and exploration failures
 
-<span class="small">
-Source: [Analysis Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/analysis_report.md) Lines 331-332
-</span>
+**High-Impact vs High-Volume:**
+- `get_reservation_details`: 488 calls, 44.5% success, **0.1 impact** (recoverable)
+- `book_reservation`: 9 calls, 55.6% success, **9.3 impact** (catastrophic)
 
-**100% Failure Tasks (0/4 trials):**
-- **Task 14:** "Book cheapest flight using gift cards and certificate" → Complex payment structure
-- **Task 17:** "Update passenger, baggage, and flight details" → Coordinated changes
-- **Task 20:** "Book flight with time and payment constraints" → Complex validation
+---
+
+# The Efficiency Crisis
+
+**Sequence Comparison: Expected vs Actual (172 tasks, 592 ground truth actions)**
+
+| Metric | Value | Problem |
+|--------|-------|---------|
+| **Precision** | 33.4% | 67% of executed actions are wrong |
+| **Recall** | 61.2% | Missing 39% of required actions |
+| **Waste** | 676 extra | 1,084 actual vs 592 expected (62% overhead) |
+| **Arg Errors** | 46 | Even "correct" tools have wrong params |
+
+**Does sequence order matter?** Not as much as you'd think:
+- 75 tasks: Correct order → Success ✓
+- **78 tasks: Correct order → Still Failed** ❌
+
+**Key Insight:** Argument accuracy matters more than sequence order
+
+**Extreme waste:** Task 23 executed **86 extra actions** (search loops spiraled out of control)
+
+
+---
+
+# 100% Failure Tasks
+
+**5 Tasks Failed All 4 Trials:**
+- **Tasks 7, 14, 29, 35, 44**
+
+**Common Characteristics:**
+- Complex payment logic (gift cards + certificates)
+- Multi-step coordination (update passenger + baggage + flight)
+- Constraint validation (time + payment + availability)
+
+**Examples:**
+- **Task 14:** "Book cheapest flight using gift cards and certificate"
+- **Task 17:** "Update passenger, baggage, and flight details"
+- **Task 20:** "Book flight with time and payment constraints"
 
 ---
 
@@ -330,6 +419,46 @@ Provided: {payment: {method: "split", cards: [...], cert: "..."}}
 
 ---
 
+# Common Error Patterns Across Failures
+
+**📊 Top Runtime Errors (not ActionCheckFailures):**
+
+| Error Message | Count | Pattern |
+|---------------|-------|---------|
+| Gift card balance is not enough | 9 | Resource constraint |
+| Not enough seats on flight HAT229 | 3 | Inventory constraint |
+| Certificate cannot be used to update | 1 | Policy violation |
+
+**Key Observations:**
+- **Task 21** failed all 4 trials: "Not enough seats on flight HAT229" (inventory issue)
+- **Task 17, 22** repeatedly hit gift card balance errors across trials
+- Indicates **environment state issues**, not just agent reasoning
+
+**Implications:**
+- Some failures are **unrecoverable** regardless of agent capability
+
+---
+
+# Task Consistency: Predictability Analysis
+
+**Most Inconsistent Tasks (high variance across trials):**
+
+Tasks with 50% success rate (2/4 trials passed):
+- **Tasks 1, 2, 8, 15, 18, 19, 21, 24, 38, 42** (10 tasks)
+- Variance: 0.50-0.58 (maximum inconsistency)
+
+**What This Means:**
+- **20% of tasks** (10/50) are **coin-flip unpredictable**
+- Same task, same setup → different outcome each trial
+- Not just hard tasks, but **non-deterministic** behavior
+- Cannot rely on A/B testing with single trials
+
+<span class="small">
+Source: scripts/non_enhanced/analyze_breakdown.py - Variance analysis
+</span>
+
+---
+
 # Visualization: State Change
 
 ![width:600px](presentation_assets/state_change.png)
@@ -348,36 +477,34 @@ Provided: {payment: {method: "split", cards: [...], cert: "..."}}
 
 | Problem | Evidence | Root Cause | Solution |
 |---------|----------|------------|----------|
-| 89.4% validation failures | ActionCheckFailure dominates | Parameter construction errors | **RetryManagedAgent** |
-| 61.1pp performance drop | With actions: 32.8% vs 93.8% | Execution gap | **RetryManagedAgent** |
-| 50% → 66% trial degradation | Consistent decline | Context accumulation | **ContextManagedAgent** |
+| 80% "Never Called" failures | 163 failures, top cause | Planning/tool selection | Few-shot examples + **RetryManagedAgent** |
+| High-impact tool failures | book_reservation: 9.3 impact | Parameter construction | **RetryManagedAgent** + validation hints |
+| Context accumulation | 37.3% self-loops, 287x get_reservation | Redundant calls | **ContextManagedAgent** |
 
-**Hypothesis:** Combine both → Measurable improvement (model-dependent)
 **POC Result:** Tool-level gains confirmed (+13pp), but task-level optimization requires careful tuning
 
 ---
 
 # The Vicious Cycle Problem
 
-The two root causes amplify each other, creating a vicious cycle that leads to task failure.
+Impact-driven analysis reveals how failures compound:
 
 ```
 1. Complex tasks require multiple actions
               ↓
-2. Action failures trigger retries
+2. High-impact tool failures (84.8% failure rate, book_reservation)
               ↓
-3. Retries add 200-500 tokens per attempt
+3. Task failure → Agent confusion → Self-loops (get_reservation: 287x)
               ↓
-4. More context → Performance cliffs at 1.5K and 3K
+4. Context accumulation (37.3% self-loop rate)
               ↓
 5. Performance degradation → More action failures
               ↓
          [Back to step 2]
 ```
-
 **Breaking the Cycle:**
-- **`RetryManagedAgent`** reduces failures at step 2
-- **`ContextManagedAgent`** prevents degradation at step 4
+- **`RetryManagedAgent`:** Reduce step 2 failures
+- **`ContextManagedAgent`:** Prevent step 4 accumulation
 - **`EnhancedLLMAgent`** breaks the cycle at both points
 
 ---
@@ -459,22 +586,47 @@ The two root causes amplify each other, creating a vicious cycle that leads to t
 
 # Proof-of-Concept: Small-Scale Validation
 
+**Sample:** 10 tasks × 2 trials = 20 simulations (54 expected actions per task set)
 
-**Sample:** 10 tasks × 2 trials = 20 simulations
+| Agent | Tool Success | Task Success | Precision | Recall | F1 | Matched | Extra Actions |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| llm_agent | 57.4% | 60.0% | 3.87% | 29.63% | 6.85% | 16/54 | 359 |
+| context_agent | 59.3% | 60.0% | 3.12% | 25.93% | 5.58% | 14/54 | 401 |
+| retry_agent | 68.5% | 60.0% | 3.27% | 31.48% | 5.92% | 17/54 | 466 |
+| **enhanced_agent** | **70.4%** | 55.0% | 3.78% | 37.04% | 6.86% | 20/54 | 482 |
 
-| Agent | Tool Success | Task Success | vs Baseline |
-|:---|:---:|:---:|:---:|
-| llm_agent | 57.4% | 60.0% | - |
-| context_agent | 59.3% | 60.0% | +1.9pp |
-| retry_agent | 68.5% | 60.0% | **+11.1pp** ✓ |
-| **enhanced_agent** | **70.4%** | 55.0% | **+13.0pp** ✓ |
 
-**Initial Takeaway:** Retry mechanism shows promising double-digit tool success improvements! Context and combined approaches require further investigation.
+**Tool Success Improvement:** +11-13pp ✓ (Retry mechanism proven effective)
 
-**Reports:**
+---
+# Proof-of-Concept: Insights and Learnings
+
+**Sequence Comparison Insights:**
+- **RetryAgent:** +11pp tool success, +1 matched action, but +107 extra actions (466 vs 359)
+- **ContextAgent:** Minimal improvement (+2pp tool), actually worse precision/recall
+- **EnhancedAgent:** Best precision (3.78%) and recall (37.04%), but generates most extra actions (482)
+- **Critical Finding:** +13pp tool success doesn't translate to task success (55% vs 60% baseline)
+- **Root Cause:** All agents have ~3% precision and 26-37% recall — sequence planning fundamentally broken
+
+**Key Learning:** Tool-level improvements ≠ Task-level success without addressing:
+1. **Precision Crisis:** 96-97% of executed actions are unnecessary (extra actions)
+2. **Recall Gap:** Missing 63-74% of required actions
+3. **Exploration Waste:** 359-482 extra actions per 54 expected actions (6.6-8.9× overhead)
+
+---
+
+# Reports
+
 - [llm_agent](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/enhanced_analysis_report.html)
+    - [tool](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/tool_report.html)
+    - [simulation_report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/simulation_report.html)    
 - [retry_agent](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/enhanced_analysis_report.html)
+  - [tool](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/tool_report.html)
+  - [simulation_report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/simulation_report.html)
 - [enhanced_agent](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/enhanced_analysis_report.html)
+  - [tool](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/tool_report.html)
+  - [simulation_report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/simulation_report.html)
+
 
 ---
 
@@ -521,9 +673,10 @@ python scripts/analyze_simple_logs.py \
 ```
 
 **Output:** 3 comprehensive reports
-- `enhanced_analysis_report.html` (interactive visualizations)
-- `tool_report.html` (per-tool success rates & errors)
-- `simulation_report.html` (full task/trial logs)
+- `enhanced_analysis_report.html` (Top Level Sumamry)
+- `tool_report.html` (per-tool success rates, errors, sequence accuracy)
+- `simulation_report.html` (full task/trial logs with sequences, args compared and error pattern)
+- `analysis_report.md` (markdown summary with sequence metrics)
 
 ---
 
@@ -572,22 +725,38 @@ python scripts/analyze_simple_logs.py \
 # Next Steps: Validation & Optimization
 
 **1. Proof-of-Concept Completed (Gemini)**
-- ✅ `retry_agent`: **+11.1pp** tool success improvement, maintained task success
-- ⚠️ `enhanced_agent`: **+13.0pp** tool success improvement, but -5pp task success regression
-- 🔍 **Key Finding:** Tool-level improvements don't always translate to task-level success
+- ✅ `retry_agent`: **+11.1pp** tool success (57.4% → 68.5%), maintained task success at 60%
+- ⚠️ `enhanced_agent`: **+13.0pp** tool success (57.4% → 70.4%), but -5pp task success (60% → 55%)
+- 🔍 **Key Finding:** Tool-level improvements don't translate to task-level success
+**2. Impact-Driven Optimization Priorities**
 
-**2. Model-Specific Optimization**
-- Analyze failure patterns per model (error signatures differ)
-- Tune retry strategies & context thresholds per model
-- Cross-domain validation (retail, telecom)
+**Priority 1: High-Impact Tool Failures (Impact >5.0)**
+- Target: `book_reservation` (9.3), `update_reservation_flights` (7.9), `search_direct_flight` (7.5)
+- **Action:** Targeted retry logic + validation hints
 
-**3. Proposed Training Strategy**
-- **Structured Output Training (~50k examples):** Reduce ActionCheckFailure from 89% to <45%
-  - Focus: Payment structures, nested objects, parameter validation
-- **Error Recovery Training:** Build error signature → recovery strategy mappings, train on retry patterns 
-- **Context Management Dataset (~25k):** Prevent performance cliffs and confusion
+**Priority 2: "Never Called" Failures (80%)**
+- **Action:** Few-shot examples for tool selection
 
-**Expected Outcomes:** +5-15pp improvement, -15% tool calls through better planning
+**Priority 3: Efficiency Crisis (91% wasted actions)**
+- **Problem:** 529 actual vs 54 expected actions (3.78% precision, 91% waste)
+- **Action:** Early stopping criteria, exploration limits, better planning, state management
+
+---
+
+# Proposed Training Strategy
+
+**Structured Output Training (~50k examples):**
+- **Target:** Reduce "Wrong Args" failures (13.2% → <5%)
+- **Focus:** Payment structures, nested objects from impact-ranked failures
+
+**Tool Selection Training:**
+- **Target:** Reduce "Never Called" failures (80% → <40%)
+- **Method:** Few-shot examples, explicit tool use guidance
+
+**Context Management Dataset (~25k):**
+- **Target:** Prevent self-loops and degradation
+- **Method:** Teach when to stop redundant calls
+
 
 ---
 
@@ -595,31 +764,25 @@ python scripts/analyze_simple_logs.py \
 
 **What This Demonstrates:**
 
-1. **Analytical Depth:** Identified execution gap and discovered retry traps through comprehensive logging
+1. **Analytical Depth:** Impact Score methodology reveals that 3 tools block 60 simulations (30% of failures)
 2. **Technical Innovation:** Non-invasive observability without forking, enabling deep analysis
-3. **Visual Tooling:** revealed hidden failure modes
-4. **Reproducibility:** All code, data, analysis publicly available with complete methodology
-
-**Core Innovation:**
-> "Rigorous benchmark critique reveals hard truths with help of and analysis tooling. This framework enables discovery of these critical insights."
+3. **Failure Taxonomy:** 80% "Never Called", 13% "Wrong Args", 7% "No Match" — each needs different fix
+4. **Sequence Analysis:** Ground truth comparison shows 33% precision, 61% recall — 62% waste (676 extra per 592 expected actions)
+5. **Reproducibility:** All code, data, analysis publicly available with complete methodology
 
 ---
-
 # Impact Statement
-
 **Before tau2-enhanced:**
 - Binary success/failure metrics
 - No visibility into execution details
-- Can't distinguish planning vs execution failures
+- Can't prioritize which failures to fix first
 - Limited to final results
 
 **After tau2-enhanced:**
-- 15+ analysis methods with structured logging
-- Root cause analysis with error categorization
-- Three specialized agents revealing optimization complexity
-- Framework for discovering sample size bias and model-specific patterns
-
-**Framework Effect:** Makes ANY tau2-bench evaluation more insightful, preventing costly production failures
+- **Prioritize:** Impact scores vs High Frequency
+- **Root Cause:** , failure types, self-loop rates, error patterns, sequence accuracy
+- **Observability:** Self-loop rates (37.3%), error patterns, state changes across 1,162 tool calls
+- **Actionable:** Three specialized agents tested (+11-13pp tool success proven)
 
 ---
 
