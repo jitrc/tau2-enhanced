@@ -776,6 +776,67 @@ class LogAnalyzer:
         else:
             return pd.DataFrame()
 
+    def get_unique_failed_simulations(self, tool_names: List[str] = None) -> Dict[str, Any]:
+        """
+        Calculate unique simulations affected by tool failures, accounting for overlaps.
+
+        Args:
+            tool_names: List of tool names to analyze. If None, analyzes all failed tools.
+
+        Returns:
+            Dictionary containing:
+            - total_unique_sims: Total unique simulations affected
+            - tool_breakdown: Per-tool simulation counts
+            - overlap_analysis: Simulations affected by multiple tools
+            - percentage_of_total: Percentage of all simulations affected
+        """
+        detailed_failures = self.get_detailed_failure_breakdown()
+        if detailed_failures.empty:
+            return {
+                'total_unique_sims': 0,
+                'tool_breakdown': {},
+                'overlap_analysis': {},
+                'percentage_of_total': 0.0
+            }
+
+        # Filter by tool names if specified
+        if tool_names:
+            detailed_failures = detailed_failures[detailed_failures['tool_name'].isin(tool_names)]
+
+        # Get unique simulations per tool
+        tool_sims = {}
+        for tool in detailed_failures['tool_name'].unique():
+            tool_sims[tool] = set(detailed_failures[detailed_failures['tool_name'] == tool]['simulation_id'].unique())
+
+        # Calculate total unique simulations (union)
+        all_failed_sims = set()
+        for sims in tool_sims.values():
+            all_failed_sims.update(sims)
+
+        # Calculate overlap - simulations that had failures from multiple tools
+        overlap_count = 0
+        multi_tool_failures = {}
+        for sim_id in all_failed_sims:
+            tools_failed = [tool for tool, sims in tool_sims.items() if sim_id in sims]
+            if len(tools_failed) > 1:
+                overlap_count += 1
+                multi_tool_failures[sim_id] = tools_failed
+
+        # Get total simulations
+        total_simulations = self.raw_log_data.get('simulations', [])
+        if isinstance(total_simulations, dict):
+            total_simulations = list(total_simulations.values())
+        total_sim_count = len(total_simulations)
+
+        return {
+            'total_unique_sims': len(all_failed_sims),
+            'tool_breakdown': {tool: len(sims) for tool, sims in tool_sims.items()},
+            'overlapping_sims': overlap_count,
+            'multi_tool_failures': multi_tool_failures,
+            'percentage_of_total': (len(all_failed_sims) / total_sim_count * 100) if total_sim_count > 0 else 0.0,
+            'sum_of_individual_counts': sum(len(sims) for sims in tool_sims.values())
+        }
+
     def get_state_change_analysis(self) -> pd.DataFrame:
         """
         Analyzes performance based on whether a tool call changed the state,

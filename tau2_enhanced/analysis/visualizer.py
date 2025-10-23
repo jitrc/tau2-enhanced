@@ -658,21 +658,23 @@ class LogVisualizer:
 
         .header {{
             text-align: center;
-            border-bottom: 3px solid #007bff;
-            padding-bottom: 20px;
             margin-bottom: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
         }}
 
         .header h1 {{
-            color: #2c3e50;
-            margin: 0;
+            margin: 0 0 10px 0;
             font-size: 2.5em;
+            font-weight: 300;
+            color: white;
         }}
 
         .header .subtitle {{
-            color: #6c757d;
             font-size: 1.1em;
-            margin: 10px 0;
+            opacity: 0.9;
         }}
 
         .section {{
@@ -1187,6 +1189,22 @@ class LogVisualizer:
                 if breakdown_items:
                     failure_type_breakdown = f"<li><strong>Failure type breakdown:</strong> {', '.join(breakdown_items)}</li>"
 
+            # Analyze top 3 high-impact tools for overlapping simulations
+            top_3_tools = failures_with_impact.nlargest(3, 'impact_score')['tool_name'].tolist()
+            overlap_analysis = self.analyzer.get_unique_failed_simulations(top_3_tools)
+
+            overlap_info = ""
+            if overlap_analysis and len(top_3_tools) > 1:
+                sum_individual = overlap_analysis.get('sum_of_individual_counts', 0)
+                unique_sims = overlap_analysis.get('total_unique_sims', 0)
+                overlapping = overlap_analysis.get('overlapping_sims', 0)
+                pct_of_total = overlap_analysis.get('percentage_of_total', 0)
+
+                if sum_individual > unique_sims:
+                    overlap_info = f"<li><strong>Overlap analysis:</strong> Top 3 tools show {sum_individual} total failures, but only {unique_sims} unique simulations affected ({overlapping} sims failed multiple tools) = {pct_of_total:.1f}% of all simulations</li>"
+                else:
+                    overlap_info = f"<li><strong>Overlap analysis:</strong> Top 3 tools affect {unique_sims} unique simulations ({pct_of_total:.1f}% of all simulations) with no overlaps detected</li>"
+
             insights_html += f"""
             <div class="warning-box">
                 <h4>⚠️ Error Analysis</h4>
@@ -1195,6 +1213,7 @@ class LogVisualizer:
                     <li><strong>Highest impact:</strong> {highest_impact['tool_name']} - <em>{impact_failure_type}</em> (impact: {highest_impact['impact_score']:.1f}, {int(highest_impact['count'])} failures)</li>
                     <li><strong>Most frequent:</strong> {most_frequent['tool_name']} - <em>{freq_failure_type}</em> ({int(most_frequent['count'])} failures)</li>
                     {failure_type_breakdown}
+                    {overlap_info}
                 </ul>
             </div>
             """
@@ -2183,16 +2202,16 @@ class LogVisualizer:
             <h3 style="color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-bottom: 20px;">🎯 Root Cause Analysis</h3>
             <div class="failure-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
                 <div class="stat-card" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9;">Total Failures</h4>
-                    <div class="stat-value" style="font-size: 2em; font-weight: bold;">{total_failures}</div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; color: white;">Total Failures</h4>
+                    <div class="stat-value" style="font-size: 2em; font-weight: bold; color: white;">{total_failures}</div>
                 </div>
                 <div class="stat-card" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9;">Error Rate</h4>
-                    <div class="stat-value" style="font-size: 2em; font-weight: bold;">{error_rate:.1%}</div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; color: white;">Error Rate</h4>
+                    <div class="stat-value" style="font-size: 2em; font-weight: bold; color: white;">{error_rate:.1%}</div>
                 </div>
                 <div class="stat-card" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9;">Affected Tools</h4>
-                    <div class="stat-value" style="font-size: 2em; font-weight: bold;">{affected_tools}</div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; color: white;">Affected Tools</h4>
+                    <div class="stat-value" style="font-size: 2em; font-weight: bold; color: white;">{affected_tools}</div>
                 </div>
             </div>
         """
@@ -3112,6 +3131,35 @@ class LogVisualizer:
         .metric-label {{
             font-size: 0.9em;
             opacity: 0.9;
+        }}
+
+        .failure-stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+
+        .stat-card {{
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }}
+
+        .stat-card h4 {{
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #dc3545;
         }}
 
         .plot-container {{
