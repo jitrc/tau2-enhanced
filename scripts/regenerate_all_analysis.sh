@@ -1,58 +1,69 @@
 #!/bin/bash
 # Regenerate all analysis reports from enhanced log files
+# Usage: ./regenerate_all_analysis.sh [item_number]
+#   item_number: Optional. Specify which item to process (1-6). If omitted, all items are processed.
 
 set -e  # Exit on error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-echo "🔄 Regenerating all analysis reports..."
+# Configuration: Array of input log file and output directory pairs
+# Format: "input_log_name:output_dir_name"
+declare -a ANALYSES=(
+    "baseline_airline_xai_grok3_gemini2_5_flash_reduced.json:baseline_airline_xai_grok3_gemini2_5_flash"
+    "baseline_airline_gemini2_5_flash_reduced.json:baseline_airline_gemini2_5_flash"
+    "airline_gemini2_5_flash_10tasks_2t_enhanced_logs.json:airline_gemini2_5_flash_10tasks_llm_agent"
+    "airline_gemini2_5_flash_10tasks_2t_context_agent_enhanced_logs.json:airline_gemini2_5_flash_10tasks_context_agent"
+    "airline_gemini2_5_flash_10tasks_2t_enhanced_agent_enhanced_logs.json:airline_gemini2_5_flash_10tasks_enhanced_agent"
+    "airline_gemini2_5_flash_10tasks_2t_retry_agent_enhanced_logs.json:airline_gemini2_5_flash_10tasks_retry_agent"
+)
+
+# Parse optional argument
+ITEM_NUMBER="$1"
+TOTAL=${#ANALYSES[@]}
+
+if [ -n "$ITEM_NUMBER" ]; then
+    # Validate item number
+    if ! [[ "$ITEM_NUMBER" =~ ^[0-9]+$ ]] || [ "$ITEM_NUMBER" -lt 1 ] || [ "$ITEM_NUMBER" -gt "$TOTAL" ]; then
+        echo "❌ Error: Item number must be between 1 and $TOTAL"
+        echo "Usage: $0 [item_number]"
+        exit 1
+    fi
+    echo "🔄 Regenerating analysis report for item #$ITEM_NUMBER..."
+else
+    echo "🔄 Regenerating all analysis reports..."
+fi
 echo ""
 
-# Explicit mapping of input log files to output directories
-# Format: python3 analyze_simple_logs.py <input_log> -o <output_dir>
+COUNT=0
 
-echo "[1/6] Processing: airline_gemini2_5_flash_10tasks_2t_enhanced_logs.json"
-python3 "$SCRIPT_DIR/analyze_simple_logs.py" \
-    "$PROJECT_ROOT/samples/logs/airline_gemini2_5_flash_10tasks_2t_enhanced_logs.json" \
-    -o "$PROJECT_ROOT/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent"
-echo "  ✅ Complete: samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/"
-echo ""
+for entry in "${ANALYSES[@]}"; do
+    COUNT=$((COUNT + 1))
 
-echo "[2/6] Processing: airline_gemini2_5_flash_10tasks_2t_context_agent_enhanced_logs.json"
-python3 "$SCRIPT_DIR/analyze_simple_logs.py" \
-    "$PROJECT_ROOT/samples/logs/airline_gemini2_5_flash_10tasks_2t_context_agent_enhanced_logs.json" \
-    -o "$PROJECT_ROOT/samples/analysis/airline_gemini2_5_flash_10tasks_context_agent"
-echo "  ✅ Complete: samples/analysis/airline_gemini2_5_flash_10tasks_context_agent/"
-echo ""
+    # Skip if a specific item was requested and this isn't it
+    if [ -n "$ITEM_NUMBER" ] && [ "$COUNT" -ne "$ITEM_NUMBER" ]; then
+        continue
+    fi
 
-echo "[3/6] Processing: airline_gemini2_5_flash_10tasks_2t_enhanced_agent_enhanced_logs.json"
-python3 "$SCRIPT_DIR/analyze_simple_logs.py" \
-    "$PROJECT_ROOT/samples/logs/airline_gemini2_5_flash_10tasks_2t_enhanced_agent_enhanced_logs.json" \
-    -o "$PROJECT_ROOT/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent"
-echo "  ✅ Complete: samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/"
-echo ""
+    # Split entry into input and output
+    IFS=':' read -r INPUT_LOG OUTPUT_DIR <<< "$entry"
 
-echo "[4/6] Processing: airline_gemini2_5_flash_10tasks_2t_retry_agent_enhanced_logs.json"
-python3 "$SCRIPT_DIR/analyze_simple_logs.py" \
-    "$PROJECT_ROOT/samples/logs/airline_gemini2_5_flash_10tasks_2t_retry_agent_enhanced_logs.json" \
-    -o "$PROJECT_ROOT/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent"
-echo "  ✅ Complete: samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/"
-echo ""
+    INPUT_PATH="$PROJECT_ROOT/samples/logs/$INPUT_LOG"
+    OUTPUT_PATH="$PROJECT_ROOT/samples/analysis/$OUTPUT_DIR"
 
-echo "[5/6] Processing: baseline_airline_xai_grok3_gemini2_5_flash_reduced.json"
-python3 "$SCRIPT_DIR/analyze_simple_logs.py" \
-    "$PROJECT_ROOT/samples/logs/baseline_airline_xai_grok3_gemini2_5_flash_reduced.json" \
-    -o "$PROJECT_ROOT/samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash"
-echo "  ✅ Complete: samples/analysis/baseline_airline_xai_grok3_gemini2_5_flash/"
-echo ""
+    echo "[$COUNT/$TOTAL] Processing: $INPUT_LOG"
 
-echo "[6/6] Processing: baseline_airline_gemini2_5_flash_reduced.json"
-python3 "$SCRIPT_DIR/analyze_simple_logs.py" \
-    "$PROJECT_ROOT/samples/logs/baseline_airline_gemini2_5_flash_reduced.json" \
-    -o "$PROJECT_ROOT/samples/analysis/baseline_airline_gemini2_5_flash"
-echo "  ✅ Complete: samples/analysis/baseline_airline_gemini2_5_flash/"
-echo ""
+    # Print the command that will be executed
+    CMD="python3 \"$SCRIPT_DIR/analyze_simple_logs.py\" \"$INPUT_PATH\" -o \"$OUTPUT_PATH\""
+    echo "  🔧 Command: $CMD"
+
+    # Execute the command
+    python3 "$SCRIPT_DIR/analyze_simple_logs.py" "$INPUT_PATH" -o "$OUTPUT_PATH"
+
+    echo "  ✅ Complete: samples/analysis/$OUTPUT_DIR/"
+    echo ""
+done
 
 echo "🎉 All analysis reports regenerated successfully!"
 echo ""
