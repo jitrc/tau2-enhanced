@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `baseline_airline_xai_grok3_gemini2_5_flash_reduced.json`
-**Generated:** 2025-10-22 10:41:34
+**Generated:** 2025-10-22 20:57:34
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -50,26 +50,38 @@
 
 ### Failure Overview
 
-| Tool Name | Error Type | Count | Failure Rate |
-|-----------|------------|-------|-------------|
-| search_direct_flight | ActionCheckFailure | 63 | 78.8% |
-| update_reservation_flights | ActionCheckFailure | 46 | 54.8% |
-| book_reservation | ActionCheckFailure | 28 | 84.8% |
-| cancel_reservation | ActionCheckFailure | 22 | 43.1% |
-| update_reservation_baggages | ActionCheckFailure | 15 | 62.5% |
-| get_reservation_details | ActionCheckFailure | 11 | 4.8% |
-| send_certificate | ActionCheckFailure | 8 | 66.7% |
-| calculate | ActionCheckFailure | 4 | 100.0% |
-| transfer_to_human_agents | ActionCheckFailure | 4 | 100.0% |
-| update_reservation_passengers | ActionCheckFailure | 3 | 25.0% |
+**Note:** Failure rates below are calculated against **action-checked calls only**, not total calls. See Performance Overview for overall success rates against all calls.
+
+**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`
+
+| Tool Name | Failure Type | Count | Failure Rate | Impact Score | Checked Calls |
+|-----------|--------------|-------|--------------|--------------|---------------|
+| book_reservation | Never Called | 28 | 84.8% | 9.3 | 33 |
+| update_reservation_flights | Never Called | 46 | 54.8% | 7.9 | 84 |
+| search_direct_flight | Never Called | 63 | 78.8% | 7.5 | 80 |
+| update_reservation_baggages | Never Called | 15 | 62.5% | 4.7 | 24 |
+| cancel_reservation | Never Called | 22 | 43.1% | 3.2 | 51 |
+| send_certificate | Never Called | 8 | 66.7% | 2.7 | 12 |
+| calculate | Never Called | 4 | 100.0% | 2.0 | 4 |
+| transfer_to_human_agents | Never Called | 4 | 100.0% | 2.0 | 4 |
+| update_reservation_passengers | Never Called | 3 | 25.0% | 0.4 | 12 |
+| get_reservation_details | Called But No Match | 11 | 4.8% | 0.1 | 228 |
 
 **Key Failure Metrics:**
 - Total failures: **204**
 - Affected tools: **10**
 - Error categories: **1**
+- Total action checks performed: **588**
+- Total tool calls (see Performance Overview): **1162**
 
 **Most Common Error Types:**
 - ActionCheckFailure: 204 occurrences
+
+**Failure Type Breakdown:**
+- **Never Called**: 193 failures (94.6%)
+  - Affected tools: search_direct_flight, update_reservation_flights, book_reservation, cancel_reservation, update_reservation_baggages, ... (4 more)
+- **Called But No Match**: 11 failures (5.4%)
+  - Affected tools: get_reservation_details
 
 ---
 
@@ -162,34 +174,34 @@
 **10 tools** failed action validation checks:
 
 - **search_direct_flight**: 63 failures (78.8% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 19 simulation(s)
   - Example args: `{'origin': 'BOS', 'destination': 'MCO', 'date': '2024-05-18'}`
 - **update_reservation_flights**: 46 failures (54.8% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 29 simulation(s)
   - Example args: `{'reservation_id': 'XEHM4B', 'cabin': 'economy', 'flights': [{'flight_number': 'HAT005', 'date': '20...`
 - **book_reservation**: 28 failures (84.8% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 22 simulation(s)
   - Example args: `{'user_id': 'mohamed_silva_9265', 'origin': 'JFK', 'destination': 'SFO', 'flight_type': 'round_trip'...`
 - **cancel_reservation**: 22 failures (43.1% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 15 simulation(s)
   - Example args: `{'reservation_id': 'XEHM4B'}`
 - **update_reservation_baggages**: 15 failures (62.5% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 15 simulation(s)
   - Example args: `{'reservation_id': 'FQ8APE', 'total_baggages': 3, 'nonfree_baggages': 0, 'payment_id': 'gift_card_81...`
 - **get_reservation_details**: 11 failures (4.8% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 5 simulation(s)
   - Example args: `{'reservation_id': 'SDZQKO'}`
 - **send_certificate**: 8 failures (66.7% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 8 simulation(s)
   - Example args: `{'user_id': 'noah_muller_9847', 'amount': 50}`
 - **calculate**: 4 failures (100.0% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 4 simulation(s)
   - Example args: `{'expression': '2 * ((350 - 122) + (499 - 127))'}`
 - **transfer_to_human_agents**: 4 failures (100.0% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 4 simulation(s)
   - Example args: `{'summary': 'User wants to change my upcoming one stop flight from ATL to LAX within reservation XEW...`
 - **update_reservation_passengers**: 3 failures (25.0% failure rate)
-  - Affected 1 simulation(s)
+  - Affected 3 simulation(s)
   - Example args: `{'reservation_id': '3RK2T9', 'passengers': [{'first_name': 'Anya', 'last_name': 'Garcia', 'dob': '19...`
 
 ### ⚡ Performance Impact

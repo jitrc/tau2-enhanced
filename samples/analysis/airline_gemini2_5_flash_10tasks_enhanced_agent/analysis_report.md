@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_enhanced_agent_enhanced_logs.json`
-**Generated:** 2025-10-22 10:41:30
+**Generated:** 2025-10-22 20:57:29
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -50,22 +50,34 @@
 
 ### Failure Overview
 
-| Tool Name | Error Type | Count | Failure Rate |
-|-----------|------------|-------|-------------|
-| cancel_reservation | ActionCheckFailure | 5 | 83.3% |
-| get_user_details | ActionCheckFailure | 4 | 33.3% |
-| book_reservation | ActionCheckFailure | 2 | 100.0% |
-| send_certificate | ActionCheckFailure | 2 | 100.0% |
-| update_reservation_flights | ActionCheckFailure | 2 | 100.0% |
-| search_direct_flight | ActionCheckFailure | 1 | 25.0% |
+**Note:** Failure rates below are calculated against **action-checked calls only**, not total calls. See Performance Overview for overall success rates against all calls.
+
+**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`
+
+| Tool Name | Failure Type | Count | Failure Rate | Impact Score | Checked Calls |
+|-----------|--------------|-------|--------------|--------------|---------------|
+| cancel_reservation | Never Called | 5 | 83.3% | 16.7 | 6 |
+| book_reservation | Called With Wrong Args | 2 | 100.0% | 10.0 | 2 |
+| send_certificate | Never Called | 2 | 100.0% | 10.0 | 2 |
+| update_reservation_flights | Called With Wrong Args | 2 | 100.0% | 10.0 | 2 |
+| get_user_details | Never Called | 4 | 33.3% | 6.7 | 12 |
+| search_direct_flight | Never Called | 1 | 25.0% | 1.2 | 4 |
 
 **Key Failure Metrics:**
 - Total failures: **16**
 - Affected tools: **6**
 - Error categories: **1**
+- Total action checks performed: **54**
+- Total tool calls (see Performance Overview): **240**
 
 **Most Common Error Types:**
 - ActionCheckFailure: 16 occurrences
+
+**Failure Type Breakdown:**
+- **Never Called**: 12 failures (75.0%)
+  - Affected tools: cancel_reservation, get_user_details, send_certificate, search_direct_flight
+- **Called With Wrong Args**: 4 failures (25.0%)
+  - Affected tools: book_reservation, update_reservation_flights
 
 ---
 

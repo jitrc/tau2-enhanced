@@ -153,23 +153,20 @@ class LogVisualizer:
                 ]
             )
 
-        # Determine subplot titles based on available data
-        subplot2_title = "Failure Rate vs Execution Time" if 'avg_execution_time' in failures.columns else "Failure Rate vs Error Count"
-
         # Create comprehensive failure analysis dashboard
         fig = make_subplots(
             rows=2, cols=2,
             specs=[
-                [{"type": "bar"}, {"type": "scatter"}],
-                [{"type": "bar"}, {"type": "table"}]
+                [{"type": "bar"}, {"type": "bar"}],
+                [{"type": "table", "colspan": 2}, None]
             ],
             subplot_titles=(
                 "Failure Count by Tool",
-                subplot2_title,
-                "Error Types Distribution",
-                "Failure Details Summary"
+                "Failure Types Distribution",
+                "Failure Details Summary",
+                None
             ),
-            row_heights=[0.6, 0.4]
+            row_heights=[0.5, 0.5]
         )
 
         # 1. Failure count by tool (top-left)
@@ -187,87 +184,110 @@ class LogVisualizer:
             row=1, col=1
         )
 
-        # 2. Failure rate vs failure count scatter (top-right)
-        # Note: avg_execution_time may not be available for action check failures
-        if 'avg_execution_time' in failures.columns:
-            x_data = failures['avg_execution_time'] * 1000  # Convert to ms
-            x_title = 'Avg Execution Time (ms)'
-            hover_template = (
-                '<b>%{text}</b><br>' +
-                'Failure Rate: %{y:.1%}<br>' +
-                'Avg Execution Time: %{x:.2f}ms<br>' +
-                'Error Count: %{marker.color}<extra></extra>'
+        # 2. Error types distribution (top-right)
+        # Use failure types if available, otherwise error categories
+        if 'primary_failure_category' in failures.columns:
+            # Group by failure type and sum the counts to get total failures per type
+            failure_type_dist = failures.groupby('primary_failure_category')['count'].sum().sort_values(ascending=False)
+
+            # Format labels - make them readable
+            formatted_data = []
+            for ft in failure_type_dist.index:
+                if ft and ft not in ['ActionCheckFailure', 'unknown']:
+                    formatted_label = ft.replace('_', ' ').title()
+                else:
+                    formatted_label = ft
+                formatted_data.append((formatted_label, failure_type_dist[ft]))
+
+            # Sort by count descending
+            formatted_data.sort(key=lambda x: x[1], reverse=True)
+            labels = [item[0] for item in formatted_data]
+            values = [item[1] for item in formatted_data]
+            total = sum(values)
+
+            fig.add_trace(
+                go.Bar(
+                    x=labels,
+                    y=values,
+                    name='Failure Count',
+                    marker_color='orange',
+                    text=[f"{count}<br>({count/total:.1%})" for count in values],
+                    textposition='outside',
+                    orientation='v'
+                ),
+                row=1, col=2
             )
         else:
-            x_data = failures['count']
-            x_title = 'Error Count'
-            hover_template = (
-                '<b>%{text}</b><br>' +
-                'Failure Rate: %{y:.1%}<br>' +
-                'Error Count: %{x}<br>' +
-                'Total Errors: %{marker.color}<extra></extra>'
+            # Fallback to error categories
+            error_types = failures.groupby('error_category')['count'].sum()
+            fig.add_trace(
+                go.Bar(
+                    x=error_types.index,
+                    y=error_types.values,
+                    name='Error Count',
+                    marker_color='orange',
+                    text=[f"{count}<br>({count/error_types.sum():.1%})" for count in error_types.values],
+                    textposition='outside',
+                    orientation='v'
+                ),
+                row=1, col=2
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=x_data,
-                y=failures['failure_rate'],
-                mode='markers+text',
-                marker=dict(
-                    size=failures['count']*10,
-                    color=failures['count'],
-                    colorscale='Reds',
-                    showscale=True,
-                    colorbar=dict(title="Error Count", x=1.15)
-                ),
-                text=failures['tool_name'],
-                textposition='top center',
-                name='Tools',
-                hovertemplate=hover_template
-            ),
-            row=1, col=2
+        # 3. Failure details table (bottom row, spanning 2 columns)
+        # Calculate impact score: failure_rate × simulations_affected / total_simulations × 100
+        summary = self.analyzer.get_summary_metrics()
+        total_simulations = summary.get('total_simulations', 1)
+
+        # Calculate impact score for all failures
+        failures_with_impact = failures.copy()
+        failures_with_impact['impact_score'] = (
+            failures_with_impact['failure_rate'] *
+            failures_with_impact.get('simulations_affected', 0) /
+            max(total_simulations, 1) * 100
         )
 
-        # 3. Error types distribution (bottom-left)
-        error_types = failures.groupby('error_category')['count'].sum()
-        fig.add_trace(
-            go.Bar(
-                x=error_types.index,
-                y=error_types.values,
-                name='Error Count',
-                marker_color='orange',
-                text=[f"{count}<br>({count/error_types.sum():.1%})" for count in error_types.values],
-                textposition='outside',
-                orientation='v'
-            ),
-            row=2, col=1
-        )
-
-        # 4. Failure details table (bottom-right)
-        table_data = failures.head(10)  # Top 10 failures
+        # Sort by impact score descending and take top 25
+        table_data = failures_with_impact.nlargest(25, 'impact_score')
 
         # Determine table columns based on available data
+        # Format failure types to be more readable
+        has_failure_category = 'primary_failure_category' in failures.columns
+
+        if has_failure_category:
+            failure_type_data = []
+            for _, row in table_data.iterrows():
+                failure_type = row.get('primary_failure_category', row['error_category'])
+                # Format the failure type to be more readable
+                if failure_type and failure_type not in ['ActionCheckFailure', 'unknown']:
+                    failure_type = failure_type.replace('_', ' ').title()
+                failure_type_data.append(failure_type)
+        else:
+            failure_type_data = table_data['error_category']
+
         if 'avg_execution_time' in failures.columns:
-            headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Avg Time (ms)</b>']
+            headers = ['<b>Tool</b>', '<b>Failure Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Impact Score</b>', '<b>Avg Time (ms)</b>']
             cell_values = [
                 table_data['tool_name'],
-                table_data['error_category'],
+                failure_type_data,
                 table_data['count'],
                 [f"{rate:.1%}" for rate in table_data['failure_rate']],
+                [f"{score:.1f}" for score in table_data['impact_score']],
                 [f"{time*1000:.2f}ms" for time in table_data['avg_execution_time']]
             ]
         else:
-            headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Simulations</b>']
+            headers = ['<b>Tool</b>', '<b>Failure Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Simulations</b>', '<b>Impact Score</b>']
             cell_values = [
                 table_data['tool_name'],
-                table_data['error_category'],
+                failure_type_data,
                 table_data['count'],
                 [f"{rate:.1%}" for rate in table_data['failure_rate']],
-                table_data.get('simulations_affected', ['N/A'] * len(table_data))
+                table_data.get('simulations_affected', ['N/A'] * len(table_data)),
+                [f"{score:.1f}" for score in table_data['impact_score']]
             ]
 
         fig.add_trace(
             go.Table(
+                columnwidth=[3, 2, 1, 1.5, 1.5, 1.5] if len(headers) == 6 else [3, 2, 1, 1.5, 1.5, 1.5],  # Tool column gets 3x width
                 header=dict(
                     values=headers,
                     fill_color='lightcoral',
@@ -281,7 +301,7 @@ class LogVisualizer:
                     font=dict(size=11)
                 )
             ),
-            row=2, col=2
+            row=2, col=1
         )
 
         # Update layout
@@ -294,8 +314,8 @@ class LogVisualizer:
         # Update axes
         fig.update_xaxes(title_text="Tools", row=1, col=1)
         fig.update_yaxes(title_text="Failure Count", row=1, col=1)
-        fig.update_xaxes(title_text=x_title, row=1, col=2)
-        fig.update_yaxes(title_text="Failure Rate", row=1, col=2, tickformat='.0%')
+        fig.update_xaxes(title_text="Failure Type", row=1, col=2)
+        fig.update_yaxes(title_text="Count", row=1, col=2)
         fig.update_xaxes(title_text="Error Category", row=2, col=1)
         fig.update_yaxes(title_text="Error Count", row=2, col=1)
 
@@ -684,6 +704,12 @@ class LogVisualizer:
             background-color: #007bff;
             color: white;
             font-weight: bold;
+        }}
+
+        /* Give Tool Name column more width */
+        th:first-child, td:first-child {{
+            min-width: 250px;
+            width: 30%;
         }}
 
         tr:nth-child(even) {{
@@ -1234,6 +1260,16 @@ class LogVisualizer:
             </div>
             """
 
+        # Calculate impact score and sort by it
+        total_simulations = summary.get('total_simulations', 1)
+        failures_with_impact = failures.copy()
+        failures_with_impact['impact_score'] = (
+            failures_with_impact['failure_rate'] *
+            failures_with_impact.get('simulations_affected', 0) /
+            max(total_simulations, 1) * 100
+        )
+        failures = failures_with_impact.sort_values('impact_score', ascending=False)
+
         total_errors = failures['count'].sum()
         error_rate = total_errors / summary.get('total_tool_calls', 1)
 
@@ -1253,9 +1289,10 @@ class LogVisualizer:
                 <thead>
                     <tr>
                         <th>Tool Name</th>
-                        <th>Error Type</th>
+                        <th>Failure Type</th>
                         <th>Count</th>
-                        <th>Failure Rate</th>"""
+                        <th>Failure Rate</th>
+                        <th>Impact Score</th>"""
 
         # Determine which additional columns are available
         if 'avg_execution_time' in failures.columns:
@@ -1274,13 +1311,24 @@ class LogVisualizer:
                 <tbody>
         """
 
-        for _, row in failures.head(10).iterrows():
+        for _, row in failures.head(25).iterrows():
+            # Use detailed failure category if available, otherwise generic error_category
+            has_failure_category = 'primary_failure_category' in failures.columns
+            if has_failure_category:
+                failure_type = row.get('primary_failure_category', row['error_category'])
+                # Format the failure type to be more readable
+                if failure_type and failure_type not in ['ActionCheckFailure', 'unknown']:
+                    failure_type = failure_type.replace('_', ' ').title()
+            else:
+                failure_type = row['error_category']
+
             failure_html += f"""
             <tr>
                 <td><strong>{row['tool_name']}</strong></td>
-                <td>{row['error_category']}</td>
+                <td>{failure_type}</td>
                 <td>{int(row['count'])}</td>
-                <td>{row['failure_rate']:.1%}</td>"""
+                <td>{row['failure_rate']:.1%}</td>
+                <td>{row['impact_score']:.1f}</td>"""
 
             # Add available columns dynamically
             if 'avg_execution_time' in failures.columns:
@@ -1482,12 +1530,59 @@ class LogVisualizer:
         md_content += "\n---\n\n## 🔥 Failure Analysis\n\n"
 
         if not failures.empty:
-            md_content += "### Failure Overview\n\n"
-            md_content += "| Tool Name | Error Type | Count | Failure Rate |\n"
-            md_content += "|-----------|------------|-------|-------------|\n"
+            # Calculate impact score: failure_rate × simulations_affected / total_simulations × 100
+            total_simulations = summary.get('total_simulations', 1)
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+            # Sort by impact score for display
+            failures_with_impact = failures_with_impact.sort_values('impact_score', ascending=False)
 
-            for _, row in failures.head(10).iterrows():
-                md_content += f"| {row['tool_name']} | {row['error_category']} | {int(row['count'])} | {row['failure_rate']:.1%} |\n"
+            # Check if we're using action checks or execution failures
+            success_metric_source = summary.get('success_metric_source', 'unknown')
+
+            if success_metric_source == 'action_checks':
+                md_content += "### Failure Overview\n\n"
+                md_content += "**Note:** Failure rates below are calculated against **action-checked calls only**, not total calls. "
+                md_content += "See Performance Overview for overall success rates against all calls.\n\n"
+                md_content += "**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`\n\n"
+
+                # Check if we have detailed failure categories
+                has_failure_category = 'primary_failure_category' in failures.columns
+
+                if has_failure_category:
+                    md_content += "| Tool Name | Failure Type | Count | Failure Rate | Impact Score | Checked Calls |\n"
+                    md_content += "|-----------|--------------|-------|--------------|--------------|---------------|\n"
+                else:
+                    md_content += "| Tool Name | Error Type | Count | Failure Rate | Impact Score | Checked Calls |\n"
+                    md_content += "|-----------|------------|-------|--------------|--------------|---------------|\n"
+
+                # Get action check stats for each tool
+                tool_action_stats = getattr(self.analyzer, 'action_check_metrics', {}).get('tool_action_stats', {})
+
+                for _, row in failures_with_impact.head(25).iterrows():
+                    tool_name = row['tool_name']
+                    checked_calls = tool_action_stats.get(tool_name, {}).get('total', '?')
+
+                    # Use detailed failure category if available, otherwise use generic error_category
+                    failure_type = row.get('primary_failure_category', row['error_category']) if has_failure_category else row['error_category']
+
+                    # Format the failure type to be more readable
+                    if failure_type and failure_type != 'ActionCheckFailure':
+                        failure_type = failure_type.replace('_', ' ').title()
+
+                    md_content += f"| {tool_name} | {failure_type} | {int(row['count'])} | {row['failure_rate']:.1%} | {row['impact_score']:.1f} | {checked_calls} |\n"
+            else:
+                md_content += "### Failure Overview\n\n"
+                md_content += "**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`\n\n"
+                md_content += "| Tool Name | Error Type | Count | Failure Rate | Impact Score |\n"
+                md_content += "|-----------|------------|-------|--------------|-------------|\n"
+
+                for _, row in failures_with_impact.head(25).iterrows():
+                    md_content += f"| {row['tool_name']} | {row['error_category']} | {int(row['count'])} | {row['failure_rate']:.1%} | {row['impact_score']:.1f} |\n"
 
             # Failure insights
             total_failures = failures['count'].sum()
@@ -1497,11 +1592,38 @@ class LogVisualizer:
             md_content += f"- Affected tools: **{affected_tools}**\n"
             md_content += f"- Error categories: **{failures['error_category'].nunique()}**\n"
 
+            if success_metric_source == 'action_checks':
+                total_action_checks = sum(stats.get('total', 0) for stats in tool_action_stats.values())
+                md_content += f"- Total action checks performed: **{total_action_checks}**\n"
+                md_content += f"- Total tool calls (see Performance Overview): **{summary.get('total_tool_calls', 'N/A')}**\n"
+
             # Most problematic error types
             error_types = failures.groupby('error_category')['count'].sum().sort_values(ascending=False)
             md_content += f"\n**Most Common Error Types:**\n"
             for error_type, count in error_types.head(5).items():
                 md_content += f"- {error_type}: {count} occurrences\n"
+
+            # Breakdown by failure type if available
+            if success_metric_source == 'action_checks' and has_failure_category:
+                # Get the original failure data with categories
+                if hasattr(self.analyzer, 'action_check_metrics'):
+                    # Try to get failure category breakdown
+                    failure_df_raw = failures
+                    if 'primary_failure_category' in failure_df_raw.columns:
+                        failure_type_breakdown = failure_df_raw.groupby('primary_failure_category')['count'].sum().sort_values(ascending=False)
+                        if not failure_type_breakdown.empty:
+                            md_content += f"\n**Failure Type Breakdown:**\n"
+                            for ftype, fcount in failure_type_breakdown.items():
+                                if ftype and ftype not in ['ActionCheckFailure', 'unknown']:
+                                    formatted_type = ftype.replace('_', ' ').title()
+                                    percentage = (fcount / total_failures) * 100
+                                    # Also show which tools have this failure type
+                                    tools_with_type = failure_df_raw[failure_df_raw['primary_failure_category'] == ftype]['tool_name'].tolist()
+                                    tools_str = ', '.join(tools_with_type[:5])  # Show first 5 tools
+                                    if len(tools_with_type) > 5:
+                                        tools_str += f", ... ({len(tools_with_type) - 5} more)"
+                                    md_content += f"- **{formatted_type}**: {int(fcount)} failures ({percentage:.1f}%)\n"
+                                    md_content += f"  - Affected tools: {tools_str}\n"
 
         else:
             md_content += "🎉 **No failures detected!** All tool calls completed successfully.\n"
@@ -1718,6 +1840,8 @@ class LogVisualizer:
 
         if 'ActionCheckFailure' in failures['error_category'].values:
             action_failures = failures[failures['error_category'] == 'ActionCheckFailure']
+            has_failure_category = 'primary_failure_category' in failures.columns
+
             html += f"""
                 <div class="failure-mode">
                     <h5>Action Check Failures</h5>
@@ -1725,8 +1849,14 @@ class LogVisualizer:
                     <ul>
             """
             for _, row in action_failures.iterrows():
+                # Format failure type if available
+                failure_type = ""
+                if has_failure_category and 'primary_failure_category' in row and row['primary_failure_category'] not in ['ActionCheckFailure', 'unknown']:
+                    failure_category = row['primary_failure_category'].replace('_', ' ').title()
+                    failure_type = f" [{failure_category}]"
+
                 html += f"""
-                    <li><strong>{row['tool_name']}</strong>: {int(row['count'])} failures ({row['failure_rate']:.1%} rate)
+                    <li><strong>{row['tool_name']}</strong>{failure_type}: {int(row['count'])} failures ({row['failure_rate']:.1%} rate)
                 """
                 if 'simulations_affected' in failures.columns:
                     html += f"<br>→ Affected {row['simulations_affected']} simulation(s)"
@@ -2930,8 +3060,8 @@ class LogVisualizer:
                         )
                     ),
                     text=tool_perf['tool_name'].tolist(),
-                    textposition="top center",
-                    textfont=dict(size=9),
+                    textposition="top center",  # Auto positioning doesn't work well in subplots, but we've added buffer space
+                    textfont=dict(size=8),  # Slightly smaller font to reduce overlap
                     name="Tools",
                     hovertemplate=(
                         '<b>%{text}</b><br>' +
@@ -2944,7 +3074,7 @@ class LogVisualizer:
 
             # Update scatter plot axes for better visibility
             fig.update_xaxes(title_text="Total Calls", type="log" if tool_perf['total_calls'].max() > 100 else "linear", row=2, col=1)
-            fig.update_yaxes(title_text="Success Rate", range=[-0.05, 1.05], tickformat='.0%', row=2, col=1)
+            fig.update_yaxes(title_text="Success Rate", range=[-0.05, 1.15], tickformat='.0%', row=2, col=1)  # Extra 10% buffer at top for labels
 
             # Update state-changing vs read-only axes
             fig.update_yaxes(title_text="Success Rate", range=[0, 1.1], tickformat='.0%', row=1, col=2)

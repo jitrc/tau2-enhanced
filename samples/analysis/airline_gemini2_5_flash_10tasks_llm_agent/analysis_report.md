@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_enhanced_logs.json`
-**Generated:** 2025-10-22 10:41:25
+**Generated:** 2025-10-22 20:57:24
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -50,23 +50,35 @@
 
 ### Failure Overview
 
-| Tool Name | Error Type | Count | Failure Rate |
-|-----------|------------|-------|-------------|
-| get_reservation_details | ActionCheckFailure | 11 | 42.3% |
-| cancel_reservation | ActionCheckFailure | 4 | 66.7% |
-| get_user_details | ActionCheckFailure | 2 | 16.7% |
-| send_certificate | ActionCheckFailure | 2 | 100.0% |
-| update_reservation_flights | ActionCheckFailure | 2 | 100.0% |
-| book_reservation | ActionCheckFailure | 1 | 50.0% |
-| search_direct_flight | ActionCheckFailure | 1 | 25.0% |
+**Note:** Failure rates below are calculated against **action-checked calls only**, not total calls. See Performance Overview for overall success rates against all calls.
+
+**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`
+
+| Tool Name | Failure Type | Count | Failure Rate | Impact Score | Checked Calls |
+|-----------|--------------|-------|--------------|--------------|---------------|
+| get_reservation_details | Never Called | 11 | 42.3% | 10.6 | 26 |
+| cancel_reservation | Never Called | 4 | 66.7% | 10.0 | 6 |
+| send_certificate | Never Called | 2 | 100.0% | 10.0 | 2 |
+| update_reservation_flights | Never Called | 2 | 100.0% | 10.0 | 2 |
+| book_reservation | Called With Wrong Args | 1 | 50.0% | 2.5 | 2 |
+| get_user_details | Never Called | 2 | 16.7% | 1.7 | 12 |
+| search_direct_flight | Never Called | 1 | 25.0% | 1.2 | 4 |
 
 **Key Failure Metrics:**
 - Total failures: **23**
 - Affected tools: **7**
 - Error categories: **1**
+- Total action checks performed: **54**
+- Total tool calls (see Performance Overview): **212**
 
 **Most Common Error Types:**
 - ActionCheckFailure: 23 occurrences
+
+**Failure Type Breakdown:**
+- **Never Called**: 22 failures (95.7%)
+  - Affected tools: get_reservation_details, cancel_reservation, get_user_details, send_certificate, update_reservation_flights, ... (1 more)
+- **Called With Wrong Args**: 1 failures (4.3%)
+  - Affected tools: book_reservation
 
 ---
 

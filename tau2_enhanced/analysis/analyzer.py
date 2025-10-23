@@ -577,11 +577,16 @@ class LogAnalyzer:
                                     # Fallback if analysis fails
                                     pass
 
+                            # Create unique simulation ID from task_id and trial
+                            task_id = sim.get('task_id', 'unknown')
+                            trial = sim.get('trial', 0)
+                            sim_id = f"{task_id}_{trial}" if task_id != 'unknown' else sim.get('id', 'unknown')
+
                             failed_action = {
                                 'tool_name': action.get('name', 'unknown'),
                                 'error_category': 'ActionCheckFailure',
-                                'simulation_id': sim.get('id', 'unknown'),
-                                'task_id': sim.get('task_id', 'unknown'),
+                                'simulation_id': sim_id,
+                                'task_id': task_id,
                                 'action_reward': check.get('action_reward', 0.0),
                                 'arguments': str(action.get('arguments', {}))[:100] + '...' if len(str(action.get('arguments', {}))) > 100 else str(action.get('arguments', {}))
                             }
@@ -601,11 +606,23 @@ class LogAnalyzer:
                 failed_df = pd.DataFrame(failed_actions)
 
                 # Aggregate failure analysis
-                error_analysis = failed_df.groupby(['tool_name', 'error_category']).agg(
-                    count=('tool_name', 'count'),
-                    simulations_affected=('simulation_id', 'nunique'),
-                    avg_action_reward=('action_reward', 'mean')
-                ).reset_index()
+                # Check if failure_category exists (from detailed analysis)
+                if 'failure_category' in failed_df.columns:
+                    # Group by tool_name and failure_category for more detailed breakdown
+                    error_analysis = failed_df.groupby(['tool_name', 'error_category']).agg(
+                        count=('tool_name', 'count'),
+                        simulations_affected=('simulation_id', 'nunique'),
+                        avg_action_reward=('action_reward', 'mean'),
+                        # Get most common failure category
+                        primary_failure_category=('failure_category', lambda x: x.mode()[0] if not x.mode().empty else 'unknown')
+                    ).reset_index()
+                else:
+                    # Fallback to simple grouping
+                    error_analysis = failed_df.groupby(['tool_name', 'error_category']).agg(
+                        count=('tool_name', 'count'),
+                        simulations_affected=('simulation_id', 'nunique'),
+                        avg_action_reward=('action_reward', 'mean')
+                    ).reset_index()
 
                 # Add failure rate for each tool
                 tool_action_stats = self.action_check_metrics['tool_action_stats']
