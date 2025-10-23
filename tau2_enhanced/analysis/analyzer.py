@@ -1576,3 +1576,373 @@ class LogAnalyzer:
             return f"Strong {direction} correlation"
         else:
             return f"Very strong {direction} correlation"
+
+    # ========== Sequence Comparison Methods ==========
+
+    def _load_ground_truth_tasks(self) -> Optional[Dict[str, Dict]]:
+        """
+        Load ground truth tasks from tau2 registry, auto-detecting domain from logs.
+
+        Returns:
+            Dictionary mapping task_id -> task data, or None if unavailable
+        """
+        try:
+            # Try to detect domain from task IDs in simulations
+            simulations = self.raw_log_data.get('simulations', [])
+            if not simulations:
+                return None
+
+            sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+
+            # Get first task ID to infer domain
+            first_sim = next(iter(sim_iterator), None)
+            if not first_sim:
+                return None
+
+            task_id = first_sim.get('task_id')
+            if not task_id:
+                return None
+
+            # Infer domain from task_id (common pattern: domain_tasknum or just tasknum)
+            # For airline domain, task IDs are just integers
+            # Try airline domain as default for numeric task IDs
+            from tau2.registry import registry
+
+            # Try airline domain first (most common)
+            try:
+                task_loader = registry.get_tasks_loader('airline')
+                tasks = task_loader()
+
+                # Convert to dict indexed by task ID
+                task_dict = {}
+                for task in tasks:
+                    task_data = task.model_dump()
+                    task_dict[task_data['id']] = task_data
+
+                # Verify we have the task
+                if str(task_id) in task_dict or int(task_id) in task_dict:
+                    return task_dict
+            except Exception:
+                pass
+
+            # If airline didn't work, try other domains
+            for domain in ['retail', 'banking']:  # Add other known domains
+                try:
+                    task_loader = registry.get_tasks_loader(domain)
+                    tasks = task_loader()
+
+                    task_dict = {}
+                    for task in tasks:
+                        task_data = task.model_dump()
+                        task_dict[task_data['id']] = task_data
+
+                    if str(task_id) in task_dict or int(task_id) in task_dict:
+                        return task_dict
+                except Exception:
+                    continue
+
+            return None
+
+        except Exception:
+            return None
+
+    def _args_match(self, expected_args: Dict, actual_args: Dict) -> tuple[bool, List[str]]:
+        """
+        Check if actual arguments match expected arguments.
+
+        Returns:
+            (match: bool, mismatches: List[str])
+        """
+        mismatches = []
+        for key, expected_val in expected_args.items():
+            if key not in actual_args:
+                mismatches.append(f"Missing arg '{key}'")
+            elif actual_args[key] != expected_val:
+                mismatches.append(f"{key}: expected={expected_val}, actual={actual_args[key]}")
+        return len(mismatches) == 0, mismatches
+
+    def _compare_single_task_sequence(
+        self,
+        task_id: str,
+        expected_actions: List[Dict],
+        execution_logs: List[Dict],
+        task_success: bool
+    ) -> Dict:
+        """
+        Compare expected vs actual sequence for a single task.
+
+        Returns:
+            Dict with comparison results
+        """
+        result = {
+            'task_id': task_id,
+            'task_success': task_success,
+            'expected_count': len(expected_actions),
+            'actual_count': len(execution_logs),
+            'matched_actions': [],
+            'missing_actions': [],
+            'extra_actions': [],
+            'argument_mismatches': [],
+            'sequence_order_match': False,
+            'expected_sequence': [a.get('name') for a in expected_actions],
+            'actual_sequence': [l.get('tool_name') for l in execution_logs]
+        }
+
+        # Track which expected actions were matched
+        matched_expected = [False] * len(expected_actions)
+
+        # Try to match each executed action to expected actions
+        for exec_log in execution_logs:
+            exec_tool = exec_log.get('tool_name')
+            exec_args = exec_log.get('arguments', {})
+            exec_success = exec_log.get('success', False)
+
+            # Find matching expected action
+            matched = False
+            for i, expected in enumerate(expected_actions):
+                if matched_expected[i]:
+                    continue
+
+                exp_tool = expected.get('name')
+                exp_args = expected.get('arguments', {})
+
+                if exec_tool == exp_tool:
+                    args_ok, mismatches = self._args_match(exp_args, exec_args)
+                    if args_ok:
+                        result['matched_actions'].append({
+                            'tool': exec_tool,
+                            'arguments': exec_args,
+                            'execution_success': exec_success
+                        })
+                        matched_expected[i] = True
+                        matched = True
+                        break
+                    else:
+                        # Tool name matches but arguments don't
+                        result['argument_mismatches'].append({
+                            'tool': exec_tool,
+                            'expected_args': exp_args,
+                            'actual_args': exec_args,
+                            'mismatches': mismatches
+                        })
+                        matched_expected[i] = True
+                        matched = True
+                        break
+
+            if not matched:
+                # This is an extra/unexpected action
+                result['extra_actions'].append({
+                    'tool': exec_tool,
+                    'arguments': exec_args
+                })
+
+        # Find missing expected actions
+        for i, expected in enumerate(expected_actions):
+            if not matched_expected[i]:
+                result['missing_actions'].append({
+                    'tool': expected.get('name'),
+                    'arguments': expected.get('arguments', {})
+                })
+
+        # Check if sequence order matches
+        result['sequence_order_match'] = self._check_sequence_order_match(
+            expected_actions, execution_logs, matched_expected
+        )
+
+        return result
+
+    def _check_sequence_order_match(
+        self,
+        expected_actions: List[Dict],
+        execution_logs: List[Dict],
+        matched_expected: List[bool]
+    ) -> bool:
+        """
+        Check if matched actions are in the same order as expected.
+
+        Returns:
+            True if all matched actions appear in the same relative order
+        """
+        # Get the indices of matched expected actions
+        matched_indices = [i for i, matched in enumerate(matched_expected) if matched]
+
+        if len(matched_indices) <= 1:
+            return True  # Single or no matches are trivially in order
+
+        # Get the order in which these were executed
+        exec_order = []
+        for i in matched_indices:
+            exp_tool = expected_actions[i].get('name')
+            exp_args = expected_actions[i].get('arguments', {})
+
+            # Find where this was executed
+            for exec_idx, log in enumerate(execution_logs):
+                if log.get('tool_name') == exp_tool:
+                    actual_args = log.get('arguments', {})
+                    args_ok, _ = self._args_match(exp_args, actual_args)
+                    if args_ok:
+                        exec_order.append((i, exec_idx))
+                        break
+
+        # Check if execution order matches expected order
+        if len(exec_order) <= 1:
+            return True
+
+        for i in range(1, len(exec_order)):
+            if exec_order[i][1] < exec_order[i-1][1]:
+                return False  # Out of order
+
+        return True
+
+    def get_sequence_comparison_metrics(self) -> Optional[Dict[str, Any]]:
+        """
+        Calculate sequence comparison metrics (precision, recall, F1).
+
+        Returns:
+            Dictionary with aggregate sequence metrics, or None if ground truth unavailable
+        """
+        ground_truth_tasks = self._load_ground_truth_tasks()
+        if not ground_truth_tasks:
+            return None
+
+        comparisons = self.get_task_sequence_comparisons()
+        if not comparisons:
+            return None
+
+        # Calculate aggregate metrics
+        total_tasks = len(comparisons)
+        successful_tasks = sum(1 for c in comparisons if c['task_success'])
+
+        # Categorize by success and order
+        success_ordered = sum(1 for c in comparisons if c['task_success'] and c['sequence_order_match'])
+        success_unordered = sum(1 for c in comparisons if c['task_success'] and not c['sequence_order_match'])
+        fail_ordered = sum(1 for c in comparisons if not c['task_success'] and c['sequence_order_match'])
+        fail_unordered = sum(1 for c in comparisons if not c['task_success'] and not c['sequence_order_match'])
+
+        total_expected = sum(c['expected_count'] for c in comparisons)
+        total_actual = sum(c['actual_count'] for c in comparisons)
+        total_matched = sum(len(c['matched_actions']) for c in comparisons)
+        total_missing = sum(len(c['missing_actions']) for c in comparisons)
+        total_extra = sum(len(c['extra_actions']) for c in comparisons)
+        total_arg_mismatches = sum(len(c['argument_mismatches']) for c in comparisons)
+
+        # Calculate precision, recall, F1
+        precision = total_matched / total_actual if total_actual > 0 else 0
+        recall = total_matched / total_expected if total_expected > 0 else 0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+
+        return {
+            'total_tasks': total_tasks,
+            'successful_tasks': successful_tasks,
+            'task_success_rate': successful_tasks / total_tasks if total_tasks > 0 else 0,
+            'success_ordered': success_ordered,
+            'success_unordered': success_unordered,
+            'fail_ordered': fail_ordered,
+            'fail_unordered': fail_unordered,
+            'total_expected_actions': total_expected,
+            'total_actual_actions': total_actual,
+            'total_matched_actions': total_matched,
+            'total_missing_actions': total_missing,
+            'total_extra_actions': total_extra,
+            'total_argument_mismatches': total_arg_mismatches,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1
+        }
+
+    def get_per_tool_sequence_stats(self) -> Optional[pd.DataFrame]:
+        """
+        Get per-tool sequence accuracy statistics.
+
+        Returns:
+            DataFrame with per-tool stats, or None if ground truth unavailable
+        """
+        comparisons = self.get_task_sequence_comparisons()
+        if not comparisons:
+            return None
+
+        from collections import defaultdict
+
+        tool_stats = defaultdict(lambda: {
+            'expected': 0, 'matched': 0, 'missing': 0,
+            'arg_mismatch': 0, 'extra': 0
+        })
+
+        for comp in comparisons:
+            for action in comp['matched_actions']:
+                tool_stats[action['tool']]['matched'] += 1
+
+            for action in comp['missing_actions']:
+                tool_stats[action['tool']]['missing'] += 1
+                tool_stats[action['tool']]['expected'] += 1
+
+            for action in comp['argument_mismatches']:
+                tool_stats[action['tool']]['arg_mismatch'] += 1
+                tool_stats[action['tool']]['expected'] += 1
+
+            for action in comp['extra_actions']:
+                tool_stats[action['tool']]['extra'] += 1
+
+        # Convert to DataFrame
+        data = []
+        for tool, stats in tool_stats.items():
+            expected = stats['expected'] + stats['matched']
+            precision = stats['matched'] / (stats['matched'] + stats['extra']) if (stats['matched'] + stats['extra']) > 0 else 0
+            recall = stats['matched'] / expected if expected > 0 else 0
+
+            data.append({
+                'tool': tool,
+                'expected': expected,
+                'matched': stats['matched'],
+                'missing': stats['missing'],
+                'arg_mismatch': stats['arg_mismatch'],
+                'extra': stats['extra'],
+                'precision': precision,
+                'recall': recall
+            })
+
+        df = pd.DataFrame(data)
+        return df.sort_values('expected', ascending=False) if not df.empty else df
+
+    def get_task_sequence_comparisons(self) -> Optional[List[Dict]]:
+        """
+        Get per-task sequence comparison details.
+
+        Returns:
+            List of comparison dicts, or None if ground truth unavailable
+        """
+        ground_truth_tasks = self._load_ground_truth_tasks()
+        if not ground_truth_tasks:
+            return None
+
+        simulations = self.raw_log_data.get('simulations', [])
+        if not simulations:
+            return None
+
+        sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+
+        results = []
+
+        for sim in sim_iterator:
+            task_id = str(sim.get('task_id'))
+            reward_info = sim.get('reward_info', {})
+            task_success = bool(reward_info.get('reward', 0))
+            execution_logs = sim.get('execution_logs', [])
+
+            # Get ground truth
+            gt_task = ground_truth_tasks.get(task_id) or ground_truth_tasks.get(int(task_id))
+            if not gt_task:
+                continue
+
+            # Get expected actions
+            expected_actions = gt_task.get('evaluation_criteria', {}).get('actions', [])
+            if not expected_actions:
+                continue
+
+            # Compare
+            comparison = self._compare_single_task_sequence(
+                task_id, expected_actions, execution_logs, task_success
+            )
+            results.append(comparison)
+
+        return results if results else None

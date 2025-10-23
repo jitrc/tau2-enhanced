@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_context_agent_enhanced_logs.json`
-**Generated:** 2025-10-22 23:57:32
+**Generated:** 2025-10-23 02:36:55
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -76,6 +76,50 @@
   - Affected tools: get_reservation_details
 - **Called With Wrong Args**: 2 failures (9.1%)
   - Affected tools: book_reservation
+
+---
+
+## 📊 Action Sequence Accuracy
+
+This section compares actual tool call sequences against expected action sequences from ground truth task definitions.
+
+### Overview Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Precision** | 0.00% |
+| **Recall** | 0.00% |
+| **F1 Score** | 0.00% |
+| **Total Tasks Analyzed** | 18 |
+| **Matched Actions** | 0/54 |
+
+### Task Distribution
+
+- ✅ **Success + Ordered:** 10 tasks (correct sequence, task succeeded)
+- ⚠️  **Success + Unordered:** 0 tasks (wrong order, but task succeeded)
+- ❌ **Failed + Ordered:** 8 tasks (correct sequence, but task failed)
+- 🔴 **Failed + Unordered:** 0 tasks (wrong sequence, task failed)
+
+### Action-Level Metrics
+
+- **Expected actions:** 54
+- **Actual actions executed:** 0
+- **Correctly matched:** 0
+- **Missing (omitted):** 54
+- **Extra (unexpected):** 0
+- **Argument mismatches:** 0
+
+### Per-Tool Sequence Accuracy
+
+| Tool | Expected | ✅ Matched | ❌ Missing | 🔧 Arg Err | ⚠️ Extra | Precision | Recall |
+|------|----------|-----------|-----------|-----------|---------|-----------|--------|
+| get_reservation_details | 26 | 0 | 26 | 0 | 0 | 0.0% | 0.0% |
+| get_user_details | 12 | 0 | 12 | 0 | 0 | 0.0% | 0.0% |
+| cancel_reservation | 6 | 0 | 6 | 0 | 0 | 0.0% | 0.0% |
+| search_direct_flight | 4 | 0 | 4 | 0 | 0 | 0.0% | 0.0% |
+| send_certificate | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
+| update_reservation_flights | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
+| book_reservation | 2 | 0 | 2 | 0 | 0 | 0.0% | 0.0% |
 
 ---
 

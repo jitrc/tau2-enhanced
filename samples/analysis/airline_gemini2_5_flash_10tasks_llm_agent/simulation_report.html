@@ -209,7 +209,7 @@
             <h1>🔍 Comprehensive Simulation Report</h1>
             <div class="subtitle">
                 Detailed task-by-task analysis with action checks and message logs<br>
-                Generated on October 23, 2025 at 12:07 AM
+                Generated on October 23, 2025 at 02:36 AM
             </div>
         </div>
 
@@ -1241,6 +1241,39 @@ I need to cancel because I was out of town and my plans changed unexpectedly.</d
 
                 </div>
 
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details → get_reservation_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (2):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li><li>get_reservation_details</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="section-title">🎯 Action Checks</div>
 
                 <div class="action-success">
@@ -1540,6 +1573,39 @@ What is the reason for the cancellation? (e.g., change of plan, airline cancelle
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details → get_reservation_details → get_reservation_details → send_certificate
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (4):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li><li>get_reservation_details</li><li>get_reservation_details</li><li>send_certificate</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -1860,6 +1926,39 @@ I can transfer you to a human agent who may be able to explore other options for
 
                 </div>
 
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_reservation_details → get_user_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (2):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_reservation_details</li><li>get_user_details</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="section-title">🎯 Action Checks</div>
 
                 <div class="action-success">
@@ -2112,6 +2211,39 @@ Would you like to add another free bag to your reservation?</div>
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details → get_reservation_details → get_reservation_details → get_reservation_details → get_reservation_details → get_reservation_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (6):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li><li>get_reservation_details</li><li>get_reservation_details</li><li>get_reservation_details</li><li>get_reservation_details</li><li>... and 1 more</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -2407,6 +2539,39 @@ The flight was canceled, I missed a critical business meeting, and that's the co
 
                 </div>
 
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (1):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="section-title">🎯 Action Checks</div>
 
                 <div class="action-failure">
@@ -2532,6 +2697,39 @@ The flight was canceled, I missed a critical business meeting, and that's the co
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_reservation_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (1):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_reservation_details</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -2785,6 +2983,39 @@ Since I cannot fulfill your request to add insurance, and you prefer not to be t
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_reservation_details → get_reservation_details → update_reservation_flights → cancel_reservation → cancel_reservation
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (5):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_reservation_details</li><li>get_reservation_details</li><li>update_reservation_flights</li><li>cancel_reservation</li><li>cancel_reservation</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -3208,6 +3439,39 @@ The total cost for your upcoming flights is $708.</div>
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details → get_reservation_details → search_direct_flight → book_reservation
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (4):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li><li>get_reservation_details</li><li>search_direct_flight</li><li>book_reservation</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -3736,6 +4000,39 @@ A note has been added to your reservation regarding your preference for an aisle
 
                 </div>
 
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                cancel_reservation → search_direct_flight
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (2):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>cancel_reservation</li><li>search_direct_flight</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="section-title">🎯 Action Checks</div>
 
                 <div class="action-failure">
@@ -4253,6 +4550,39 @@ I need to cancel because I was out of town and my plans changed unexpectedly.</d
 
                 </div>
 
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details → get_reservation_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (2):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li><li>get_reservation_details</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="section-title">🎯 Action Checks</div>
 
                 <div class="action-success">
@@ -4570,6 +4900,39 @@ I need to cancel because I was out of town and my plans changed unexpectedly.</d
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details → get_reservation_details → get_reservation_details → send_certificate
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (4):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li><li>get_reservation_details</li><li>get_reservation_details</li><li>send_certificate</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -4939,6 +5302,39 @@ If you have a specific delayed flight that you would like to change or cancel, p
 
                 </div>
 
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_reservation_details → get_user_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (2):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_reservation_details</li><li>get_user_details</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="section-title">🎯 Action Checks</div>
 
                 <div class="action-success">
@@ -5179,6 +5575,39 @@ Could I please be transferred to a supervisor? I'd like to clarify my membership
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details → get_reservation_details → get_reservation_details → get_reservation_details → get_reservation_details → get_reservation_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (6):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li><li>get_reservation_details</li><li>get_reservation_details</li><li>get_reservation_details</li><li>get_reservation_details</li><li>... and 1 more</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -5468,6 +5897,39 @@ Could you please provide more details about the canceled flight, such as the exa
 
                 </div>
 
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (1):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="section-title">🎯 Action Checks</div>
 
                 <div class="action-failure">
@@ -5593,6 +6055,39 @@ Could you please provide more details about the canceled flight, such as the exa
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_reservation_details
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (1):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_reservation_details</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -5845,6 +6340,39 @@ Since I cannot fulfill your request to add insurance to an existing reservation,
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_reservation_details → get_reservation_details → update_reservation_flights → cancel_reservation → cancel_reservation
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (5):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_reservation_details</li><li>get_reservation_details</li><li>update_reservation_flights</li><li>cancel_reservation</li><li>cancel_reservation</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>
@@ -6336,6 +6864,39 @@ What about my other upcoming flights and their total cost?</div>
 
                 </div>
 
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                get_user_details → get_reservation_details → search_direct_flight → book_reservation
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (4):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>get_user_details</li><li>get_reservation_details</li><li>search_direct_flight</li><li>book_reservation</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+
                 <div class="section-title">🎯 Action Checks</div>
 
                 <div class="action-success">
@@ -6738,6 +7299,39 @@ Please confirm if you would like to proceed with this booking.</div>
                         </div>
                     </div>
 
+                </div>
+
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #27ae60;">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>✅ Sequence Order Match:</strong> <span style="color: #27ae60;">Yes</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                cancel_reservation → search_direct_flight
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                (none)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing (2):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+<li>cancel_reservation</li><li>search_direct_flight</li>
+                            </ul>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="section-title">🎯 Action Checks</div>

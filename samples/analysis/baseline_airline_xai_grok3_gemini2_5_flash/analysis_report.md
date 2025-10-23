@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `baseline_airline_xai_grok3_gemini2_5_flash_reduced.json`
-**Generated:** 2025-10-22 23:57:25
+**Generated:** 2025-10-23 02:36:45
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -83,6 +83,55 @@
   - Affected tools: update_reservation_flights, update_reservation_baggages, book_reservation, search_direct_flight
 - **Called But No Match**: 14 failures (6.9%)
   - Affected tools: cancel_reservation, get_reservation_details
+
+---
+
+## 📊 Action Sequence Accuracy
+
+This section compares actual tool call sequences against expected action sequences from ground truth task definitions.
+
+### Overview Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Precision** | 33.39% |
+| **Recall** | 61.15% |
+| **F1 Score** | 43.20% |
+| **Total Tasks Analyzed** | 172 |
+| **Matched Actions** | 362/592 |
+
+### Task Distribution
+
+- ✅ **Success + Ordered:** 75 tasks (correct sequence, task succeeded)
+- ⚠️  **Success + Unordered:** 12 tasks (wrong order, but task succeeded)
+- ❌ **Failed + Ordered:** 78 tasks (correct sequence, but task failed)
+- 🔴 **Failed + Unordered:** 7 tasks (wrong sequence, task failed)
+
+### Action-Level Metrics
+
+- **Expected actions:** 592
+- **Actual actions executed:** 1084
+- **Correctly matched:** 362
+- **Missing (omitted):** 184
+- **Extra (unexpected):** 676
+- **Argument mismatches:** 46
+
+### Per-Tool Sequence Accuracy
+
+| Tool | Expected | ✅ Matched | ❌ Missing | 🔧 Arg Err | ⚠️ Extra | Precision | Recall |
+|------|----------|-----------|-----------|-----------|---------|-----------|--------|
+| get_reservation_details | 228 | 203 | 11 | 14 | 246 | 45.2% | 89.0% |
+| update_reservation_flights | 84 | 32 | 37 | 15 | 15 | 68.1% | 38.1% |
+| search_direct_flight | 80 | 17 | 60 | 3 | 136 | 11.1% | 21.2% |
+| get_user_details | 56 | 56 | 0 | 0 | 86 | 39.4% | 100.0% |
+| cancel_reservation | 52 | 27 | 22 | 3 | 9 | 75.0% | 51.9% |
+| book_reservation | 36 | 5 | 27 | 4 | 0 | 100.0% | 13.9% |
+| update_reservation_baggages | 24 | 9 | 8 | 7 | 0 | 100.0% | 37.5% |
+| send_certificate | 12 | 4 | 8 | 0 | 0 | 100.0% | 33.3% |
+| update_reservation_passengers | 12 | 9 | 3 | 0 | 0 | 100.0% | 75.0% |
+| transfer_to_human_agents | 4 | 0 | 4 | 0 | 44 | 0.0% | 0.0% |
+
+*Showing top 10 of 13 tools. See detailed reports for complete data.*
 
 ---
 

@@ -602,6 +602,10 @@ class LogVisualizer:
         state_analysis = self.analyzer.get_state_change_analysis()
         sequence_analysis = self.analyzer.get_tool_sequence_analysis()
 
+        # Get sequence comparison data (may be None if ground truth unavailable)
+        sequence_metrics = self.analyzer.get_sequence_comparison_metrics()
+        tool_sequence_stats = self.analyzer.get_per_tool_sequence_stats()
+
         # Generate all plots
         summary_fig = self.create_summary_dashboard()  # Don't duplicate task success in tool report
         failure_fig = self.create_failure_analysis_plot()
@@ -1056,6 +1060,9 @@ class LogVisualizer:
                 {failure_html}
             </div>
         </div>
+
+        <!-- Action Sequence Accuracy Analysis -->
+        {self._generate_sequence_accuracy_section(sequence_metrics, tool_sequence_stats)}
 
         <!-- Tool Flow Analysis -->
         <div class="section page-break">
@@ -1518,6 +1525,126 @@ class LogVisualizer:
 
         return insights
 
+    def _generate_sequence_accuracy_section(self, sequence_metrics, tool_sequence_stats):
+        """Generate HTML section for sequence accuracy analysis (only if ground truth available)."""
+        if sequence_metrics is None or tool_sequence_stats is None:
+            # Ground truth not available, return empty string (section will be omitted)
+            return ""
+
+        # Generate task distribution section
+        task_dist_html = f"""
+        <div class="section page-break">
+            <h2>📊 Action Sequence Accuracy</h2>
+
+            <div class="insight-box">
+                <h4>Overview</h4>
+                <p>This section compares the actual tool call sequences against expected action sequences from ground truth task definitions.</p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">{sequence_metrics['precision']:.2%}</div>
+                    <div class="metric-label">Precision</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{sequence_metrics['recall']:.2%}</div>
+                    <div class="metric-label">Recall</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{sequence_metrics['f1_score']:.2%}</div>
+                    <div class="metric-label">F1 Score</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{sequence_metrics['total_matched_actions']}/{sequence_metrics['total_expected_actions']}</div>
+                    <div class="metric-label">Matched Actions</div>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <h4>Task Distribution</h4>
+                <ul>
+                    <li>✅ <strong>Success + Ordered:</strong> {sequence_metrics['success_ordered']} tasks (correct sequence, task succeeded)</li>
+                    <li>⚠️  <strong>Success + Unordered:</strong> {sequence_metrics['success_unordered']} tasks (wrong order, task succeeded)</li>
+                    <li>❌ <strong>Failed + Ordered:</strong> {sequence_metrics['fail_ordered']} tasks (correct sequence, task failed)</li>
+                    <li>🔴 <strong>Failed + Unordered:</strong> {sequence_metrics['fail_unordered']} tasks (wrong sequence, task failed)</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <h4>Action-Level Metrics</h4>
+                <ul>
+                    <li><strong>Expected actions:</strong> {sequence_metrics['total_expected_actions']}</li>
+                    <li><strong>Actual actions executed:</strong> {sequence_metrics['total_actual_actions']}</li>
+                    <li><strong>Correctly matched:</strong> {sequence_metrics['total_matched_actions']}</li>
+                    <li><strong>Missing (omitted):</strong> {sequence_metrics['total_missing_actions']}</li>
+                    <li><strong>Extra (unexpected):</strong> {sequence_metrics['total_extra_actions']}</li>
+                    <li><strong>Argument mismatches:</strong> {sequence_metrics['total_argument_mismatches']}</li>
+                </ul>
+            </div>
+        """
+
+        # Add per-tool table if available
+        if not tool_sequence_stats.empty:
+            # Limit to top 10 tools for readability
+            top_tools = tool_sequence_stats.head(10)
+
+            task_dist_html += """
+            <div class="table-container">
+                <h3>Per-Tool Sequence Accuracy (Top 10)</h3>
+                <table style="table-layout: auto;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Tool</th>
+                            <th style="text-align: center;">Expected</th>
+                            <th style="text-align: center;">✅ Match</th>
+                            <th style="text-align: center;">❌ Miss</th>
+                            <th style="text-align: center;">🔧 Arg</th>
+                            <th style="text-align: center;">⚠️ Extra</th>
+                            <th style="text-align: center;">Precision</th>
+                            <th style="text-align: center;">Recall</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """
+
+            for _, row in top_tools.iterrows():
+                # Color code precision and recall
+                precision_color = '#27ae60' if row['precision'] >= 0.8 else ('#f39c12' if row['precision'] >= 0.5 else '#e74c3c')
+                recall_color = '#27ae60' if row['recall'] >= 0.8 else ('#f39c12' if row['recall'] >= 0.5 else '#e74c3c')
+
+                task_dist_html += f"""
+                        <tr>
+                            <td style="text-align: left;"><strong>{row['tool']}</strong></td>
+                            <td style="text-align: center;">{int(row['expected'])}</td>
+                            <td style="text-align: center; color: #27ae60;">{int(row['matched'])}</td>
+                            <td style="text-align: center; color: #e74c3c;">{int(row['missing'])}</td>
+                            <td style="text-align: center; color: #f39c12;">{int(row['arg_mismatch'])}</td>
+                            <td style="text-align: center; color: #95a5a6;">{int(row['extra'])}</td>
+                            <td style="text-align: center; color: {precision_color}; font-weight: 600;">{row['precision']:.1%}</td>
+                            <td style="text-align: center; color: {recall_color}; font-weight: 600;">{row['recall']:.1%}</td>
+                        </tr>
+                """
+
+            task_dist_html += """
+                    </tbody>
+                </table>
+            """
+
+            if len(tool_sequence_stats) > 10:
+                task_dist_html += f"""
+                <p style="color: #64748b; font-style: italic; margin-top: 10px; text-align: center;">
+                    Showing top 10 of {len(tool_sequence_stats)} tools. See simulation report for complete per-task details.
+                </p>
+                """
+
+            task_dist_html += """
+            </div>
+        """
+
+        task_dist_html += "</div>"  # Close section
+
+        return task_dist_html
+
     def create_comprehensive_report(self, output_path: str, log_file_name: str = "execution_logs") -> str:
         """
         Create a comprehensive HTML report with simulation overviews, transcripts, and results.
@@ -1622,6 +1749,10 @@ class LogVisualizer:
         failures = self.analyzer.get_failure_analysis()
         state_analysis = self.analyzer.get_state_change_analysis()
         sequence_analysis = self.analyzer.get_tool_sequence_analysis()
+
+        # Get sequence comparison data (may be None if ground truth unavailable)
+        sequence_metrics = self.analyzer.get_sequence_comparison_metrics()
+        tool_sequence_stats = self.analyzer.get_per_tool_sequence_stats()
 
         # Generate insights and recommendations (markdown format)
         insights = self._generate_key_insights_md(summary, tool_perf, failures, state_analysis, sequence_analysis)
@@ -1769,6 +1900,48 @@ class LogVisualizer:
 
         else:
             md_content += "🎉 **No failures detected!** All tool calls completed successfully.\n"
+
+        # Add sequence accuracy analysis section if ground truth available
+        if sequence_metrics is not None and tool_sequence_stats is not None:
+            md_content += "\n---\n\n## 📊 Action Sequence Accuracy\n\n"
+            md_content += "This section compares actual tool call sequences against expected action sequences from ground truth task definitions.\n\n"
+
+            md_content += "### Overview Metrics\n\n"
+            md_content += "| Metric | Value |\n"
+            md_content += "|--------|-------|\n"
+            md_content += f"| **Precision** | {sequence_metrics['precision']:.2%} |\n"
+            md_content += f"| **Recall** | {sequence_metrics['recall']:.2%} |\n"
+            md_content += f"| **F1 Score** | {sequence_metrics['f1_score']:.2%} |\n"
+            md_content += f"| **Total Tasks Analyzed** | {sequence_metrics['total_tasks']} |\n"
+            md_content += f"| **Matched Actions** | {sequence_metrics['total_matched_actions']}/{sequence_metrics['total_expected_actions']} |\n"
+
+            md_content += "\n### Task Distribution\n\n"
+            md_content += f"- ✅ **Success + Ordered:** {sequence_metrics['success_ordered']} tasks (correct sequence, task succeeded)\n"
+            md_content += f"- ⚠️  **Success + Unordered:** {sequence_metrics['success_unordered']} tasks (wrong order, but task succeeded)\n"
+            md_content += f"- ❌ **Failed + Ordered:** {sequence_metrics['fail_ordered']} tasks (correct sequence, but task failed)\n"
+            md_content += f"- 🔴 **Failed + Unordered:** {sequence_metrics['fail_unordered']} tasks (wrong sequence, task failed)\n"
+
+            md_content += "\n### Action-Level Metrics\n\n"
+            md_content += f"- **Expected actions:** {sequence_metrics['total_expected_actions']}\n"
+            md_content += f"- **Actual actions executed:** {sequence_metrics['total_actual_actions']}\n"
+            md_content += f"- **Correctly matched:** {sequence_metrics['total_matched_actions']}\n"
+            md_content += f"- **Missing (omitted):** {sequence_metrics['total_missing_actions']}\n"
+            md_content += f"- **Extra (unexpected):** {sequence_metrics['total_extra_actions']}\n"
+            md_content += f"- **Argument mismatches:** {sequence_metrics['total_argument_mismatches']}\n"
+
+            if not tool_sequence_stats.empty:
+                md_content += "\n### Per-Tool Sequence Accuracy\n\n"
+                # Limit to top 10 tools by expected count for readability
+                top_tools = tool_sequence_stats.head(10)
+
+                md_content += "| Tool | Expected | ✅ Matched | ❌ Missing | 🔧 Arg Err | ⚠️ Extra | Precision | Recall |\n"
+                md_content += "|------|----------|-----------|-----------|-----------|---------|-----------|--------|\n"
+
+                for _, row in top_tools.iterrows():
+                    md_content += f"| {row['tool']} | {int(row['expected'])} | {int(row['matched'])} | {int(row['missing'])} | {int(row['arg_mismatch'])} | {int(row['extra'])} | {row['precision']:.1%} | {row['recall']:.1%} |\n"
+
+                if len(tool_sequence_stats) > 10:
+                    md_content += f"\n*Showing top 10 of {len(tool_sequence_stats)} tools. See detailed reports for complete data.*\n"
 
         md_content += "\n---\n\n## 🔄 State Change Analysis\n\n"
 
@@ -4669,6 +4842,102 @@ class LogVisualizer:
                     </div>
 """
                 html += """
+                </div>
+"""
+
+                # Add sequence comparison visualization if ground truth is available
+                task_sequence_comparison = self.analyzer.get_task_sequence_comparisons()
+                if task_sequence_comparison:
+                    # Find the comparison for this specific task
+                    task_comparison = next(
+                        (c for c in task_sequence_comparison if str(c['task_id']) == str(sim['task_id'])),
+                        None
+                    )
+
+                    if task_comparison:
+                        expected_seq = task_comparison['expected_sequence']
+                        actual_seq = task_comparison['actual_sequence']
+                        order_match = task_comparison['sequence_order_match']
+                        missing = task_comparison['missing_actions']
+                        extra = task_comparison['extra_actions']
+                        arg_mismatches = task_comparison['argument_mismatches']
+
+                        # Color code based on match status
+                        order_color = '#27ae60' if order_match else '#e67e22'
+                        order_icon = '✅' if order_match else '⚠️'
+
+                        html += f"""
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid {order_color};">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>{order_icon} Sequence Order Match:</strong> <span style="color: {order_color};">{'Yes' if order_match else 'No'}</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                {' → '.join(expected_seq) if expected_seq else '(none)'}
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                {' → '.join(actual_seq) if actual_seq else '(none)'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+"""
+
+                        if missing:
+                            html += f"""
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing ({len(missing)}):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+"""
+                            for action in missing[:5]:
+                                html += f"<li>{action['tool']}</li>"
+                            if len(missing) > 5:
+                                html += f"<li>... and {len(missing) - 5} more</li>"
+                            html += """
+                            </ul>
+                        </div>
+"""
+
+                        if extra:
+                            html += f"""
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fef3c7; border-radius: 4px;">
+                            <strong style="color: #f59e0b;">⚠️ Extra ({len(extra)}):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+"""
+                            for action in extra[:5]:
+                                html += f"<li>{action['tool']}</li>"
+                            if len(extra) > 5:
+                                html += f"<li>... and {len(extra) - 5} more</li>"
+                            html += """
+                            </ul>
+                        </div>
+"""
+
+                        if arg_mismatches:
+                            html += f"""
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #e0f2fe; border-radius: 4px;">
+                            <strong style="color: #0284c7;">🔧 Arg Mismatches ({len(arg_mismatches)}):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+"""
+                            for action in arg_mismatches[:5]:
+                                html += f"<li>{action['tool']}</li>"
+                            if len(arg_mismatches) > 5:
+                                html += f"<li>... and {len(arg_mismatches) - 5} more</li>"
+                            html += """
+                            </ul>
+                        </div>
+"""
+
+                        html += """
+                    </div>
                 </div>
 """
 
