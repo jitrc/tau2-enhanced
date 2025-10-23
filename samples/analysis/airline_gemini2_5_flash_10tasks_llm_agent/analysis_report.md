@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_enhanced_logs.json`
-**Generated:** 2025-10-22 23:10:53
+**Generated:** 2025-10-22 23:57:30
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -212,16 +212,31 @@
 - **Primary failure mode:** Action validation failures suggest issues with tool argument validation or execution logic
 - **Average tool success rate:** 40.2%
 
+### 🔍 Failure Type Comparison
+
+Side-by-side comparison of failure types and their characteristics:
+
+| Failure Type | Severity | Total Failures | Affected Tools | Top Failing Tools |
+|--------------|----------|----------------|----------------|-------------------|
+| **Never Called** | Critical | 18 | 6 | get_reservation_details (7), cancel_reservation (4), send_certificate (2) |
+| **Called But No Match** | High | 4 | 1 | get_reservation_details (4) |
+| **Called With Wrong Args** | Medium | 1 | 1 | book_reservation (1) |
+
+**Key Insights:**
+
+- **Never Called (78.3%):** Critical severity - These tools were never executed at all, indicating the agent failed to recognize when to use them.
+- **Called But No Match (17.4%):** High severity - Tools were called but didn't produce expected results, suggesting execution logic issues.
+- **Called With Wrong Args (4.3%):** Medium severity - Tools were called with incorrect parameters, indicating parameter validation or reasoning issues.
+
 ---
 
 ## 🎯 Performance Issues Analysis
 
-### Overall Performance Assessment
+### Performance Metrics
 
-- **Overall success: 57.4% (concerning)**
-- **State-changing actions accuracy: 7.1%**
-- **Read-only actions accuracy: 62.3%**
-- **Critical**: State-changing actions show severe accuracy issues
+- **Overall success rate: 57.4%**
+- **State-changing actions: 7.1% success rate**
+- **Read-only actions: 62.3% success rate**
 - **55%pp performance drop when actions are required** (62.3% → 7.1% success)
 
 ### 🔍 Failure Patterns
@@ -289,53 +304,58 @@
 
 ### 🏆 Performance Tier Analysis
 
-**Excellent Performance (3 tools)** - High success rate (≥95%) and fast execution (≤1s):
-- `transfer_to_human_agents`: 100.0% success, 1.80ms avg time, 26 calls
-- `get_flight_status`: 100.0% success, 0.04ms avg time, 10 calls
-- `calculate`: 100.0% success, 0.08ms avg time, 2 calls
+**Excellent Performance (3 tools)** - Success rate ≥95%:
+- `transfer_to_human_agents`: 100.0% success, 26 calls
+- `get_flight_status`: 100.0% success, 10 calls
+- `calculate`: 100.0% success, 2 calls
 
-**Poor Performance (7 tools)** - Low success rate (<75%):
-- `get_reservation_details`: 14.4% success, 0.04ms avg time, 104 calls
-- `get_user_details`: 29.4% success, 0.04ms avg time, 34 calls
-- `book_reservation`: 8.3% success, 0.13ms avg time, 12 calls
-- `cancel_reservation`: 20.0% success, 0.10ms avg time, 10 calls
-- `search_direct_flight`: 30.0% success, 0.18ms avg time, 10 calls
-- `send_certificate`: 0.0% success, 0.06ms avg time, 2 calls
-- `update_reservation_flights`: 0.0% success, 0.11ms avg time, 2 calls
+**Poor Performance (7 tools)** - Success rate <75%:
+- `get_reservation_details`: 14.4% success, 104 calls
+- `get_user_details`: 29.4% success, 34 calls
+- `book_reservation`: 8.3% success, 12 calls
+- `cancel_reservation`: 20.0% success, 10 calls
+- `search_direct_flight`: 30.0% success, 10 calls
+- `send_certificate`: 0.0% success, 2 calls
+- `update_reservation_flights`: 0.0% success, 2 calls
 
 ### 🚨 Critical Performance Issues
 
 **High-Usage Poor Performers** (≥5 calls with poor performance):
 
-- **`get_reservation_details`**:
+- **`get_reservation_details`** (Never Called, critical severity):
   - Success rate: 14.4%
   - Total calls: 104
   - Failed calls: 89
-  - Impact score: 89.0 (calls × failure rate)
+  - Impact score: 10.6
+  - Simulations affected: 5
   - State changing: No
-- **`get_user_details`**:
+- **`get_user_details`** (Never Called, critical severity):
   - Success rate: 29.4%
   - Total calls: 34
   - Failed calls: 23
-  - Impact score: 24.0 (calls × failure rate)
+  - Impact score: 1.7
+  - Simulations affected: 2
   - State changing: No
-- **`book_reservation`**:
+- **`book_reservation`** (Called With Wrong Args, medium severity):
   - Success rate: 8.3%
   - Total calls: 12
   - Failed calls: 11
-  - Impact score: 11.0 (calls × failure rate)
+  - Impact score: 2.5
+  - Simulations affected: 1
   - State changing: Yes
-- **`cancel_reservation`**:
+- **`cancel_reservation`** (Never Called, critical severity):
   - Success rate: 20.0%
   - Total calls: 10
   - Failed calls: 8
-  - Impact score: 8.0 (calls × failure rate)
+  - Impact score: 10.0
+  - Simulations affected: 3
   - State changing: Yes
-- **`search_direct_flight`**:
+- **`search_direct_flight`** (Never Called, critical severity):
   - Success rate: 30.0%
   - Total calls: 10
   - Failed calls: 7
-  - Impact score: 7.0 (calls × failure rate)
+  - Impact score: 1.2
+  - Simulations affected: 1
   - State changing: No
 
 ### ⏱️ Execution Time Analysis
@@ -350,9 +370,8 @@
 - Low-usage tools (<10 calls) average success rate: 33.3%
 
 **State-Changing vs Read-Only Performance:**
-- State-changing tools: 7.1% success, 0.0001s avg time
-- Read-only tools: 62.3% success, 0.0004s avg time
-- ⚠️ State-changing tools show 55.2% lower success rate
+- State-changing tools: 7.1% success, 0.0001s avg time (4 tools)
+- Read-only tools: 62.3% success, 0.0004s avg time (6 tools)
 
 ---
 
