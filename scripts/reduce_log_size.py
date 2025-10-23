@@ -15,10 +15,19 @@ def reduce_log_file(input_file: Path, output_file: Path):
     """
     Reduce log file size by keeping only essential fields.
 
-    Required fields for analyze_simple_logs.py:
-    - execution_events (array of tool execution events)
-    - simulations (array with reward, task_id, trial, action_checks)
-    - tasks (array - optional but useful)
+    Keeps all standard tau2 Results fields required by analyze_breakdown.py and failure_analysis.py.
+    Removes only unused enhanced logging fields: state_snapshots, context_usage_snapshots, execution_metrics.
+
+    Required top-level fields:
+    - timestamp, info, tasks, simulations (standard Results structure)
+
+    Required simulation fields (standard tau2 SimulationRun):
+    - id, task_id, timestamp, start_time, end_time, duration, termination_reason
+    - agent_cost, user_cost, reward_info, messages, trial, seed
+
+    Additional fields kept for enhanced analysis:
+    - execution_logs (used by tau2_enhanced/analysis/analyzer.py)
+    - enhanced_logging_enabled flag (used to detect format)
     """
     print(f"📁 Loading: {input_file}")
 
@@ -30,63 +39,68 @@ def reduce_log_file(input_file: Path, output_file: Path):
         print(f"❌ Error loading file: {e}")
         return
 
-    # Create reduced data structure
+    # Create reduced data structure - preserve standard Results format
     reduced_data = {}
 
-    # Keep execution_events if present
+    # Keep top-level Results fields (required by tau2.data_model.simulation.Results)
+    for key in ['timestamp', 'info']:
+        if key in data:
+            reduced_data[key] = data[key]
+
+    # Keep execution_events if present (for enhanced logging)
     if 'execution_events' in data:
         reduced_data['execution_events'] = data['execution_events']
         print(f"  📊 Kept {len(data['execution_events'])} execution events")
 
-    # Reduce simulations - keep only essential fields
+    # Reduce simulations - keep all standard fields plus execution_logs
     if 'simulations' in data:
         reduced_sims = []
-        for sim in data['simulations']:
-            reduced_sim = {
-                'reward': sim.get('reward', 0),
-                'task_id': sim.get('task_id'),
-                'trial': sim.get('trial'),
-            }
+        removed_fields_count = 0
 
-            # Keep execution_logs if present (essential for tool analysis)
+        for sim in data['simulations']:
+            reduced_sim = {}
+
+            # Keep ALL standard tau2 SimulationRun fields (required by Results.load())
+            standard_fields = [
+                'id', 'task_id', 'timestamp', 'start_time', 'end_time',
+                'duration', 'termination_reason', 'agent_cost', 'user_cost',
+                'reward_info', 'messages', 'trial', 'seed'
+            ]
+
+            for key in standard_fields:
+                if key in sim:
+                    if key == 'messages':
+                        # Strip raw_data from messages to save space
+                        reduced_messages = []
+                        for msg in sim['messages']:
+                            reduced_msg = {k: v for k, v in msg.items() if k != 'raw_data'}
+                            reduced_messages.append(reduced_msg)
+                        reduced_sim['messages'] = reduced_messages
+                    else:
+                        reduced_sim[key] = sim[key]
+
+            # Keep enhanced logging fields that are actually used
             if 'execution_logs' in sim:
                 reduced_sim['execution_logs'] = sim['execution_logs']
-                # Add flag to indicate this is tau2-bench-jit format with enhanced logging
                 reduced_sim['enhanced_logging_enabled'] = True
 
-            # Keep messages if present (needed for simulation report message logs)
-            # Strip out raw_data from messages to save space
-            if 'messages' in sim:
-                reduced_messages = []
-                for msg in sim['messages']:
-                    reduced_msg = {k: v for k, v in msg.items() if k != 'raw_data'}
-                    reduced_messages.append(reduced_msg)
-                reduced_sim['messages'] = reduced_messages
-
-            # Keep action_checks if present (needed for action validation analysis)
-            if 'action_checks' in sim:
-                reduced_sim['action_checks'] = sim['action_checks']
-
-            # Keep reward_info if present (contains detailed reward breakdown)
-            if 'reward_info' in sim:
-                reduced_sim['reward_info'] = sim['reward_info']
-
-            # Keep other minimal fields that might be needed
-            for key in ['duration', 'termination', 'termination_reason', 'agent_cost', 'user_cost']:
-                if key in sim:
-                    reduced_sim[key] = sim[key]
+            # Remove unused enhanced logging fields
+            for unused_field in ['state_snapshots', 'context_usage_snapshots', 'execution_metrics']:
+                if unused_field in sim:
+                    removed_fields_count += 1
 
             reduced_sims.append(reduced_sim)
 
         reduced_data['simulations'] = reduced_sims
         print(f"  🎯 Reduced {len(reduced_sims)} simulations")
+        print(f"  🗑️  Removed {removed_fields_count} unused enhanced logging fields")
 
-    # Keep tasks array if present (useful for analysis)
+    # Keep tasks array if present (required by Results)
     if 'tasks' in data:
         reduced_data['tasks'] = data['tasks']
         print(f"  📋 Kept {len(data['tasks'])} tasks")
 
-    # Keep metadata if present
+    # Keep metadata if present (optional but useful)
     if 'metadata' in data:
         reduced_data['metadata'] = data['metadata']
         print(f"  ℹ️  Kept metadata")
