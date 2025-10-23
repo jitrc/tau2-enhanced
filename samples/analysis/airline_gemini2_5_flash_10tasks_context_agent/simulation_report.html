@@ -209,7 +209,7 @@
             <h1>🔍 Comprehensive Simulation Report</h1>
             <div class="subtitle">
                 Detailed task-by-task analysis with action checks and message logs<br>
-                Generated on October 22, 2025 at 11:57 PM
+                Generated on October 23, 2025 at 12:07 AM
             </div>
         </div>
 
@@ -712,6 +712,233 @@ payment_id
                             </span>
                         </td>
                         <td style="padding: 10px 12px; font-size: 0.85em;">Task 9 | Trial 0, Task 9 | Trial 0, Task 9 | Trial 0</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            </div>
+        </div>
+
+        <!-- Full Error List Section -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #dc2626; cursor: pointer; user-select: none;"
+                onclick="toggleSection('full-error-list-section')">
+                <span id="full-error-list-toggle">▼</span> 📋 Complete Error List
+            </h2>
+            <div id="full-error-list-section">
+
+            <div style="margin-bottom: 20px; padding: 15px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
+                <strong style="color: #dc2626;">📊 Total Errors Found: 7</strong>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">
+                    This section shows all tool execution errors encountered during simulations.
+                </p>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Simulation</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Tool Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Type</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Message Index</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background: #ffffff; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>Task 8 | Trial 0</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                assistant
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                assistant: GenericError
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #23
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                Error: 1 validation error for Payment
+payment_id
+  Field required [type=missing, input_value={'type': 'certificate', '...8045380', 'amount': 348}, input_type=dict]
+    For further information visit ht...
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>Task 9 | Trial 0</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                assistant
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                assistant: Reservation IFOYFZ not found
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #5
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                Error: Reservation IFOYFZ not found
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #ffffff; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>Task 9 | Trial 0</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                assistant
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                assistant: Reservation IFOYFZ not found
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #9
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                Error: Reservation IFOYFZ not found
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>Task 9 | Trial 0</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                assistant
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                assistant: Reservation IFOYFZ not found
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #13
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                Error: Reservation IFOYFZ not found
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #ffffff; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>Task 8 | Trial 1</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                assistant
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                assistant: GenericError
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #13
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                Error: 1 validation error for Payment
+payment_id
+  Field required [type=missing, input_value={'id': 'gift_card_5094406', 'amount': 174}, input_type=dict]
+    For further information visit https://erro...
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #fef2f2; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>Task 8 | Trial 1</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                assistant
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                assistant: GenericError
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #17
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                Error: 1 validation error for Payment
+payment_id
+  Field required [type=missing, input_value={'amount': 174, 'id': 'certificate_8045380'}, input_type=dict]
+    For further information visit https://er...
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr style="background: #ffffff; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>Task 8 | Trial 1</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                assistant
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                assistant: GenericError
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #23
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                Error: 1 validation error for Payment
+payment_id
+  Field required [type=missing, input_value={'id': 'certificate_8045380', 'amount': 348}, input_type=dict]
+    For further information visit https://er...
+                            </div>
+                        </td>
                     </tr>
 
                 </tbody>

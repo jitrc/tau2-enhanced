@@ -4382,6 +4382,126 @@ class LogVisualizer:
             </div>
         </div>
 
+        <!-- Full Error List Section -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #dc2626; cursor: pointer; user-select: none;"
+                onclick="toggleSection('full-error-list-section')">
+                <span id="full-error-list-toggle">▼</span> 📋 Complete Error List
+            </h2>
+            <div id="full-error-list-section">
+"""
+
+        # Collect all errors with full details
+        all_errors = []
+        for sim in sim_data:
+            task_id = sim.get('task_id', 'N/A')
+            trial = sim.get('trial', 'N/A')
+            sim_id = f"Task {task_id} | Trial {trial}"
+
+            # Look for tool execution errors in messages
+            for msg_idx, msg in enumerate(sim.get('messages', [])):
+                if msg.get('role') == 'tool' and (msg.get('tool_call_status') == 'error' or msg.get('error') is True):
+                    content = str(msg.get('content', ''))
+                    tool_name = msg.get('tool_name', msg.get('requestor', 'unknown'))
+
+                    # Extract error type
+                    if 'Error:' in content:
+                        import re
+                        error_match = re.search(r'Error: (.+?)(?:\\n|$)', content)
+                        if error_match:
+                            error_msg = error_match.group(1).strip()[:60]
+                            error_type = f"{tool_name}: {error_msg}"
+                        else:
+                            error_type = f"{tool_name}: GenericError"
+                    else:
+                        error_type = f"{tool_name}: GenericError"
+
+                    all_errors.append({
+                        'sim_id': sim_id,
+                        'task_id': task_id,
+                        'trial': trial,
+                        'msg_index': msg_idx,
+                        'tool_name': tool_name,
+                        'error_type': error_type,
+                        'content': content,
+                        'timestamp': msg.get('timestamp', 'N/A')
+                    })
+
+        if all_errors:
+            html += f"""
+            <div style="margin-bottom: 20px; padding: 15px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
+                <strong style="color: #dc2626;">📊 Total Errors Found: {len(all_errors)}</strong>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">
+                    This section shows all tool execution errors encountered during simulations.
+                </p>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Simulation</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Tool Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Type</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Message Index</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+            for idx, err in enumerate(all_errors):
+                # Alternate row colors
+                bg_color = '#ffffff' if idx % 2 == 0 else '#fef2f2'
+
+                # Truncate error content for display
+                error_display = err['content'].replace('\\n', ' ')[:200]
+                if len(err['content']) > 200:
+                    error_display += '...'
+
+                # Escape HTML special characters
+                error_display = error_display.replace('<', '&lt;').replace('>', '&gt;')
+
+                html += f"""
+                    <tr style="background: {bg_color}; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>{err['sim_id']}</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                {err['tool_name']}
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                {err['error_type']}
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #{err['msg_index']}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                {error_display}
+                            </div>
+                        </td>
+                    </tr>
+"""
+
+            html += """
+                </tbody>
+            </table>
+"""
+        else:
+            html += """
+            <p style="color: #64748b; font-style: italic;">No errors found in tool messages.</p>
+"""
+
+        html += """
+            </div>
+        </div>
+
         <div class="controls">
             <button class="btn" onclick="toggleAll()">Expand/Collapse All</button>
             <button class="btn" onclick="showTaskFailedOnly()">Show Task Failed Only</button>
