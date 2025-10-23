@@ -161,34 +161,81 @@ class LogVisualizer:
                 [{"type": "table", "colspan": 2}, None]
             ],
             subplot_titles=(
-                "Failure Count by Tool",
                 "Failure Types Distribution",
+                "Failure Count by Tool",
                 "Failure Details Summary",
                 None
             ),
-            row_heights=[0.5, 0.5]
+            row_heights=[0.5, 0.5] # Give more space to table (70%)
         )
 
-        # 1. Failure count by tool (top-left)
-        tool_failures = failures.groupby('tool_name')['count'].sum().sort_values(ascending=False)
-        fig.add_trace(
-            go.Bar(
-                x=tool_failures.index,
-                y=tool_failures.values,
-                name='Failure Count',
-                marker_color='crimson',
-                text=tool_failures.values,
-                textposition='outside',
-                orientation='v'
-            ),
-            row=1, col=1
-        )
+        # Get granular failure data for detailed breakdown
+        detailed_failures = self.analyzer.get_detailed_failure_breakdown()
 
-        # 2. Error types distribution (top-right)
-        # Use failure types if available, otherwise error categories
-        if 'primary_failure_category' in failures.columns:
-            # Group by failure type and sum the counts to get total failures per type
-            failure_type_dist = failures.groupby('primary_failure_category')['count'].sum().sort_values(ascending=False)
+        # 1. Failure Types Distribution (top-left) - moved from right
+        if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+            # Create crosstab of tool_name vs failure_category
+            failure_breakdown = detailed_failures.groupby(['tool_name', 'failure_category']).size().unstack(fill_value=0)
+
+            # Sort by total failures (sum across all types)
+            failure_breakdown['_total'] = failure_breakdown.sum(axis=1)
+            failure_breakdown = failure_breakdown.sort_values('_total', ascending=False)
+            failure_breakdown = failure_breakdown.drop('_total', axis=1)
+
+            # Color map for failure types - severity-based, highly contrasting colors
+            color_map = {
+                'never_called': '#c0392b',           # Crimson (Critical - tool never executed)
+                'called_but_no_match': '#e67e22',    # Orange (High - execution didn't match expected)
+                'called_with_wrong_args': '#f1c40f', # Yellow (Medium - wrong parameters)
+                'unknown': '#95a5a6'                 # Gray (Unknown severity)
+            }
+
+            # Add a trace for each failure type (stacked bars)
+            for failure_type in failure_breakdown.columns:
+                formatted_type = failure_type.replace('_', ' ').title() if failure_type not in ['ActionCheckFailure', 'unknown'] else failure_type
+
+                fig.add_trace(
+                    go.Bar(
+                        x=failure_breakdown.index,
+                        y=failure_breakdown[failure_type],
+                        name=formatted_type,
+                        marker_color=color_map.get(failure_type, '#3498db'),
+                        text=failure_breakdown[failure_type],
+                        textposition='inside',
+                        orientation='v'
+                    ),
+                    row=1, col=2
+                )
+        else:
+            # Fallback to simple aggregated view
+            tool_failures = failures.groupby('tool_name')['count'].sum().sort_values(ascending=False)
+            fig.add_trace(
+                go.Bar(
+                    x=tool_failures.index,
+                    y=tool_failures.values,
+                    name='Failure Count',
+                    marker_color='crimson',
+                    text=tool_failures.values,
+                    textposition='outside',
+                    orientation='v'
+                ),
+                row=1, col=2
+            )
+
+        # 2. Failure count by tool (top-left) - moved from left
+        # Use granular failure data for TRUE distribution across all individual action checks
+
+        if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+            # Count EACH individual action check failure (not aggregated by tool)
+            failure_type_dist = detailed_failures['failure_category'].value_counts().sort_values(ascending=False)
+
+            # Severity-based color scheme (same as stacked bar chart)
+            severity_colors = {
+                'never_called': '#c0392b',           # Crimson (Critical)
+                'called_but_no_match': '#e67e22',    # Orange (High)
+                'called_with_wrong_args': '#f1c40f', # Yellow (Medium)
+                'unknown': '#95a5a6'                 # Gray (Unknown)
+            }
 
             # Format labels - make them readable
             formatted_data = []
@@ -197,40 +244,59 @@ class LogVisualizer:
                     formatted_label = ft.replace('_', ' ').title()
                 else:
                     formatted_label = ft
-                formatted_data.append((formatted_label, failure_type_dist[ft]))
+                formatted_data.append((formatted_label, failure_type_dist[ft], ft))
 
             # Sort by count descending
             formatted_data.sort(key=lambda x: x[1], reverse=True)
             labels = [item[0] for item in formatted_data]
             values = [item[1] for item in formatted_data]
+            raw_categories = [item[2] for item in formatted_data]
             total = sum(values)
+            # Convert to percentages
+            percentages = [(count / total) * 100 for count in values]
+            # Assign colors based on severity
+            colors = [severity_colors.get(cat, '#95a5a6') for cat in raw_categories]
 
             fig.add_trace(
                 go.Bar(
                     x=labels,
-                    y=values,
-                    name='Failure Count',
-                    marker_color='orange',
-                    text=[f"{count}<br>({count/total:.1%})" for count in values],
+                    y=percentages,
+                    name='',  # Empty name to not show in legend
+                    marker_color=colors,
+                    text=[f"{pct:.1f}%<br>(n={count})" for pct, count in zip(percentages, values)],
                     textposition='outside',
-                    orientation='v'
+                    orientation='v',
+                    showlegend=False  # Don't show in legend
                 ),
-                row=1, col=2
+                row=1, col=1
             )
         else:
             # Fallback to error categories
+            # Severity-based color scheme (same as stacked bar chart)
+            severity_colors = {
+                'never_called': '#c0392b',           # Crimson (Critical)
+                'called_but_no_match': '#e67e22',    # Orange (High)
+                'called_with_wrong_args': '#f1c40f', # Yellow (Medium)
+                'unknown': '#95a5a6'                 # Gray (Unknown)
+            }
+
             error_types = failures.groupby('error_category')['count'].sum()
+            total_errors = error_types.sum()
+            error_percentages = (error_types / total_errors) * 100
+            # Assign colors based on category
+            error_colors = [severity_colors.get(cat, '#95a5a6') for cat in error_types.index]
+
             fig.add_trace(
                 go.Bar(
                     x=error_types.index,
-                    y=error_types.values,
+                    y=error_percentages.values,
                     name='Error Count',
-                    marker_color='orange',
-                    text=[f"{count}<br>({count/error_types.sum():.1%})" for count in error_types.values],
+                    marker_color=error_colors,
+                    text=[f"{pct:.1f}%<br>(n={count})" for pct, count in zip(error_percentages.values, error_types.values)],
                     textposition='outside',
                     orientation='v'
                 ),
-                row=1, col=2
+                row=1, col=1
             )
 
         # 3. Failure details table (bottom row, spanning 2 columns)
@@ -287,37 +353,43 @@ class LogVisualizer:
 
         fig.add_trace(
             go.Table(
-                columnwidth=[3, 2, 1, 1.5, 1.5, 1.5] if len(headers) == 6 else [3, 2, 1, 1.5, 1.5, 1.5],  # Tool column gets 3x width
+                columnwidth=[3, 2, 1, 1.5, 1.5, 1.5] if len(headers) == 6 else [3, 2, 1, 1.5, 1.5, 1.5],  # Ratio-based widths
                 header=dict(
                     values=headers,
                     fill_color='lightcoral',
-                    align='center',
+                    align=['left', 'left', 'center', 'center', 'center', 'center'],
                     font=dict(color='white', size=12)
                 ),
                 cells=dict(
                     values=cell_values,
                     fill_color=[['white', 'lightgray']*len(table_data)],
-                    align='center',
+                    align=['left', 'left', 'center', 'center', 'center', 'center'],
                     font=dict(size=11)
                 )
             ),
             row=2, col=1
         )
 
-        # Update layout
+        # Update layout - increase height to accommodate up to 25 rows without scrolling
         fig.update_layout(
             title_text="🔍 Comprehensive Failure Analysis Dashboard",
-            showlegend=False,
-            height=800
+            showlegend=True,  # Show legend for stacked bar colors
+            barmode='stack',  # Enable stacked bars
+            height=900,  # Increased height to fit more rows
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=1.01
+            )
         )
 
         # Update axes
-        fig.update_xaxes(title_text="Tools", row=1, col=1)
-        fig.update_yaxes(title_text="Failure Count", row=1, col=1)
-        fig.update_xaxes(title_text="Failure Type", row=1, col=2)
-        fig.update_yaxes(title_text="Count", row=1, col=2)
-        fig.update_xaxes(title_text="Error Category", row=2, col=1)
-        fig.update_yaxes(title_text="Error Count", row=2, col=1)
+        fig.update_xaxes(title_text="Failure Type", row=1, col=1)
+        fig.update_yaxes(title_text="Percentage (%)", row=1, col=1, range=[0, 100])
+        fig.update_xaxes(title_text="Tools", row=1, col=2)
+        fig.update_yaxes(title_text="Failure Count", row=1, col=2)
 
         return fig
 
@@ -692,24 +764,53 @@ class LogVisualizer:
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
+            table-layout: fixed;
         }}
 
         th, td {{
             border: 1px solid #ddd;
-            padding: 12px;
+            padding: 8px 10px;
             text-align: left;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }}
 
         th {{
             background-color: #007bff;
             color: white;
             font-weight: bold;
+            font-size: 0.9em;
         }}
 
-        /* Give Tool Name column more width */
+        /* Optimized column widths to prevent scrolling */
         th:first-child, td:first-child {{
-            min-width: 250px;
-            width: 30%;
+            width: 35%;
+            text-align: left;
+        }}
+
+        th:nth-child(2), td:nth-child(2) {{
+            width: 20%;
+            text-align: left;
+        }}
+
+        th:nth-child(3), td:nth-child(3) {{
+            width: 10%;
+            text-align: center;
+        }}
+
+        th:nth-child(4), td:nth-child(4) {{
+            width: 12%;
+            text-align: center;
+        }}
+
+        th:nth-child(5), td:nth-child(5) {{
+            width: 12%;
+            text-align: center;
+        }}
+
+        th:nth-child(6), td:nth-child(6) {{
+            width: 11%;
+            text-align: center;
         }}
 
         tr:nth-child(even) {{
@@ -1605,25 +1706,26 @@ class LogVisualizer:
 
             # Breakdown by failure type if available
             if success_metric_source == 'action_checks' and has_failure_category:
-                # Get the original failure data with categories
-                if hasattr(self.analyzer, 'action_check_metrics'):
-                    # Try to get failure category breakdown
-                    failure_df_raw = failures
-                    if 'primary_failure_category' in failure_df_raw.columns:
-                        failure_type_breakdown = failure_df_raw.groupby('primary_failure_category')['count'].sum().sort_values(ascending=False)
-                        if not failure_type_breakdown.empty:
-                            md_content += f"\n**Failure Type Breakdown:**\n"
-                            for ftype, fcount in failure_type_breakdown.items():
-                                if ftype and ftype not in ['ActionCheckFailure', 'unknown']:
-                                    formatted_type = ftype.replace('_', ' ').title()
-                                    percentage = (fcount / total_failures) * 100
-                                    # Also show which tools have this failure type
-                                    tools_with_type = failure_df_raw[failure_df_raw['primary_failure_category'] == ftype]['tool_name'].tolist()
-                                    tools_str = ', '.join(tools_with_type[:5])  # Show first 5 tools
-                                    if len(tools_with_type) > 5:
-                                        tools_str += f", ... ({len(tools_with_type) - 5} more)"
-                                    md_content += f"- **{formatted_type}**: {int(fcount)} failures ({percentage:.1f}%)\n"
-                                    md_content += f"  - Affected tools: {tools_str}\n"
+                # Get detailed granular failure data
+                detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+                if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                    # Count individual failures by category
+                    failure_type_breakdown = detailed_failures['failure_category'].value_counts().sort_values(ascending=False)
+                    total_detailed_failures = len(detailed_failures)
+
+                    if not failure_type_breakdown.empty:
+                        md_content += f"\n**Failure Type Breakdown:**\n"
+                        for ftype, fcount in failure_type_breakdown.items():
+                            if ftype and ftype not in ['ActionCheckFailure', 'unknown']:
+                                formatted_type = ftype.replace('_', ' ').title()
+                                percentage = (fcount / total_detailed_failures) * 100
+                                # Show which tools have this failure type
+                                tools_with_type = detailed_failures[detailed_failures['failure_category'] == ftype]['tool_name'].unique().tolist()
+                                tools_str = ', '.join(tools_with_type[:5])  # Show first 5 tools
+                                if len(tools_with_type) > 5:
+                                    tools_str += f", ... ({len(tools_with_type) - 5} more)"
+                                md_content += f"- **{formatted_type}**: {int(fcount)} failures ({percentage:.1f}%)\n"
+                                md_content += f"  - Affected tools: {tools_str}\n"
 
         else:
             md_content += "🎉 **No failures detected!** All tool calls completed successfully.\n"

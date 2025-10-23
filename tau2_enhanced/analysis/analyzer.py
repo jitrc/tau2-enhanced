@@ -686,6 +686,96 @@ class LogAnalyzer:
 
             return error_analysis.sort_values('count', ascending=False)
 
+    def get_detailed_failure_breakdown(self) -> pd.DataFrame:
+        """
+        Get granular failure data at the individual action check level.
+        Unlike get_failure_analysis() which aggregates by tool, this returns
+        one row per failed action check with its specific failure type.
+
+        Returns:
+            A pandas DataFrame with one row per failed action check, including:
+            - tool_name: Name of the tool
+            - error_category: Generic error category (e.g., ActionCheckFailure)
+            - failure_category: Specific failure type (never_called, called_but_no_match, called_with_wrong_args)
+            - simulation_id: Unique simulation identifier
+            - task_id: Task identifier
+            - action_reward: Reward for this action
+            - arguments: Arguments passed to the tool
+            - similarity: Similarity score (0-1) between expected and actual
+            - expected_args: Expected arguments (when available)
+            - actual_args: Actual arguments used (when available)
+        """
+        if self.df.empty:
+            return pd.DataFrame()
+
+        if not self.action_check_metrics['has_action_checks']:
+            return pd.DataFrame()
+
+        # Build granular failure data from action checks
+        failed_actions = []
+
+        # Import action check analysis functions
+        from tau2_enhanced.analysis.action_check_analysis import (
+            analyze_action_check,
+            get_failure_summary
+        )
+
+        # Extract failed actions from simulations
+        simulations = self.raw_log_data.get('simulations', [])
+        sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+
+        for sim in sim_iterator:
+            reward_info = sim.get('reward_info', {})
+            action_checks = reward_info.get('action_checks')
+            trajectory = sim.get('trajectory', sim.get('messages', []))
+
+            if action_checks and isinstance(action_checks, list):
+                for check in action_checks:
+                    if isinstance(check, dict) and not check.get('action_match', False):
+                        action = check.get('action', {})
+
+                        # Perform detailed analysis if trajectory available
+                        detailed_analysis = None
+                        if trajectory:
+                            try:
+                                analysis = analyze_action_check(check, trajectory)
+                                detailed_analysis = get_failure_summary(analysis)
+                            except Exception:
+                                pass
+
+                        # Create unique simulation ID
+                        task_id = sim.get('task_id', 'unknown')
+                        trial = sim.get('trial', 0)
+                        sim_id = f"{task_id}_{trial}" if task_id != 'unknown' else sim.get('id', 'unknown')
+
+                        failed_action = {
+                            'tool_name': action.get('name', 'unknown'),
+                            'error_category': 'ActionCheckFailure',
+                            'simulation_id': sim_id,
+                            'task_id': task_id,
+                            'trial': trial,
+                            'action_reward': check.get('action_reward', 0.0),
+                            'arguments': str(action.get('arguments', {}))
+                        }
+
+                        # Add detailed analysis if available
+                        if detailed_analysis:
+                            failed_action['failure_category'] = detailed_analysis.get('category', 'unknown')
+                            failed_action['similarity'] = detailed_analysis.get('similarity', 0.0)
+                            failed_action['expected_args'] = str(detailed_analysis.get('expected_args', {}))
+                            failed_action['actual_args'] = str(detailed_analysis.get('actual_args', {}))
+                            failed_action['has_match'] = detailed_analysis.get('has_match', False)
+                        else:
+                            failed_action['failure_category'] = 'unknown'
+                            failed_action['similarity'] = 0.0
+
+                        failed_actions.append(failed_action)
+
+        if failed_actions:
+            return pd.DataFrame(failed_actions)
+        else:
+            return pd.DataFrame()
+
     def get_state_change_analysis(self) -> pd.DataFrame:
         """
         Analyzes performance based on whether a tool call changed the state,

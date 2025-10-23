@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `baseline_airline_xai_grok3_gemini2_5_flash_reduced.json`
-**Generated:** 2025-10-22 20:57:34
+**Generated:** 2025-10-22 22:11:33
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -78,10 +78,12 @@
 - ActionCheckFailure: 204 occurrences
 
 **Failure Type Breakdown:**
-- **Never Called**: 193 failures (94.6%)
-  - Affected tools: search_direct_flight, update_reservation_flights, book_reservation, cancel_reservation, update_reservation_baggages, ... (4 more)
-- **Called But No Match**: 11 failures (5.4%)
-  - Affected tools: get_reservation_details
+- **Never Called**: 163 failures (79.9%)
+  - Affected tools: update_reservation_flights, transfer_to_human_agents, search_direct_flight, calculate, book_reservation, ... (4 more)
+- **Called With Wrong Args**: 27 failures (13.2%)
+  - Affected tools: update_reservation_flights, update_reservation_baggages, book_reservation, search_direct_flight
+- **Called But No Match**: 14 failures (6.9%)
+  - Affected tools: cancel_reservation, get_reservation_details
 
 ---
 

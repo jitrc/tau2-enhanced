@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_enhanced_logs.json`
-**Generated:** 2025-10-22 20:57:24
+**Generated:** 2025-10-22 22:11:38
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -75,8 +75,10 @@
 - ActionCheckFailure: 23 occurrences
 
 **Failure Type Breakdown:**
-- **Never Called**: 22 failures (95.7%)
-  - Affected tools: get_reservation_details, cancel_reservation, get_user_details, send_certificate, update_reservation_flights, ... (1 more)
+- **Never Called**: 18 failures (78.3%)
+  - Affected tools: get_reservation_details, send_certificate, get_user_details, update_reservation_flights, cancel_reservation, ... (1 more)
+- **Called But No Match**: 4 failures (17.4%)
+  - Affected tools: get_reservation_details
 - **Called With Wrong Args**: 1 failures (4.3%)
   - Affected tools: book_reservation
 

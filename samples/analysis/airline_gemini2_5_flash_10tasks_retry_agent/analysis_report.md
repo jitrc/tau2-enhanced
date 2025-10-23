@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_retry_agent_enhanced_logs.json`
-**Generated:** 2025-10-22 20:57:32
+**Generated:** 2025-10-22 22:11:46
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -76,7 +76,7 @@
 
 **Failure Type Breakdown:**
 - **Never Called**: 10 failures (58.8%)
-  - Affected tools: get_user_details, cancel_reservation, search_direct_flight, update_reservation_flights, send_certificate
+  - Affected tools: send_certificate, get_user_details, update_reservation_flights, cancel_reservation, search_direct_flight
 - **Called But No Match**: 5 failures (29.4%)
   - Affected tools: get_reservation_details
 - **Called With Wrong Args**: 2 failures (11.8%)
