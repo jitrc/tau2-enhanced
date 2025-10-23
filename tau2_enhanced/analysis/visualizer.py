@@ -1130,18 +1130,64 @@ class LogVisualizer:
             </div>
             """
 
-        # Failure insights
+        # Failure insights with impact score, frequency, and failure types
         if not failures.empty:
             total_errors = failures['count'].sum()
-            error_types = failures['error_category'].nunique()
+            total_simulations = summary.get('total_simulations', 1)
+
+            # Calculate impact scores
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+
+            # Sort by impact and by count
+            highest_impact = failures_with_impact.nlargest(1, 'impact_score').iloc[0]
+            most_frequent = failures_with_impact.nlargest(1, 'count').iloc[0]
+
+            # Get failure type for highest impact (if available)
+            impact_failure_type = "Unknown"
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                impact_tool_failures = detailed_failures[detailed_failures['tool_name'] == highest_impact['tool_name']]
+                if not impact_tool_failures.empty:
+                    impact_failure_type = impact_tool_failures['failure_category'].mode()[0].replace('_', ' ').title()
+
+            # Get failure type for most frequent (if available)
+            freq_failure_type = "Unknown"
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                freq_tool_failures = detailed_failures[detailed_failures['tool_name'] == most_frequent['tool_name']]
+                if not freq_tool_failures.empty:
+                    freq_failure_type = freq_tool_failures['failure_category'].mode()[0].replace('_', ' ').title()
+
+            # Failure type distribution
+            failure_type_breakdown = ""
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                type_counts = detailed_failures['failure_category'].value_counts()
+                total_detailed = len(detailed_failures)
+                breakdown_items = []
+                for ftype, count in type_counts.items():
+                    if ftype and ftype not in ['ActionCheckFailure', 'unknown']:
+                        formatted_type = ftype.replace('_', ' ').title()
+                        pct = (count / total_detailed) * 100
+                        # Assign severity
+                        severity = "critical" if ftype == "never_called" else ("high" if ftype == "called_but_no_match" else "medium")
+                        breakdown_items.append(f"{pct:.0f}% {formatted_type} ({severity})")
+                if breakdown_items:
+                    failure_type_breakdown = f"<li><strong>Failure type breakdown:</strong> {', '.join(breakdown_items)}</li>"
 
             insights_html += f"""
             <div class="warning-box">
                 <h4>⚠️ Error Analysis</h4>
                 <ul>
-                    <li><strong>{total_errors}</strong> total errors across <strong>{error_types}</strong> error types</li>
-                    <li>Most problematic tool: <strong>{failures.iloc[0]['tool_name']}</strong> ({failures.iloc[0]['count']} errors)</li>
-                    <li>Primary error type: <strong>{failures.iloc[0]['error_category']}</strong></li>
+                    <li><strong>{total_errors}</strong> total errors affecting <strong>{failures_with_impact['simulations_affected'].max()}</strong> simulations</li>
+                    <li><strong>Highest impact:</strong> {highest_impact['tool_name']} - <em>{impact_failure_type}</em> (impact: {highest_impact['impact_score']:.1f}, {int(highest_impact['count'])} failures)</li>
+                    <li><strong>Most frequent:</strong> {most_frequent['tool_name']} - <em>{freq_failure_type}</em> ({int(most_frequent['count'])} failures)</li>
+                    {failure_type_breakdown}
                 </ul>
             </div>
             """
@@ -1223,30 +1269,55 @@ class LogVisualizer:
         total_calls = summary.get('total_tool_calls', 0)
         avg_execution_time = summary.get('average_execution_time', 0)
 
-        # High Priority: Critical reliability issues
-        if success_rate < 0.8:
-            high_priority.append(f"<strong>Critical:</strong> System success rate is only {success_rate:.1%}. Immediate investigation required.")
-
         if not failures.empty:
-            # Analyze specific failure patterns
+            # Analyze specific failure patterns with impact score, frequency, and failure types
             total_failures = failures['count'].sum()
             failure_rate = total_failures / total_calls if total_calls > 0 else 0
+            total_simulations = summary.get('total_simulations', 1)
 
-            if failure_rate > 0.1:  # More than 10% failure rate
-                high_priority.append(f"<strong>High failure rate:</strong> {failure_rate:.1%} of calls are failing across the system.")
+            # Calculate impact scores
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
 
-            # Specific error type recommendations
-            error_types = failures['error_category'].unique()
-            for error_type in error_types:
-                error_count = failures[failures['error_category'] == error_type]['count'].sum()
-                affected_tools = failures[failures['error_category'] == error_type]['tool_name'].unique()
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
 
-                if error_type == 'ValidationError':
-                    high_priority.append(f"<strong>Input validation critical:</strong> {error_count} ValidationErrors across {len(affected_tools)} tools: {', '.join(affected_tools[:3])}")
-                elif error_type == 'TimeoutError':
-                    high_priority.append(f"<strong>Timeout issues:</strong> {error_count} timeouts detected across {len(affected_tools)} tools.")
-                elif error_type == 'ConnectionError':
-                    high_priority.append(f"<strong>Connection failures:</strong> {error_count} connection errors affecting {len(affected_tools)} tools.")
+            # HIGH PRIORITY: High-impact failures (impact_score > 5.0) with failure types
+            high_impact_failures = failures_with_impact[failures_with_impact['impact_score'] > 5.0].sort_values('impact_score', ascending=False)
+            if not high_impact_failures.empty:
+                for _, row in high_impact_failures.head(3).iterrows():
+                    tool_name = row['tool_name']
+                    impact = row['impact_score']
+                    sims = row.get('simulations_affected', 'N/A')
+
+                    # Get failure type if available
+                    failure_type = ""
+                    severity = ""
+                    if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                        tool_failures = detailed_failures[detailed_failures['tool_name'] == tool_name]
+                        if not tool_failures.empty:
+                            ftype = tool_failures['failure_category'].mode()[0]
+                            failure_type = f" - {ftype.replace('_', ' ').title()}"
+                            if ftype == "never_called":
+                                severity = " (Critical: tool never executed)"
+                            elif ftype == "called_but_no_match":
+                                severity = " (High: execution mismatch)"
+                            elif ftype == "called_with_wrong_args":
+                                severity = " (Medium: parameter issues)"
+
+                    high_priority.append(f"<strong>{tool_name}</strong>{failure_type}: Impact score {impact:.1f}, affecting {sims} simulations{severity}")
+
+            # HIGH PRIORITY: Critical failure types (never_called)
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                never_called_failures = detailed_failures[detailed_failures['failure_category'] == 'never_called']
+                if not never_called_failures.empty:
+                    never_called_tools = never_called_failures['tool_name'].unique()
+                    if len(never_called_tools) > 0:
+                        high_priority.append(f"<strong>Critical: Tools Never Executed:</strong> {len(never_called_tools)} tools have 'never_called' failures: {', '.join(never_called_tools[:5])}")
 
         # Analyze tool performance for medium priority recommendations
         if not tool_perf.empty:
@@ -1272,32 +1343,6 @@ class LogVisualizer:
             if not high_volume.empty and len(high_volume) > 0:
                 cache_candidates = high_volume['tool_name'].tolist()[:3]
                 medium_priority.append(f"<strong>High usage pattern:</strong> Top usage tools account for {len(high_volume)} of {len(tool_perf)} total tools: {', '.join(cache_candidates)}")
-
-        # State change analysis recommendations
-        if not state_analysis.empty:
-            state_changing = state_analysis[state_analysis['state_changed'] == True]
-            read_only = state_analysis[state_analysis['state_changed'] == False]
-
-            # Check if state-changing operations have different error patterns than read-only
-            if not state_changing.empty and not read_only.empty:
-                state_error_rate = state_changing['error_rate'].mean()
-                readonly_error_rate = read_only['error_rate'].mean()
-
-                if state_error_rate > readonly_error_rate * 2:  # State operations much more error-prone
-                    medium_priority.append(f"<strong>State operation pattern:</strong> State-changing operations have {state_error_rate:.1%} error rate vs {readonly_error_rate:.1%} for read-only operations.")
-
-        # Data pattern observations (no hardcoded recommendations)
-        if not tool_perf.empty:
-            most_used = tool_perf.iloc[0]
-            usage_ratio = most_used['total_calls'] / total_calls
-            if usage_ratio > 0.5:  # One tool dominates usage - just report the pattern
-                low_priority.append(f"<strong>Usage concentration:</strong> {most_used['tool_name']} accounts for {usage_ratio:.1%} of all calls.")
-
-        if success_rate > 0.95:  # Report excellent performance
-            low_priority.append(f"<strong>System performance:</strong> Excellent {success_rate:.1%} success rate achieved across {total_calls} calls.")
-
-        if len(tool_perf) > 5:  # Report system complexity
-            low_priority.append(f"<strong>System scope:</strong> Analysis covers {len(tool_perf)} different tools across {total_calls} total calls.")
 
         return {
             'high_priority': high_priority,
@@ -1616,7 +1661,7 @@ class LogVisualizer:
             md_content += "| Tool Name | Calls | Success Rate | Avg Time (ms) | Category |\n"
             md_content += "|-----------|-------|--------------|---------------|----------|\n"
 
-            for _, row in tool_perf.head(10).iterrows():
+            for _, row in tool_perf.iterrows():
                 md_content += f"| {row['tool_name']} | {int(row['total_calls'])} | {row['success_rate']:.1%} | {row['avg_execution_time']*1000:.2f} | {row['performance_category'].title()} |\n"
 
             # Performance categories breakdown
@@ -1655,18 +1700,19 @@ class LogVisualizer:
                 has_failure_category = 'primary_failure_category' in failures.columns
 
                 if has_failure_category:
-                    md_content += "| Tool Name | Failure Type | Count | Failure Rate | Impact Score | Checked Calls |\n"
-                    md_content += "|-----------|--------------|-------|--------------|--------------|---------------|\n"
+                    md_content += "| Tool Name | Failure Type | Count | Failure Rate | Simulations | Impact Score | Checked Calls |\n"
+                    md_content += "|-----------|--------------|-------|--------------|-------------|--------------|---------------|\n"
                 else:
-                    md_content += "| Tool Name | Error Type | Count | Failure Rate | Impact Score | Checked Calls |\n"
-                    md_content += "|-----------|------------|-------|--------------|--------------|---------------|\n"
+                    md_content += "| Tool Name | Error Type | Count | Failure Rate | Simulations | Impact Score | Checked Calls |\n"
+                    md_content += "|-----------|------------|-------|--------------|-------------|--------------|---------------|\n"
 
                 # Get action check stats for each tool
                 tool_action_stats = getattr(self.analyzer, 'action_check_metrics', {}).get('tool_action_stats', {})
 
-                for _, row in failures_with_impact.head(25).iterrows():
+                for _, row in failures_with_impact.iterrows():
                     tool_name = row['tool_name']
                     checked_calls = tool_action_stats.get(tool_name, {}).get('total', '?')
+                    simulations_affected = row.get('simulations_affected', 'N/A')
 
                     # Use detailed failure category if available, otherwise use generic error_category
                     failure_type = row.get('primary_failure_category', row['error_category']) if has_failure_category else row['error_category']
@@ -1675,15 +1721,16 @@ class LogVisualizer:
                     if failure_type and failure_type != 'ActionCheckFailure':
                         failure_type = failure_type.replace('_', ' ').title()
 
-                    md_content += f"| {tool_name} | {failure_type} | {int(row['count'])} | {row['failure_rate']:.1%} | {row['impact_score']:.1f} | {checked_calls} |\n"
+                    md_content += f"| {tool_name} | {failure_type} | {int(row['count'])} | {row['failure_rate']:.1%} | {simulations_affected} | {row['impact_score']:.1f} | {checked_calls} |\n"
             else:
                 md_content += "### Failure Overview\n\n"
                 md_content += "**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`\n\n"
-                md_content += "| Tool Name | Error Type | Count | Failure Rate | Impact Score |\n"
-                md_content += "|-----------|------------|-------|--------------|-------------|\n"
+                md_content += "| Tool Name | Error Type | Count | Failure Rate | Simulations | Impact Score |\n"
+                md_content += "|-----------|------------|-------|--------------|-------------|-------------|\n"
 
-                for _, row in failures_with_impact.head(25).iterrows():
-                    md_content += f"| {row['tool_name']} | {row['error_category']} | {int(row['count'])} | {row['failure_rate']:.1%} | {row['impact_score']:.1f} |\n"
+                for _, row in failures_with_impact.iterrows():
+                    simulations_affected = row.get('simulations_affected', 'N/A')
+                    md_content += f"| {row['tool_name']} | {row['error_category']} | {int(row['count'])} | {row['failure_rate']:.1%} | {simulations_affected} | {row['impact_score']:.1f} |\n"
 
             # Failure insights
             total_failures = failures['count'].sum()
@@ -1691,18 +1738,11 @@ class LogVisualizer:
             md_content += f"\n**Key Failure Metrics:**\n"
             md_content += f"- Total failures: **{total_failures}**\n"
             md_content += f"- Affected tools: **{affected_tools}**\n"
-            md_content += f"- Error categories: **{failures['error_category'].nunique()}**\n"
 
             if success_metric_source == 'action_checks':
                 total_action_checks = sum(stats.get('total', 0) for stats in tool_action_stats.values())
                 md_content += f"- Total action checks performed: **{total_action_checks}**\n"
                 md_content += f"- Total tool calls (see Performance Overview): **{summary.get('total_tool_calls', 'N/A')}**\n"
-
-            # Most problematic error types
-            error_types = failures.groupby('error_category')['count'].sum().sort_values(ascending=False)
-            md_content += f"\n**Most Common Error Types:**\n"
-            for error_type, count in error_types.head(5).items():
-                md_content += f"- {error_type}: {count} occurrences\n"
 
             # Breakdown by failure type if available
             if success_metric_source == 'action_checks' and has_failure_category:
@@ -1888,9 +1928,6 @@ class LogVisualizer:
                 avg_success_rate = tool_perf['success_rate'].mean()
                 md_content += f"- **Average tool success rate:** {avg_success_rate:.1%}\n"
 
-                if avg_success_rate < 0.8:
-                    md_content += f"- **⚠️ Low overall success rate** suggests systemic issues requiring investigation\n"
-
         return md_content
 
     def _generate_enhanced_failure_section(self, failures, summary, tool_perf) -> str:
@@ -2054,31 +2091,7 @@ class LogVisualizer:
                 avg_success_rate = tool_perf['success_rate'].mean()
                 html += f"<li><strong>Average tool success rate:</strong> {avg_success_rate:.1%}</li>"
 
-                if avg_success_rate < 0.8:
-                    html += "<li><strong>⚠️ Low overall success rate</strong> suggests systemic issues requiring investigation</li>"
-
         html += "</ul></div>"
-
-        # Critical recommendations
-        html += """
-            <div class="recommendations">
-                <h4>🔧 Critical Recommendations</h4>
-                <ol>
-        """
-
-        if not failures.empty:
-            # Specific recommendations based on failure patterns
-            if 'ActionCheckFailure' in failures['error_category'].values:
-                html += "<li><strong>Action Validation:</strong> Review and strengthen argument validation logic for failing tools</li>"
-                html += "<li><strong>Error Handling:</strong> Implement more robust error recovery mechanisms</li>"
-
-            if not tool_perf.empty and len(tool_perf[tool_perf['performance_category'] == 'poor']) > 0:
-                html += "<li><strong>Performance Optimization:</strong> Focus on improving poor-performing tools with high usage</li>"
-
-            html += "<li><strong>Monitoring:</strong> Implement enhanced monitoring and alerting for tools with high failure rates</li>"
-            html += "<li><strong>Testing:</strong> Increase test coverage for identified problematic tool patterns</li>"
-
-        html += "</ol></div>"
 
         html += "</div></div>"  # Close failure-modes and failure-section
 
@@ -2593,20 +2606,61 @@ class LogVisualizer:
             if poor_tools > 0:
                 insights.append(f"**{poor_tools}** tools showing poor performance require attention")
 
-        # Failure insights
+        # Failure insights with impact score, frequency, and failure types
         if not failures.empty:
             total_failures = failures['count'].sum()
             total_calls = summary.get('total_tool_calls', 0)
+            total_simulations = summary.get('total_simulations', 1)
             error_rate = (total_failures / total_calls * 100) if total_calls > 0 else 0
+
+            # Calculate impact scores
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
 
             insights.append(f"**{error_rate:.1f}%** error rate across all tool executions")
 
-            most_failed = failures.iloc[0]['tool_name'] if len(failures) > 0 else "N/A"
-            insights.append(f"**{most_failed}** has the highest failure count with {failures.iloc[0]['count']} failures")
+            # Highest impact failure
+            highest_impact = failures_with_impact.nlargest(1, 'impact_score').iloc[0]
+            impact_failure_type = ""
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                impact_tool_failures = detailed_failures[detailed_failures['tool_name'] == highest_impact['tool_name']]
+                if not impact_tool_failures.empty:
+                    ftype = impact_tool_failures['failure_category'].mode()[0]
+                    impact_failure_type = f" ({ftype.replace('_', ' ').title()})"
 
-            if 'ActionCheckFailure' in failures['error_category'].values:
-                action_failures = failures[failures['error_category'] == 'ActionCheckFailure']['count'].sum()
-                insights.append(f"**{action_failures}** failures are due to action validation issues")
+            insights.append(f"**Highest impact:** {highest_impact['tool_name']}{impact_failure_type} - impact score {highest_impact['impact_score']:.1f}, affecting {highest_impact.get('simulations_affected', 'N/A')} simulations")
+
+            # Most frequent failure
+            most_frequent = failures_with_impact.nlargest(1, 'count').iloc[0]
+            freq_failure_type = ""
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                freq_tool_failures = detailed_failures[detailed_failures['tool_name'] == most_frequent['tool_name']]
+                if not freq_tool_failures.empty:
+                    ftype = freq_tool_failures['failure_category'].mode()[0]
+                    freq_failure_type = f" ({ftype.replace('_', ' ').title()})"
+
+            insights.append(f"**Most frequent failure:** {most_frequent['tool_name']}{freq_failure_type} with {int(most_frequent['count'])} failures")
+
+            # Failure type distribution
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                type_counts = detailed_failures['failure_category'].value_counts()
+                total_detailed = len(detailed_failures)
+                breakdown_parts = []
+                for ftype, count in type_counts.items():
+                    if ftype and ftype not in ['ActionCheckFailure', 'unknown']:
+                        formatted_type = ftype.replace('_', ' ').title()
+                        pct = (count / total_detailed) * 100
+                        severity = "critical" if ftype == "never_called" else ("high" if ftype == "called_but_no_match" else "medium")
+                        breakdown_parts.append(f"{pct:.0f}% {formatted_type} ({severity})")
+                if breakdown_parts:
+                    insights.append(f"**Failure type breakdown:** {', '.join(breakdown_parts)}")
 
         # State change insights
         if not state_analysis.empty:
@@ -2653,38 +2707,57 @@ class LogVisualizer:
 
                 recommendations.append(f"**Performance Pattern**: {len(poor_performers)} tools categorized as poor performers based on execution metrics")
 
-        # Failure recommendations
+        # Failure recommendations with impact score, frequency, and failure types
         if not failures.empty:
-            action_check_failures = failures[failures['error_category'] == 'ActionCheckFailure']
-            if not action_check_failures.empty:
-                failure_count = len(action_check_failures)
-                recommendations.append(f"**Action Check Pattern**: {failure_count} action validation failures detected across tool executions")
+            total_simulations = summary.get('total_simulations', 1)
 
+            # Calculate impact scores
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+
+            # HIGH PRIORITY: High-impact failures (impact_score > 5.0) with failure types
+            high_impact_failures = failures_with_impact[failures_with_impact['impact_score'] > 5.0].sort_values('impact_score', ascending=False)
+            if not high_impact_failures.empty:
+                high_impact_list = []
+                for _, row in high_impact_failures.head(5).iterrows():
+                    tool_name = row['tool_name']
+                    impact = row['impact_score']
+                    sims = row.get('simulations_affected', 'N/A')
+
+                    # Get failure type if available
+                    failure_type_info = ""
+                    if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                        tool_failures = detailed_failures[detailed_failures['tool_name'] == tool_name]
+                        if not tool_failures.empty:
+                            ftype = tool_failures['failure_category'].mode()[0]
+                            formatted_type = ftype.replace('_', ' ').title()
+                            severity = "critical" if ftype == "never_called" else ("high" if ftype == "called_but_no_match" else "medium")
+                            failure_type_info = f" ({formatted_type}, {severity} severity)"
+
+                    high_impact_list.append(f"{tool_name}{failure_type_info}: impact {impact:.1f}, {sims} simulations")
+
+                recommendations.append(f"**High-Impact Failures:** {', '.join(high_impact_list)}")
+
+            # HIGH PRIORITY: Critical failure types (never_called)
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                never_called_failures = detailed_failures[detailed_failures['failure_category'] == 'never_called']
+                if not never_called_failures.empty:
+                    never_called_tools = never_called_failures['tool_name'].unique()
+                    if len(never_called_tools) > 0:
+                        recommendations.append(f"**Critical: Tools Never Executed:** {len(never_called_tools)} tools with 'never_called' failures (critical severity): {', '.join(never_called_tools[:5])}")
+
+            # High failure rate tools (>50%)
             high_failure_tools = failures[failures['failure_rate'] > 0.5]
             if not high_failure_tools.empty:
                 tool_names = ', '.join(high_failure_tools['tool_name'].tolist())
-                recommendations.append(f"**High Failure Rate**: Tools with >50% failure rate detected: {tool_names}")
-
-        # State change recommendations
-        if not state_analysis.empty:
-            state_changing = state_analysis[state_analysis['state_changed'] == True]
-            if not state_changing.empty:
-                low_success_state = state_changing[state_changing['success_rate'] < 0.7]
-                if not low_success_state.empty:
-                    low_count = len(low_success_state)
-                    avg_success = low_success_state['success_rate'].mean()
-                    recommendations.append(f"**State Operation Pattern**: {low_count} state-changing operations show {avg_success:.1%} average success rate")
-
-        # General recommendations based on success rates
-        tool_success_rate = summary.get('tool_success_rate', 0)
-        if tool_success_rate < 0.8:
-            recommendations.append(f"**System Status**: Overall tool success rate at {tool_success_rate:.1%} indicates significant reliability challenges")
-        elif tool_success_rate < 0.95:
-            recommendations.append(f"**Performance Analysis**: Tool success rate at {tool_success_rate:.1%} indicates potential optimization opportunities")
-
-        task_success_rate = summary.get('task_success_rate', 0)
-        if task_success_rate < 0.7:
-            recommendations.append(f"**Task Analysis**: Task completion rate at {task_success_rate:.1%} indicates workflow execution challenges")
+                recommendations.append(f"**High Failure Rate:** Tools with >50% failure rate: {tool_names}")
 
         return recommendations
 

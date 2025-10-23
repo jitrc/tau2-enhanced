@@ -330,7 +330,7 @@
             <h1>🔍 Tool Execution Analysis Report</h1>
             <div class="subtitle">
                 Comprehensive analysis of tool performance and execution patterns<br>
-                Generated on October 22, 2025 at 10:11 PM<br>
+                Generated on October 22, 2025 at 11:11 PM<br>
                 Source: airline_gemini2_5_flash_10tasks_2t_retry_agent_enhanced_logs.json
             </div>
         </div>
@@ -4275,9 +4275,10 @@ return Plotly;
             <div class="warning-box">
                 <h4>⚠️ Error Analysis</h4>
                 <ul>
-                    <li><strong>17</strong> total errors across <strong>1</strong> error types</li>
-                    <li>Most problematic tool: <strong>get_reservation_details</strong> (5 errors)</li>
-                    <li>Primary error type: <strong>ActionCheckFailure</strong></li>
+                    <li><strong>17</strong> total errors affecting <strong>4</strong> simulations</li>
+                    <li><strong>Highest impact:</strong> book_reservation - <em>Called With Wrong Args</em> (impact: 10.0, 2 failures)</li>
+                    <li><strong>Most frequent:</strong> get_reservation_details - <em>Called But No Match</em> (5 failures)</li>
+                    <li><strong>Failure type breakdown:</strong> 59% Never Called (critical), 29% Called But No Match (high), 12% Called With Wrong Args (medium)</li>
                 </ul>
             </div>
             
@@ -4686,11 +4687,7 @@ return Plotly;
             <div class="failure-insights">
                 <h4>💡 Key Insights</h4>
                 <ul>
-        <li><strong>Most problematic tool:</strong> get_reservation_details (5 failures)</li><li><strong>Primary failure mode:</strong> Action validation failures suggest issues with tool argument validation or execution logic</li><li><strong>Average tool success rate:</strong> 41.7%</li><li><strong>⚠️ Low overall success rate</strong> suggests systemic issues requiring investigation</li></ul></div>
-            <div class="recommendations">
-                <h4>🔧 Critical Recommendations</h4>
-                <ol>
-        <li><strong>Action Validation:</strong> Review and strengthen argument validation logic for failing tools</li><li><strong>Error Handling:</strong> Implement more robust error recovery mechanisms</li><li><strong>Performance Optimization:</strong> Focus on improving poor-performing tools with high usage</li><li><strong>Monitoring:</strong> Implement enhanced monitoring and alerting for tools with high failure rates</li><li><strong>Testing:</strong> Increase test coverage for identified problematic tool patterns</li></ol></div></div></div>
+        <li><strong>Most problematic tool:</strong> get_reservation_details (5 failures)</li><li><strong>Primary failure mode:</strong> Action validation failures suggest issues with tool argument validation or execution logic</li><li><strong>Average tool success rate:</strong> 41.7%</li></ul></div></div></div>
 
             <div class="plot-container">
                 <html>
@@ -4728,21 +4725,14 @@ return Plotly;
             <div class="recommendation-box" style="border-left: 4px solid #dc3545;">
                 <h4>🚨 High Priority Actions</h4>
                 <ul>
-                    <li><strong>Critical:</strong> System success rate is only 68.5%. Immediate investigation required.</li>
+                    <li><strong>book_reservation</strong> - Called With Wrong Args: Impact score 10.0, affecting 2 simulations (Medium: parameter issues)</li><li><strong>update_reservation_flights</strong> - Never Called: Impact score 10.0, affecting 2 simulations (Critical: tool never executed)</li><li><strong>Critical: Tools Never Executed:</strong> 5 tools have 'never_called' failures: send_certificate, get_user_details, update_reservation_flights, cancel_reservation, search_direct_flight</li>
                 </ul>
             </div>
             
             <div class="recommendation-box" style="border-left: 4px solid #ffc107;">
                 <h4>⚡ Performance Optimizations</h4>
                 <ul>
-                    <li><strong>Poor performing tools:</strong> 7 tools identified: get_reservation_details (4.3% failure), get_user_details (8.3% failure), cancel_reservation (14.3% failure)</li><li><strong>High usage pattern:</strong> Top usage tools account for 2 of 10 total tools: get_reservation_details, get_user_details</li><li><strong>State operation pattern:</strong> State-changing operations have 47.3% error rate vs 9.4% for read-only operations.</li>
-                </ul>
-            </div>
-            
-            <div class="recommendation-box">
-                <h4>📈 Enhancement Opportunities</h4>
-                <ul>
-                    <li><strong>Usage concentration:</strong> get_reservation_details accounts for 50.4% of all calls.</li><li><strong>System scope:</strong> Analysis covers 10 different tools across 230 total calls.</li>
+                    <li><strong>Poor performing tools:</strong> 7 tools identified: get_reservation_details (4.3% failure), get_user_details (8.3% failure), cancel_reservation (14.3% failure)</li><li><strong>High usage pattern:</strong> Top usage tools account for 2 of 10 total tools: get_reservation_details, get_user_details</li>
                 </ul>
             </div>
             

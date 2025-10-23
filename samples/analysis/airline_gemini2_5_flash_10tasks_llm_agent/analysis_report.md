@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_enhanced_logs.json`
-**Generated:** 2025-10-22 22:11:38
+**Generated:** 2025-10-22 23:10:53
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -54,25 +54,21 @@
 
 **Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`
 
-| Tool Name | Failure Type | Count | Failure Rate | Impact Score | Checked Calls |
-|-----------|--------------|-------|--------------|--------------|---------------|
-| get_reservation_details | Never Called | 11 | 42.3% | 10.6 | 26 |
-| cancel_reservation | Never Called | 4 | 66.7% | 10.0 | 6 |
-| send_certificate | Never Called | 2 | 100.0% | 10.0 | 2 |
-| update_reservation_flights | Never Called | 2 | 100.0% | 10.0 | 2 |
-| book_reservation | Called With Wrong Args | 1 | 50.0% | 2.5 | 2 |
-| get_user_details | Never Called | 2 | 16.7% | 1.7 | 12 |
-| search_direct_flight | Never Called | 1 | 25.0% | 1.2 | 4 |
+| Tool Name | Failure Type | Count | Failure Rate | Simulations | Impact Score | Checked Calls |
+|-----------|--------------|-------|--------------|-------------|--------------|---------------|
+| get_reservation_details | Never Called | 11 | 42.3% | 5 | 10.6 | 26 |
+| cancel_reservation | Never Called | 4 | 66.7% | 3 | 10.0 | 6 |
+| send_certificate | Never Called | 2 | 100.0% | 2 | 10.0 | 2 |
+| update_reservation_flights | Never Called | 2 | 100.0% | 2 | 10.0 | 2 |
+| book_reservation | Called With Wrong Args | 1 | 50.0% | 1 | 2.5 | 2 |
+| get_user_details | Never Called | 2 | 16.7% | 2 | 1.7 | 12 |
+| search_direct_flight | Never Called | 1 | 25.0% | 1 | 1.2 | 4 |
 
 **Key Failure Metrics:**
 - Total failures: **23**
 - Affected tools: **7**
-- Error categories: **1**
 - Total action checks performed: **54**
 - Total tool calls (see Performance Overview): **212**
-
-**Most Common Error Types:**
-- ActionCheckFailure: 23 occurrences
 
 **Failure Type Breakdown:**
 - **Never Called**: 18 failures (78.3%)
@@ -135,8 +131,9 @@
 - Overall system reliability: **57.4%**
 - **7** tools showing poor performance require attention
 - **10.8%** error rate across all tool executions
-- **get_reservation_details** has the highest failure count with 11 failures
-- **23** failures are due to action validation issues
+- **Highest impact:** get_reservation_details (Never Called) - impact score 10.6, affecting 5 simulations
+- **Most frequent failure:** get_reservation_details (Never Called) with 11 failures
+- **Failure type breakdown:** 78% Never Called (critical), 17% Called But No Match (high), 4% Called With Wrong Args (medium)
 - Tool distribution: **4** state-changing, **7** read-only
 - State-changing tools underperform read-only tools (9.2% vs 55.8%)
 - High self-loop rate (35.5%) indicates potential retry patterns
@@ -148,11 +145,9 @@
 
 - **High Impact Pattern**: High-usage poor performers identified: get_reservation_details, get_user_details, book_reservation, cancel_reservation, search_direct_flight
 - **Performance Pattern**: 7 tools categorized as poor performers based on execution metrics
-- **Action Check Pattern**: 7 action validation failures detected across tool executions
-- **High Failure Rate**: Tools with >50% failure rate detected: cancel_reservation, send_certificate, update_reservation_flights
-- **State Operation Pattern**: 4 state-changing operations show 9.2% average success rate
-- **System Status**: Overall tool success rate at 57.4% indicates significant reliability challenges
-- **Task Analysis**: Task completion rate at 60.0% indicates workflow execution challenges
+- **High-Impact Failures:** get_reservation_details (Never Called, critical severity): impact 10.6, 5 simulations, cancel_reservation (Never Called, critical severity): impact 10.0, 3 simulations, send_certificate (Never Called, critical severity): impact 10.0, 2 simulations, update_reservation_flights (Never Called, critical severity): impact 10.0, 2 simulations
+- **Critical: Tools Never Executed:** 6 tools with 'never_called' failures (critical severity): get_reservation_details, send_certificate, get_user_details, update_reservation_flights, cancel_reservation
+- **High Failure Rate:** Tools with >50% failure rate: cancel_reservation, send_certificate, update_reservation_flights
 
 ---
 
@@ -216,7 +211,6 @@
 - **Most problematic tool:** get_reservation_details (11 failures)
 - **Primary failure mode:** Action validation failures suggest issues with tool argument validation or execution logic
 - **Average tool success rate:** 40.2%
-- **⚠️ Low overall success rate** suggests systemic issues requiring investigation
 
 ---
 
