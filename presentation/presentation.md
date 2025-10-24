@@ -336,7 +336,7 @@ LogAnalyzer → 15+ analysis methods → HTML reports
 - **Wrong Args:** 13.2% (27) — Parameter construction errors
 - **No Match:** 6.9% (14) — Execution logic mismatch
 
-**Key Insight:** Issue is not what the agent *says*, but what it *does*. Validation errors, not reasoning errors.
+**Key Insight:** Issue is not what the agent *says*, but what it *does*. or *does not*.
 
 ---
 
