@@ -149,6 +149,7 @@ Core components:
 
 **Key Improvements Demonstrated:**
 - **13.0pp tool success improvement** (70.4% vs 57.4%) using enhanced agents
+- **Mixed task-level results:** Tool improvements don't always translate to task success (retry_agent maintained 60% task success, enhanced_agent regressed to 55%)
 - **Precise failure localization:** All failures traced to ActionCheckFailure patterns
 - **Performance optimization:** Retry logic reduced error rates by 11-13pp
 - **Detailed insights:** 15 analysis methods revealed patterns invisible to original benchmark
@@ -201,7 +202,7 @@ python scripts/analyze_simple_logs.py results.json
 | **retry_agent** | 68.5% | 11.1pp | Intelligent error recovery | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_retry_agent/enhanced_analysis_report.html) |
 | **enhanced_agent** | 70.4% | 13.0pp | Combined retry + context management | [📊 Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_enhanced_agent/enhanced_analysis_report.html) |
 
-**Key Findings:** Enhanced agents achieve 13.0pp tool success improvement through intelligent retry logic and context management, with zero modifications to core tau2-bench.
+**Key Findings:** Enhanced agents achieve 13.0pp tool success improvement through intelligent retry logic and context management, with zero modifications to core tau2-bench. However, tool-level improvements don't always translate to task-level success: retry_agent maintained task success (60%), while enhanced_agent showed a -5pp task success regression (55%) despite superior tool execution.
 
 **Detailed Tool Analysis:**
 - [🔧 LLM Agent Tool Report](https://www.jitrc.com/tau2-enhanced/samples/analysis/airline_gemini2_5_flash_10tasks_llm_agent/tool_report.html)
@@ -242,13 +243,13 @@ Based on Grok's 89.4% action execution failures, we propose three targeted train
 
 **Key Contributions:**
 1. **Identified Critical Performance Issues:** 61.1pp drop with actions, 89.4% execution failures
-2. **Implemented Actionable Solutions:** Enhanced agents achieving 13.0pp tool success improvement
+2. **Implemented Actionable Solutions:** Enhanced agents achieving 13.0pp tool success improvement (though task-level optimization requires further tuning)
 3. **Advanced Analytics:** 15 analysis methods replacing binary metrics with detailed insights
 4. **Production-Ready Platform:** Zero-configuration setup with comprehensive monitoring
 
 **Critical Insights:**
 - **Hidden Benchmark Bias:** Favored conversational over execution skills
-- **State Management Paradox:** Perfect state-changing vs failed read-only operations
+- **State Management Paradox:** State-changing tools (74.6% success) outperform read-only tools (41.5% success) — opposite of expected
 - **Efficiency Patterns:** 37-40% self-loops reveal planning deficiencies
 
 **Impact:** tau2-enhanced demonstrates how systematic benchmark critique drives practical improvements, providing both research insights and production solutions through intelligent agent enhancements and deterministic evaluation methodologies.

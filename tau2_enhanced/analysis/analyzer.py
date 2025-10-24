@@ -43,6 +43,8 @@ class LogAnalyzer:
             self.df = pd.DataFrame()
         else:
             self.df = self._preprocess(log_data)
+        # Try to use action check success rates first (more accurate for tool effectiveness)
+        self.action_check_metrics = self._calculate_action_check_success_rates()
 
     def _preprocess(self, log_data: Union[List[ToolExecutionEvent], Dict[str, Any]]) -> pd.DataFrame:
         """
@@ -385,14 +387,12 @@ class LogAnalyzer:
         # --- Tool-level metrics ---
         total_calls = len(self.df)
 
-        # Try to use action check success rates first (more accurate for tool effectiveness)
-        action_check_metrics = self._calculate_action_check_success_rates()
 
-        if action_check_metrics['has_action_checks']:
+        if self.action_check_metrics['has_action_checks']:
             # Use action check success rates as the primary tool success metric
-            successful_calls = action_check_metrics['successful_actions']
-            failed_calls = action_check_metrics['failed_actions']
-            tool_success_rate = action_check_metrics['action_check_success_rate']
+            successful_calls = self.action_check_metrics['successful_actions']
+            failed_calls = self.action_check_metrics['failed_actions']
+            tool_success_rate = self.action_check_metrics['action_check_success_rate']
             tool_error_rate = 1 - tool_success_rate
             success_metric_source = 'action_checks'
         else:
@@ -452,7 +452,7 @@ class LogAnalyzer:
             'success_metric_source': success_metric_source
         }
 
-    def get_tool_performance(self) -> pd.DataFrame:
+    def get_tool_performance(self , verbose: bool = False) -> pd.DataFrame:
         """
         Analyze enhanced performance metrics for each individual tool.
 
@@ -476,12 +476,10 @@ class LogAnalyzer:
             avg_result_size=('result_size', lambda x: x.dropna().mean() if x.dropna().any() else 0)
         ).reset_index()
 
-        # Try to use action check success rates for per-tool metrics
-        action_check_metrics = self._calculate_action_check_success_rates()
 
-        if action_check_metrics['has_action_checks']:
+        if self.action_check_metrics['has_action_checks']:
             # Override success rates with action check results
-            tool_action_stats = action_check_metrics['tool_action_stats']
+            tool_action_stats = self.action_check_metrics['tool_action_stats']
 
             for idx, row in tool_performance.iterrows():
                 tool_name = row['tool_name']
@@ -527,6 +525,9 @@ class LogAnalyzer:
 
         tool_performance['performance_category'] = tool_performance.apply(classify_performance, axis=1)
 
+        if verbose:
+            print("Tool Performance: source of success rate - ", success_metric_source)
+
         return tool_performance.sort_values('total_calls', ascending=False)
 
     def get_failure_analysis(self) -> pd.DataFrame:
@@ -540,12 +541,16 @@ class LogAnalyzer:
         if self.df.empty:
             return pd.DataFrame()
 
-        # Try to use action check failures first (more accurate)
-        action_check_metrics = self._calculate_action_check_success_rates()
 
-        if action_check_metrics['has_action_checks']:
+        if self.action_check_metrics['has_action_checks']:
             # Build failure analysis from action check data
             failed_actions = []
+
+            # Import action check analysis functions
+            from tau2_enhanced.analysis.action_check_analysis import (
+                analyze_action_check,
+                get_failure_summary
+            )
 
             # Extract failed actions from simulations
             simulations = self.raw_log_data.get('simulations', [])
@@ -554,33 +559,73 @@ class LogAnalyzer:
             for sim in sim_iterator:
                 reward_info = sim.get('reward_info', {})
                 action_checks = reward_info.get('action_checks')
+                # Get trajectory/messages for detailed analysis
+                trajectory = sim.get('trajectory', sim.get('messages', []))
 
                 if action_checks and isinstance(action_checks, list):
                     for check in action_checks:
                         if isinstance(check, dict) and not check.get('action_match', False):
                             action = check.get('action', {})
-                            failed_actions.append({
+
+                            # Perform detailed analysis if trajectory available
+                            detailed_analysis = None
+                            if trajectory:
+                                try:
+                                    analysis = analyze_action_check(check, trajectory)
+                                    detailed_analysis = get_failure_summary(analysis)
+                                except Exception:
+                                    # Fallback if analysis fails
+                                    pass
+
+                            # Create unique simulation ID from task_id and trial
+                            task_id = sim.get('task_id', 'unknown')
+                            trial = sim.get('trial', 0)
+                            sim_id = f"{task_id}_{trial}" if task_id != 'unknown' else sim.get('id', 'unknown')
+
+                            failed_action = {
                                 'tool_name': action.get('name', 'unknown'),
                                 'error_category': 'ActionCheckFailure',
-                                'simulation_id': sim.get('id', 'unknown'),
-                                'task_id': sim.get('task_id', 'unknown'),
+                                'simulation_id': sim_id,
+                                'task_id': task_id,
                                 'action_reward': check.get('action_reward', 0.0),
                                 'arguments': str(action.get('arguments', {}))[:100] + '...' if len(str(action.get('arguments', {}))) > 100 else str(action.get('arguments', {}))
-                            })
+                            }
+
+                            # Add detailed analysis if available
+                            if detailed_analysis:
+                                failed_action['failure_category'] = detailed_analysis.get('category', 'unknown')
+                                failed_action['similarity'] = detailed_analysis.get('similarity', 0.0)
+                                failed_action['expected_args'] = detailed_analysis.get('expected_args', {})
+                                failed_action['actual_args'] = detailed_analysis.get('actual_args', {})
+                                failed_action['diff'] = detailed_analysis.get('diff', {})
+
+                            failed_actions.append(failed_action)
 
             if failed_actions:
                 # Create DataFrame from failed actions
                 failed_df = pd.DataFrame(failed_actions)
 
                 # Aggregate failure analysis
-                error_analysis = failed_df.groupby(['tool_name', 'error_category']).agg(
-                    count=('tool_name', 'count'),
-                    simulations_affected=('simulation_id', 'nunique'),
-                    avg_action_reward=('action_reward', 'mean')
-                ).reset_index()
+                # Check if failure_category exists (from detailed analysis)
+                if 'failure_category' in failed_df.columns:
+                    # Group by tool_name and failure_category for more detailed breakdown
+                    error_analysis = failed_df.groupby(['tool_name', 'error_category']).agg(
+                        count=('tool_name', 'count'),
+                        simulations_affected=('simulation_id', 'nunique'),
+                        avg_action_reward=('action_reward', 'mean'),
+                        # Get most common failure category
+                        primary_failure_category=('failure_category', lambda x: x.mode()[0] if not x.mode().empty else 'unknown')
+                    ).reset_index()
+                else:
+                    # Fallback to simple grouping
+                    error_analysis = failed_df.groupby(['tool_name', 'error_category']).agg(
+                        count=('tool_name', 'count'),
+                        simulations_affected=('simulation_id', 'nunique'),
+                        avg_action_reward=('action_reward', 'mean')
+                    ).reset_index()
 
                 # Add failure rate for each tool
-                tool_action_stats = action_check_metrics['tool_action_stats']
+                tool_action_stats = self.action_check_metrics['tool_action_stats']
                 error_analysis['failure_rate'] = error_analysis.apply(
                     lambda row: row['count'] / tool_action_stats.get(row['tool_name'], {}).get('total', 1), axis=1
                 )
@@ -641,6 +686,157 @@ class LogAnalyzer:
 
             return error_analysis.sort_values('count', ascending=False)
 
+    def get_detailed_failure_breakdown(self) -> pd.DataFrame:
+        """
+        Get granular failure data at the individual action check level.
+        Unlike get_failure_analysis() which aggregates by tool, this returns
+        one row per failed action check with its specific failure type.
+
+        Returns:
+            A pandas DataFrame with one row per failed action check, including:
+            - tool_name: Name of the tool
+            - error_category: Generic error category (e.g., ActionCheckFailure)
+            - failure_category: Specific failure type (never_called, called_but_no_match, called_with_wrong_args)
+            - simulation_id: Unique simulation identifier
+            - task_id: Task identifier
+            - action_reward: Reward for this action
+            - arguments: Arguments passed to the tool
+            - similarity: Similarity score (0-1) between expected and actual
+            - expected_args: Expected arguments (when available)
+            - actual_args: Actual arguments used (when available)
+        """
+        if self.df.empty:
+            return pd.DataFrame()
+
+        if not self.action_check_metrics['has_action_checks']:
+            return pd.DataFrame()
+
+        # Build granular failure data from action checks
+        failed_actions = []
+
+        # Import action check analysis functions
+        from tau2_enhanced.analysis.action_check_analysis import (
+            analyze_action_check,
+            get_failure_summary
+        )
+
+        # Extract failed actions from simulations
+        simulations = self.raw_log_data.get('simulations', [])
+        sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+
+        for sim in sim_iterator:
+            reward_info = sim.get('reward_info', {})
+            action_checks = reward_info.get('action_checks')
+            trajectory = sim.get('trajectory', sim.get('messages', []))
+
+            if action_checks and isinstance(action_checks, list):
+                for check in action_checks:
+                    if isinstance(check, dict) and not check.get('action_match', False):
+                        action = check.get('action', {})
+
+                        # Perform detailed analysis if trajectory available
+                        detailed_analysis = None
+                        if trajectory:
+                            try:
+                                analysis = analyze_action_check(check, trajectory)
+                                detailed_analysis = get_failure_summary(analysis)
+                            except Exception:
+                                pass
+
+                        # Create unique simulation ID
+                        task_id = sim.get('task_id', 'unknown')
+                        trial = sim.get('trial', 0)
+                        sim_id = f"{task_id}_{trial}" if task_id != 'unknown' else sim.get('id', 'unknown')
+
+                        failed_action = {
+                            'tool_name': action.get('name', 'unknown'),
+                            'error_category': 'ActionCheckFailure',
+                            'simulation_id': sim_id,
+                            'task_id': task_id,
+                            'trial': trial,
+                            'action_reward': check.get('action_reward', 0.0),
+                            'arguments': str(action.get('arguments', {}))
+                        }
+
+                        # Add detailed analysis if available
+                        if detailed_analysis:
+                            failed_action['failure_category'] = detailed_analysis.get('category', 'unknown')
+                            failed_action['similarity'] = detailed_analysis.get('similarity', 0.0)
+                            failed_action['expected_args'] = str(detailed_analysis.get('expected_args', {}))
+                            failed_action['actual_args'] = str(detailed_analysis.get('actual_args', {}))
+                            failed_action['has_match'] = detailed_analysis.get('has_match', False)
+                        else:
+                            failed_action['failure_category'] = 'unknown'
+                            failed_action['similarity'] = 0.0
+
+                        failed_actions.append(failed_action)
+
+        if failed_actions:
+            return pd.DataFrame(failed_actions)
+        else:
+            return pd.DataFrame()
+
+    def get_unique_failed_simulations(self, tool_names: List[str] = None) -> Dict[str, Any]:
+        """
+        Calculate unique simulations affected by tool failures, accounting for overlaps.
+
+        Args:
+            tool_names: List of tool names to analyze. If None, analyzes all failed tools.
+
+        Returns:
+            Dictionary containing:
+            - total_unique_sims: Total unique simulations affected
+            - tool_breakdown: Per-tool simulation counts
+            - overlap_analysis: Simulations affected by multiple tools
+            - percentage_of_total: Percentage of all simulations affected
+        """
+        detailed_failures = self.get_detailed_failure_breakdown()
+        if detailed_failures.empty:
+            return {
+                'total_unique_sims': 0,
+                'tool_breakdown': {},
+                'overlap_analysis': {},
+                'percentage_of_total': 0.0
+            }
+
+        # Filter by tool names if specified
+        if tool_names:
+            detailed_failures = detailed_failures[detailed_failures['tool_name'].isin(tool_names)]
+
+        # Get unique simulations per tool
+        tool_sims = {}
+        for tool in detailed_failures['tool_name'].unique():
+            tool_sims[tool] = set(detailed_failures[detailed_failures['tool_name'] == tool]['simulation_id'].unique())
+
+        # Calculate total unique simulations (union)
+        all_failed_sims = set()
+        for sims in tool_sims.values():
+            all_failed_sims.update(sims)
+
+        # Calculate overlap - simulations that had failures from multiple tools
+        overlap_count = 0
+        multi_tool_failures = {}
+        for sim_id in all_failed_sims:
+            tools_failed = [tool for tool, sims in tool_sims.items() if sim_id in sims]
+            if len(tools_failed) > 1:
+                overlap_count += 1
+                multi_tool_failures[sim_id] = tools_failed
+
+        # Get total simulations
+        total_simulations = self.raw_log_data.get('simulations', [])
+        if isinstance(total_simulations, dict):
+            total_simulations = list(total_simulations.values())
+        total_sim_count = len(total_simulations)
+
+        return {
+            'total_unique_sims': len(all_failed_sims),
+            'tool_breakdown': {tool: len(sims) for tool, sims in tool_sims.items()},
+            'overlapping_sims': overlap_count,
+            'multi_tool_failures': multi_tool_failures,
+            'percentage_of_total': (len(all_failed_sims) / total_sim_count * 100) if total_sim_count > 0 else 0.0,
+            'sum_of_individual_counts': sum(len(sims) for sims in tool_sims.values())
+        }
+
     def get_state_change_analysis(self) -> pd.DataFrame:
         """
         Analyzes performance based on whether a tool call changed the state,
@@ -662,10 +858,29 @@ class LogAnalyzer:
             max_execution_time=('execution_time', 'max')
         ).reset_index()
 
-        # Calculate derived metrics
-        state_analysis['failed_calls'] = (
-            state_analysis['total_calls'] - state_analysis['successful_calls']
-        )
+
+        if self.action_check_metrics['has_action_checks']:
+            # Override success rates with action check results
+            tool_action_stats = self.action_check_metrics['tool_action_stats']
+
+            for idx, row in state_analysis.iterrows():
+                tool_name = row['tool_name']
+                if tool_name in tool_action_stats:
+                    stats = tool_action_stats[tool_name]
+                    state_analysis.at[idx, 'successful_calls'] = stats['successful']
+                    state_analysis.at[idx, 'failed_calls'] = stats['failed']
+                else:
+                    # No action checks for this tool, keep execution success
+                    state_analysis.at[idx, 'failed_calls'] = (
+                        state_analysis.at[idx, 'total_calls'] - state_analysis.at[idx, 'successful_calls']
+                    )
+        else:
+            # Calculate derived metrics using execution success
+            state_analysis['failed_calls'] = (
+                state_analysis['total_calls'] - state_analysis['successful_calls']
+            )
+
+        # Calculate success and error rates
         state_analysis['success_rate'] = (
             state_analysis['successful_calls'] / state_analysis['total_calls']
         )
@@ -1279,6 +1494,131 @@ class LogAnalyzer:
 
         return analysis
 
+    def get_simulation_report_data(self) -> List[Dict[str, Any]]:
+        """
+        Get structured data for comprehensive simulation report.
+
+        Returns:
+            List of simulation dictionaries with action check analysis
+        """
+        from tau2_enhanced.analysis.action_check_analysis import (
+            analyze_action_check,
+            get_failure_summary
+        )
+
+        if not hasattr(self, 'raw_log_data') or not self.raw_log_data:
+            return []
+
+        simulations = self.raw_log_data.get('simulations', [])
+        if isinstance(simulations, dict):
+            simulations = list(simulations.values())
+
+        report_data = []
+
+        for sim in simulations:
+            reward_info = sim.get('reward_info', {})
+
+            sim_data = {
+                'id': sim.get('id'),
+                'task_id': sim.get('task_id'),
+                'trial': sim.get('trial', sim.get('trial_idx', 0)),
+                'reward': reward_info.get('reward', 0),
+                'duration': sim.get('duration', 0),
+                'termination_reason': sim.get('termination_reason', 'unknown'),
+                'messages': sim.get('messages', sim.get('trajectory', [])),
+                'action_checks': [],
+                'agent_cost': sim.get('agent_cost'),
+                'user_cost': sim.get('user_cost'),
+            }
+
+            # Add reward breakdown
+            if reward_info.get('reward_breakdown'):
+                sim_data['reward_breakdown'] = {
+                    k.value if hasattr(k, 'value') else str(k): v
+                    for k, v in reward_info['reward_breakdown'].items()
+                }
+            else:
+                sim_data['reward_breakdown'] = {}
+
+            # Add DB check
+            if reward_info.get('db_check'):
+                db_check = reward_info['db_check']
+                sim_data['db_check'] = {
+                    'db_match': db_check.get('db_match', False),
+                    'db_reward': db_check.get('db_reward', 0.0)
+                }
+            else:
+                sim_data['db_check'] = None
+
+            # Add communication checks
+            if reward_info.get('communicate_checks'):
+                sim_data['communicate_checks'] = [
+                    {
+                        'info': check.get('info', ''),
+                        'met': check.get('met', False),
+                        'justification': check.get('justification', '')
+                    }
+                    for check in reward_info['communicate_checks']
+                ]
+            else:
+                sim_data['communicate_checks'] = []
+
+            # Add task information if available
+            tasks = self.raw_log_data.get('tasks', [])
+            task = next((t for t in tasks if t.get('id') == sim_data['task_id']), None)
+            if task:
+                sim_data['task_description'] = task.get('description', task.get('goal', ''))
+
+                # Add full list of expected actions from task
+                eval_criteria = task.get('evaluation_criteria', {})
+                if eval_criteria.get('actions'):
+                    sim_data['expected_actions'] = [
+                        {
+                            'action_id': action.get('action_id', ''),
+                            'name': action.get('name', ''),
+                            'arguments': action.get('arguments', {})
+                        }
+                        for action in eval_criteria['actions']
+                    ]
+                else:
+                    sim_data['expected_actions'] = []
+            else:
+                sim_data['expected_actions'] = []
+
+            # Process action checks
+            reward_info = sim.get('reward_info', {})
+            action_checks = reward_info.get('action_checks')
+
+            if action_checks and isinstance(action_checks, list):
+                trajectory = sim.get('trajectory', sim.get('messages', []))
+
+                for check in action_checks:
+                    check_data = {
+                        'action': check.get('action', {}),
+                        'action_match': check.get('action_match', False),
+                        'action_reward': check.get('action_reward', 0.0),
+                        'detailed_analysis': None
+                    }
+
+                    # Add detailed analysis for failures
+                    if not check_data['action_match'] and trajectory:
+                        try:
+                            analysis = analyze_action_check(check, trajectory)
+                            check_data['detailed_analysis'] = {
+                                'expected': analysis['expected'],
+                                'closest_match': analysis['closest_match'],
+                                'category': get_failure_summary(analysis).get('category'),
+                                'all_tool_calls_with_name': analysis['all_tool_calls_with_name']
+                            }
+                        except Exception:
+                            pass
+
+                    sim_data['action_checks'].append(check_data)
+
+            report_data.append(sim_data)
+
+        return report_data
+
     def _interpret_correlation(self, correlation: float) -> str:
         """Interpret correlation coefficient."""
         if pd.isna(correlation):
@@ -1297,3 +1637,424 @@ class LogAnalyzer:
             return f"Strong {direction} correlation"
         else:
             return f"Very strong {direction} correlation"
+
+    # ========== Sequence Comparison Methods ==========
+
+    def _load_ground_truth_tasks(self) -> Optional[Dict[str, Dict]]:
+        """
+        Load ground truth tasks from tau2 registry, auto-detecting domain from logs.
+
+        Returns:
+            Dictionary mapping task_id -> task data, or None if unavailable
+        """
+        try:
+            # Try to detect domain from task IDs in simulations
+            simulations = self.raw_log_data.get('simulations', [])
+            if not simulations:
+                return None
+
+            sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+
+            # Get first task ID to infer domain
+            first_sim = next(iter(sim_iterator), None)
+            if not first_sim:
+                return None
+
+            task_id = first_sim.get('task_id')
+            if not task_id:
+                return None
+
+            # Infer domain from task_id (common pattern: domain_tasknum or just tasknum)
+            # For airline domain, task IDs are just integers
+            # Try airline domain as default for numeric task IDs
+            from tau2.registry import registry
+
+            # Try airline domain first (most common)
+            try:
+                task_loader = registry.get_tasks_loader('airline')
+                tasks = task_loader()
+
+                # Convert to dict indexed by task ID
+                task_dict = {}
+                for task in tasks:
+                    task_data = task.model_dump()
+                    task_dict[task_data['id']] = task_data
+
+                # Verify we have the task
+                if str(task_id) in task_dict or int(task_id) in task_dict:
+                    return task_dict
+            except Exception:
+                pass
+
+            # If airline didn't work, try other domains
+            for domain in ['retail', 'banking']:  # Add other known domains
+                try:
+                    task_loader = registry.get_tasks_loader(domain)
+                    tasks = task_loader()
+
+                    task_dict = {}
+                    for task in tasks:
+                        task_data = task.model_dump()
+                        task_dict[task_data['id']] = task_data
+
+                    if str(task_id) in task_dict or int(task_id) in task_dict:
+                        return task_dict
+                except Exception:
+                    continue
+
+            return None
+
+        except Exception:
+            return None
+
+    def _args_match(self, expected_args: Dict, actual_args: Dict) -> tuple[bool, List[str]]:
+        """
+        Check if actual arguments match expected arguments.
+
+        Returns:
+            (match: bool, mismatches: List[str])
+        """
+        mismatches = []
+        for key, expected_val in expected_args.items():
+            if key not in actual_args:
+                mismatches.append(f"Missing arg '{key}'")
+            elif actual_args[key] != expected_val:
+                mismatches.append(f"{key}: expected={expected_val}, actual={actual_args[key]}")
+        return len(mismatches) == 0, mismatches
+
+    def _compare_single_task_sequence(
+        self,
+        task_id: str,
+        expected_actions: List[Dict],
+        execution_logs: List[Dict],
+        task_success: bool
+    ) -> Dict:
+        """
+        Compare expected vs actual sequence for a single task.
+
+        Returns:
+            Dict with comparison results
+        """
+        result = {
+            'task_id': task_id,
+            'task_success': task_success,
+            'expected_count': len(expected_actions),
+            'actual_count': len(execution_logs),
+            'matched_actions': [],
+            'missing_actions': [],
+            'extra_actions': [],
+            'argument_mismatches': [],
+            'sequence_order_match': False,
+            'expected_sequence': [a.get('name') for a in expected_actions],
+            'actual_sequence': [l.get('tool_name') for l in execution_logs]
+        }
+
+        # Track which expected actions were matched
+        matched_expected = [False] * len(expected_actions)
+
+        # Try to match each executed action to expected actions
+        for exec_log in execution_logs:
+            exec_tool = exec_log.get('tool_name')
+            exec_args = exec_log.get('arguments', {})
+            exec_success = exec_log.get('success', False)
+
+            # Find matching expected action
+            matched = False
+            for i, expected in enumerate(expected_actions):
+                if matched_expected[i]:
+                    continue
+
+                exp_tool = expected.get('name')
+                exp_args = expected.get('arguments', {})
+
+                if exec_tool == exp_tool:
+                    args_ok, mismatches = self._args_match(exp_args, exec_args)
+                    if args_ok:
+                        result['matched_actions'].append({
+                            'tool': exec_tool,
+                            'arguments': exec_args,
+                            'execution_success': exec_success
+                        })
+                        matched_expected[i] = True
+                        matched = True
+                        break
+                    else:
+                        # Tool name matches but arguments don't
+                        result['argument_mismatches'].append({
+                            'tool': exec_tool,
+                            'expected_args': exp_args,
+                            'actual_args': exec_args,
+                            'mismatches': mismatches
+                        })
+                        matched_expected[i] = True
+                        matched = True
+                        break
+
+            if not matched:
+                # This is an extra/unexpected action
+                result['extra_actions'].append({
+                    'tool': exec_tool,
+                    'arguments': exec_args
+                })
+
+        # Find missing expected actions
+        for i, expected in enumerate(expected_actions):
+            if not matched_expected[i]:
+                result['missing_actions'].append({
+                    'tool': expected.get('name'),
+                    'arguments': expected.get('arguments', {})
+                })
+
+        # Check if sequence order matches
+        result['sequence_order_match'] = self._check_sequence_order_match(
+            expected_actions, execution_logs, matched_expected
+        )
+
+        return result
+
+    def _check_sequence_order_match(
+        self,
+        expected_actions: List[Dict],
+        execution_logs: List[Dict],
+        matched_expected: List[bool]
+    ) -> bool:
+        """
+        Check if matched actions are in the same order as expected.
+
+        Returns:
+            True if all matched actions appear in the same relative order
+        """
+        # Get the indices of matched expected actions
+        matched_indices = [i for i, matched in enumerate(matched_expected) if matched]
+
+        if len(matched_indices) <= 1:
+            return True  # Single or no matches are trivially in order
+
+        # Get the order in which these were executed
+        exec_order = []
+        for i in matched_indices:
+            exp_tool = expected_actions[i].get('name')
+            exp_args = expected_actions[i].get('arguments', {})
+
+            # Find where this was executed
+            for exec_idx, log in enumerate(execution_logs):
+                if log.get('tool_name') == exp_tool:
+                    actual_args = log.get('arguments', {})
+                    args_ok, _ = self._args_match(exp_args, actual_args)
+                    if args_ok:
+                        exec_order.append((i, exec_idx))
+                        break
+
+        # Check if execution order matches expected order
+        if len(exec_order) <= 1:
+            return True
+
+        for i in range(1, len(exec_order)):
+            if exec_order[i][1] < exec_order[i-1][1]:
+                return False  # Out of order
+
+        return True
+
+    def get_sequence_comparison_metrics(self) -> Optional[Dict[str, Any]]:
+        """
+        Calculate sequence comparison metrics (precision, recall, F1).
+
+        Returns:
+            Dictionary with aggregate sequence metrics, or None if ground truth unavailable
+        """
+        ground_truth_tasks = self._load_ground_truth_tasks()
+        if not ground_truth_tasks:
+            return None
+
+        comparisons = self.get_task_sequence_comparisons()
+        if not comparisons:
+            return None
+
+        # Calculate aggregate metrics
+        total_tasks = len(comparisons)
+        successful_tasks = sum(1 for c in comparisons if c['task_success'])
+
+        # Categorize by success and order
+        success_ordered = sum(1 for c in comparisons if c['task_success'] and c['sequence_order_match'])
+        success_unordered = sum(1 for c in comparisons if c['task_success'] and not c['sequence_order_match'])
+        fail_ordered = sum(1 for c in comparisons if not c['task_success'] and c['sequence_order_match'])
+        fail_unordered = sum(1 for c in comparisons if not c['task_success'] and not c['sequence_order_match'])
+
+        total_expected = sum(c['expected_count'] for c in comparisons)
+        total_actual = sum(c['actual_count'] for c in comparisons)
+        total_matched = sum(len(c['matched_actions']) for c in comparisons)
+        total_missing = sum(len(c['missing_actions']) for c in comparisons)
+        total_extra = sum(len(c['extra_actions']) for c in comparisons)
+        total_arg_mismatches = sum(len(c['argument_mismatches']) for c in comparisons)
+
+        # Calculate precision, recall, F1
+        precision = total_matched / total_actual if total_actual > 0 else 0
+        recall = total_matched / total_expected if total_expected > 0 else 0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+
+        return {
+            'total_tasks': total_tasks,
+            'successful_tasks': successful_tasks,
+            'task_success_rate': successful_tasks / total_tasks if total_tasks > 0 else 0,
+            'success_ordered': success_ordered,
+            'success_unordered': success_unordered,
+            'fail_ordered': fail_ordered,
+            'fail_unordered': fail_unordered,
+            'total_expected_actions': total_expected,
+            'total_actual_actions': total_actual,
+            'total_matched_actions': total_matched,
+            'total_missing_actions': total_missing,
+            'total_extra_actions': total_extra,
+            'total_argument_mismatches': total_arg_mismatches,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1
+        }
+
+    def get_per_tool_sequence_stats(self) -> Optional[pd.DataFrame]:
+        """
+        Get per-tool sequence accuracy statistics.
+
+        Returns:
+            DataFrame with per-tool stats, or None if ground truth unavailable
+        """
+        comparisons = self.get_task_sequence_comparisons()
+        if not comparisons:
+            return None
+
+        from collections import defaultdict
+
+        tool_stats = defaultdict(lambda: {
+            'expected': 0, 'matched': 0, 'missing': 0,
+            'arg_mismatch': 0, 'extra': 0
+        })
+
+        for comp in comparisons:
+            for action in comp['matched_actions']:
+                tool_stats[action['tool']]['matched'] += 1
+
+            for action in comp['missing_actions']:
+                tool_stats[action['tool']]['missing'] += 1
+                tool_stats[action['tool']]['expected'] += 1
+
+            for action in comp['argument_mismatches']:
+                tool_stats[action['tool']]['arg_mismatch'] += 1
+                tool_stats[action['tool']]['expected'] += 1
+
+            for action in comp['extra_actions']:
+                tool_stats[action['tool']]['extra'] += 1
+
+        # Convert to DataFrame
+        data = []
+        for tool, stats in tool_stats.items():
+            expected = stats['expected'] + stats['matched']
+            precision = stats['matched'] / (stats['matched'] + stats['extra']) if (stats['matched'] + stats['extra']) > 0 else 0
+            recall = stats['matched'] / expected if expected > 0 else 0
+
+            data.append({
+                'tool': tool,
+                'expected': expected,
+                'matched': stats['matched'],
+                'missing': stats['missing'],
+                'arg_mismatch': stats['arg_mismatch'],
+                'extra': stats['extra'],
+                'precision': precision,
+                'recall': recall
+            })
+
+        df = pd.DataFrame(data)
+        return df.sort_values('expected', ascending=False) if not df.empty else df
+
+    def get_task_sequence_comparisons(self) -> Optional[List[Dict]]:
+        """
+        Get per-task sequence comparison details.
+
+        Returns:
+            List of comparison dicts, or None if ground truth unavailable
+        """
+        ground_truth_tasks = self._load_ground_truth_tasks()
+        if not ground_truth_tasks:
+            return None
+
+        simulations = self.raw_log_data.get('simulations', [])
+        if not simulations:
+            return None
+
+        sim_iterator = simulations.values() if isinstance(simulations, dict) else simulations
+
+        results = []
+
+        for sim in sim_iterator:
+            task_id = str(sim.get('task_id'))
+            trial = sim.get('trial', 'N/A')
+            reward_info = sim.get('reward_info', {})
+            task_success = bool(reward_info.get('reward', 0))
+
+            # Get execution logs - handle both formats
+            execution_logs = sim.get('execution_logs', [])
+
+            # If no execution_logs in simulation, try to build from root-level execution_events
+            if not execution_logs and 'execution_events' in self.raw_log_data:
+                # Map events to simulation based on timestamp range
+                from datetime import datetime
+
+                start_time = sim.get('start_time')
+                end_time = sim.get('end_time')
+
+                if start_time and end_time:
+                    # Convert to Unix timestamp if needed
+                    try:
+                        # Try to parse as ISO format first
+                        if isinstance(start_time, str):
+                            start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00')).timestamp()
+                        else:
+                            start_time = float(start_time)
+
+                        if isinstance(end_time, str):
+                            end_time = datetime.fromisoformat(end_time.replace('Z', '+00:00')).timestamp()
+                        else:
+                            end_time = float(end_time)
+                    except (ValueError, TypeError):
+                        start_time = None
+                        end_time = None
+
+                    if start_time and end_time:
+                        # Filter execution events by timestamp range
+                        execution_events = self.raw_log_data.get('execution_events', [])
+                        execution_logs = []
+
+                        for event in execution_events:
+                            event_timestamp = event.get('timestamp')
+                            if event_timestamp:
+                                try:
+                                    event_timestamp = float(event_timestamp)
+                                    if start_time <= event_timestamp <= end_time:
+                                        log_entry = {
+                                            'tool_name': event.get('tool_name'),
+                                            'arguments': event.get('tool_args', {}),
+                                            'success': event.get('success', False),
+                                            'timestamp': event_timestamp
+                                        }
+                                        execution_logs.append(log_entry)
+                                except (ValueError, TypeError):
+                                    continue
+
+            # Get ground truth
+            gt_task = ground_truth_tasks.get(task_id) or ground_truth_tasks.get(int(task_id))
+            if not gt_task:
+                continue
+
+            # Get expected actions
+            expected_actions = gt_task.get('evaluation_criteria', {}).get('actions', [])
+            if not expected_actions:
+                continue
+
+            # Compare
+            comparison = self._compare_single_task_sequence(
+                task_id, expected_actions, execution_logs, task_success
+            )
+            # Add trial information to comparison
+            comparison['trial'] = trial
+            results.append(comparison)
+
+        return results if results else None

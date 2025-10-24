@@ -24,7 +24,7 @@ class LogVisualizer:
         """
         self.analyzer = analyzer
 
-    def create_summary_dashboard(self, include_task_success=True) -> go.Figure:
+    def create_summary_dashboard(self) -> go.Figure:
         """
         Create a dashboard summarizing overall tool performance.
 
@@ -33,126 +33,64 @@ class LogVisualizer:
         """
         summary = self.analyzer.get_summary_metrics()
         tool_perf = self.analyzer.get_tool_performance()
+        task_success = summary.get('task_success_rate', 0) * 100
+        tool_success = summary.get('tool_success_rate', 0) * 100
 
-        if include_task_success:
-            # Full dashboard with both task and tool success rates
-            fig = make_subplots(
-                rows=2,
-                cols=2,
-                specs=[
-                    [{"type": "indicator"}, {"type": "indicator"}],
-                    [{"type": "bar"}, {"type": "bar"}]
-                ],
-                subplot_titles=("Task Success Rate", "Tool Success Rate", "Tool Success Rates", "Tool Execution Times")
-            )
+        # Full dashboard with both task and tool success rates
+        fig = make_subplots(
+            rows=2,
+            cols=2,
+            specs=[
+                [{"type": "indicator"}, {"type": "indicator"}],
+                [{"type": "bar"}, {"type": "bar"}]
+            ],
+            subplot_titles=("Task Success Rate", "Tool Success Rate", "Tool Success Rates", "Tool Execution Times")
+        )
 
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=summary.get('task_success_rate', 0) * 100,
-                    title={'text': "Task Success %"},
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#4A90E2"},
-                        'steps': [
-                            {'range': [0, 40], 'color': "#FFF0F0"},
-                            {'range': [40, 70], 'color': "#FFF8E7"},
-                            {'range': [70, 100], 'color': "#F0FFF4"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#E74C3C", 'width': 2},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
-                    },
-                    domain={'x': [0, 1], 'y': [0, 1]}
-                ),
-                row=1, col=1
-            )
+        fig.add_trace(
+            go.Indicator(
+                mode="gauge+number",
+                value=task_success,
+                gauge={
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': "#4A90E2"},
+                    'steps': [
+                        {'range': [0, 40], 'color': "#FFF0F0"},
+                        {'range': [40, 70], 'color': "#FFF8E7"},
+                        {'range': [70, 100], 'color': "#F0FFF4"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#E74C3C", 'width': 2},
+                        'thickness': 0.75,
+                        'value': 80
+                    }
+                }
+            ),
+            row=1, col=1
+        )
 
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=summary.get('tool_success_rate', 0) * 100,
-                    title={'text': "Tool Success %"},
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#4A90E2"},
-                        'steps': [
-                            {'range': [0, 40], 'color': "#FFF0F0"},
-                            {'range': [40, 70], 'color': "#FFF8E7"},
-                            {'range': [70, 100], 'color': "#F0FFF4"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#E74C3C", 'width': 2},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
-                    },
-                ),
-                row=1, col=2
-            )
-        else:
-            # Tool-focused dashboard without task success rate
-            fig = make_subplots(
-                rows=2,
-                cols=2,
-                specs=[
-                    [{"type": "indicator"}, {"type": "indicator"}],
-                    [{"type": "bar"}, {"type": "bar"}]
-                ],
-                subplot_titles=("Tool Success Rate", "Total Success", "Tool Success Rates", "Tool Execution Times")
-            )
-
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=summary.get('tool_success_rate', 0) * 100,
-                    title={'text': "Tool Success %"},
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#4A90E2"},
-                        'steps': [
-                            {'range': [0, 40], 'color': "#FFF0F0"},
-                            {'range': [40, 70], 'color': "#FFF8E7"},
-                            {'range': [70, 100], 'color': "#F0FFF4"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#E74C3C", 'width': 2},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
-                    },
-                ),
-                row=1, col=1
-            )
-
-            # Use task success rate as the overall success metric
-            task_success = summary.get('task_success_rate', 0) * 100
-            tool_success = summary.get('tool_success_rate', 0) * 100
-
-            fig.add_trace(
-                go.Indicator(
-                    mode="gauge+number",
-                    value=task_success,
-                    title={'text': "Overall Success %"},
-                    gauge={
-                        'axis': {'range': [0, 100]},
-                        'bar': {'color': "#4A90E2"},
-                        'steps': [
-                            {'range': [0, 40], 'color': "#FFF0F0"},
-                            {'range': [40, 70], 'color': "#FFF8E7"},
-                            {'range': [70, 100], 'color': "#F0FFF4"}
-                        ],
-                        'threshold': {
-                            'line': {'color': "#E74C3C", 'width': 2},
-                            'thickness': 0.75,
-                            'value': 80
-                        }
-                    },
-                ),
-                row=1, col=2
-            )
+        fig.add_trace(
+            go.Indicator(
+                mode="gauge+number",
+                value=tool_success,
+                gauge={
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': "#4A90E2"},
+                    'steps': [
+                        {'range': [0, 40], 'color': "#FFF0F0"},
+                        {'range': [40, 70], 'color': "#FFF8E7"},
+                        {'range': [70, 100], 'color': "#F0FFF4"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#E74C3C", 'width': 2},
+                        'thickness': 0.75,
+                        'value': 80
+                    }
+                }
+            ),
+            row=1, col=2
+        )
+        
 
         if not tool_perf.empty:
             fig.add_trace(
@@ -162,7 +100,8 @@ class LogVisualizer:
                     name='Success Rate',
                     marker_color='green',
                     text=[f"{rate:.1%}" for rate in tool_perf['success_rate']],
-                    textposition='outside'
+                    textposition='outside',
+                    orientation='v'
                 ),
                 row=2, col=1
             )
@@ -173,7 +112,8 @@ class LogVisualizer:
                     name='Avg. Time (ms)',
                     marker_color='blue',
                     text=[f"{time*1000:.2f}ms" for time in tool_perf['avg_execution_time']],
-                    textposition='outside'
+                    textposition='outside',
+                    orientation='v'
                 ),
                 row=2, col=2
             )
@@ -213,150 +153,243 @@ class LogVisualizer:
                 ]
             )
 
-        # Determine subplot titles based on available data
-        subplot2_title = "Failure Rate vs Execution Time" if 'avg_execution_time' in failures.columns else "Failure Rate vs Error Count"
-
         # Create comprehensive failure analysis dashboard
         fig = make_subplots(
             rows=2, cols=2,
             specs=[
-                [{"type": "bar"}, {"type": "scatter"}],
-                [{"type": "bar"}, {"type": "table"}]
+                [{"type": "bar"}, {"type": "bar"}],
+                [{"type": "table", "colspan": 2}, None]
             ],
             subplot_titles=(
+                "Failure Types Distribution",
                 "Failure Count by Tool",
-                subplot2_title,
-                "Error Types Distribution",
-                "Failure Details Summary"
+                "Failure Details Summary",
+                None
             ),
-            row_heights=[0.6, 0.4]
+            row_heights=[0.5, 0.5] # Give more space to table (70%)
         )
 
-        # 1. Failure count by tool (top-left)
-        tool_failures = failures.groupby('tool_name')['count'].sum().sort_values(ascending=True)
-        fig.add_trace(
-            go.Bar(
-                y=tool_failures.index,
-                x=tool_failures.values,
-                orientation='h',
-                name='Failure Count',
-                marker_color='crimson',
-                text=tool_failures.values,
-                textposition='outside'
-            ),
-            row=1, col=1
-        )
+        # Get granular failure data for detailed breakdown
+        detailed_failures = self.analyzer.get_detailed_failure_breakdown()
 
-        # 2. Failure rate vs failure count scatter (top-right)
-        # Note: avg_execution_time may not be available for action check failures
-        if 'avg_execution_time' in failures.columns:
-            x_data = failures['avg_execution_time'] * 1000  # Convert to ms
-            x_title = 'Avg Execution Time (ms)'
-            hover_template = (
-                '<b>%{text}</b><br>' +
-                'Failure Rate: %{y:.1%}<br>' +
-                'Avg Execution Time: %{x:.2f}ms<br>' +
-                'Error Count: %{marker.color}<extra></extra>'
+        # 1. Failure Types Distribution (top-left) - moved from right
+        if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+            # Create crosstab of tool_name vs failure_category
+            failure_breakdown = detailed_failures.groupby(['tool_name', 'failure_category']).size().unstack(fill_value=0)
+
+            # Sort by total failures (sum across all types)
+            failure_breakdown['_total'] = failure_breakdown.sum(axis=1)
+            failure_breakdown = failure_breakdown.sort_values('_total', ascending=False)
+            failure_breakdown = failure_breakdown.drop('_total', axis=1)
+
+            # Color map for failure types - severity-based, highly contrasting colors
+            color_map = {
+                'never_called': '#c0392b',           # Crimson (Critical - tool never executed)
+                'called_but_no_match': '#e67e22',    # Orange (High - execution didn't match expected)
+                'called_with_wrong_args': '#f1c40f', # Yellow (Medium - wrong parameters)
+                'unknown': '#95a5a6'                 # Gray (Unknown severity)
+            }
+
+            # Add a trace for each failure type (stacked bars)
+            for failure_type in failure_breakdown.columns:
+                formatted_type = failure_type.replace('_', ' ').title() if failure_type not in ['ActionCheckFailure', 'unknown'] else failure_type
+
+                fig.add_trace(
+                    go.Bar(
+                        x=failure_breakdown.index,
+                        y=failure_breakdown[failure_type],
+                        name=formatted_type,
+                        marker_color=color_map.get(failure_type, '#3498db'),
+                        text=failure_breakdown[failure_type],
+                        textposition='inside',
+                        orientation='v'
+                    ),
+                    row=1, col=2
+                )
+        else:
+            # Fallback to simple aggregated view
+            tool_failures = failures.groupby('tool_name')['count'].sum().sort_values(ascending=False)
+            fig.add_trace(
+                go.Bar(
+                    x=tool_failures.index,
+                    y=tool_failures.values,
+                    name='Failure Count',
+                    marker_color='crimson',
+                    text=tool_failures.values,
+                    textposition='outside',
+                    orientation='v'
+                ),
+                row=1, col=2
+            )
+
+        # 2. Failure count by tool (top-left) - moved from left
+        # Use granular failure data for TRUE distribution across all individual action checks
+
+        if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+            # Count EACH individual action check failure (not aggregated by tool)
+            failure_type_dist = detailed_failures['failure_category'].value_counts().sort_values(ascending=False)
+
+            # Severity-based color scheme (same as stacked bar chart)
+            severity_colors = {
+                'never_called': '#c0392b',           # Crimson (Critical)
+                'called_but_no_match': '#e67e22',    # Orange (High)
+                'called_with_wrong_args': '#f1c40f', # Yellow (Medium)
+                'unknown': '#95a5a6'                 # Gray (Unknown)
+            }
+
+            # Format labels - make them readable
+            formatted_data = []
+            for ft in failure_type_dist.index:
+                if ft and ft not in ['ActionCheckFailure', 'unknown']:
+                    formatted_label = ft.replace('_', ' ').title()
+                else:
+                    formatted_label = ft
+                formatted_data.append((formatted_label, failure_type_dist[ft], ft))
+
+            # Sort by count descending
+            formatted_data.sort(key=lambda x: x[1], reverse=True)
+            labels = [item[0] for item in formatted_data]
+            values = [item[1] for item in formatted_data]
+            raw_categories = [item[2] for item in formatted_data]
+            total = sum(values)
+            # Convert to percentages
+            percentages = [(count / total) * 100 for count in values]
+            # Assign colors based on severity
+            colors = [severity_colors.get(cat, '#95a5a6') for cat in raw_categories]
+
+            fig.add_trace(
+                go.Bar(
+                    x=labels,
+                    y=percentages,
+                    name='',  # Empty name to not show in legend
+                    marker_color=colors,
+                    text=[f"{pct:.1f}%<br>(n={count})" for pct, count in zip(percentages, values)],
+                    textposition='outside',
+                    orientation='v',
+                    showlegend=False  # Don't show in legend
+                ),
+                row=1, col=1
             )
         else:
-            x_data = failures['count']
-            x_title = 'Error Count'
-            hover_template = (
-                '<b>%{text}</b><br>' +
-                'Failure Rate: %{y:.1%}<br>' +
-                'Error Count: %{x}<br>' +
-                'Total Errors: %{marker.color}<extra></extra>'
+            # Fallback to error categories
+            # Severity-based color scheme (same as stacked bar chart)
+            severity_colors = {
+                'never_called': '#c0392b',           # Crimson (Critical)
+                'called_but_no_match': '#e67e22',    # Orange (High)
+                'called_with_wrong_args': '#f1c40f', # Yellow (Medium)
+                'unknown': '#95a5a6'                 # Gray (Unknown)
+            }
+
+            error_types = failures.groupby('error_category')['count'].sum()
+            total_errors = error_types.sum()
+            error_percentages = (error_types / total_errors) * 100
+            # Assign colors based on category
+            error_colors = [severity_colors.get(cat, '#95a5a6') for cat in error_types.index]
+
+            fig.add_trace(
+                go.Bar(
+                    x=error_types.index,
+                    y=error_percentages.values,
+                    name='Error Count',
+                    marker_color=error_colors,
+                    text=[f"{pct:.1f}%<br>(n={count})" for pct, count in zip(error_percentages.values, error_types.values)],
+                    textposition='outside',
+                    orientation='v'
+                ),
+                row=1, col=1
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=x_data,
-                y=failures['failure_rate'],
-                mode='markers+text',
-                marker=dict(
-                    size=failures['count']*10,
-                    color=failures['count'],
-                    colorscale='Reds',
-                    showscale=True,
-                    colorbar=dict(title="Error Count", x=1.15)
-                ),
-                text=failures['tool_name'],
-                textposition='top center',
-                name='Tools',
-                hovertemplate=hover_template
-            ),
-            row=1, col=2
+        # 3. Failure details table (bottom row, spanning 2 columns)
+        # Calculate impact score: failure_rate × simulations_affected / total_simulations × 100
+        summary = self.analyzer.get_summary_metrics()
+        total_simulations = summary.get('total_simulations', 1)
+
+        # Calculate impact score for all failures
+        failures_with_impact = failures.copy()
+        failures_with_impact['impact_score'] = (
+            failures_with_impact['failure_rate'] *
+            failures_with_impact.get('simulations_affected', 0) /
+            max(total_simulations, 1) * 100
         )
 
-        # 3. Error types distribution (bottom-left)
-        error_types = failures.groupby('error_category')['count'].sum()
-        fig.add_trace(
-            go.Bar(
-                x=error_types.index,
-                y=error_types.values,
-                name='Error Count',
-                marker_color='orange',
-                text=[f"{count}<br>({count/error_types.sum():.1%})" for count in error_types.values],
-                textposition='outside'
-            ),
-            row=2, col=1
-        )
-
-        # 4. Failure details table (bottom-right)
-        table_data = failures.head(10)  # Top 10 failures
+        # Sort by impact score descending and take top 25
+        table_data = failures_with_impact.nlargest(25, 'impact_score')
 
         # Determine table columns based on available data
+        # Format failure types to be more readable
+        has_failure_category = 'primary_failure_category' in failures.columns
+
+        if has_failure_category:
+            failure_type_data = []
+            for _, row in table_data.iterrows():
+                failure_type = row.get('primary_failure_category', row['error_category'])
+                # Format the failure type to be more readable
+                if failure_type and failure_type not in ['ActionCheckFailure', 'unknown']:
+                    failure_type = failure_type.replace('_', ' ').title()
+                failure_type_data.append(failure_type)
+        else:
+            failure_type_data = table_data['error_category']
+
         if 'avg_execution_time' in failures.columns:
-            headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Avg Time (ms)</b>']
+            headers = ['<b>Tool</b>', '<b>Failure Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Impact Score</b>', '<b>Avg Time (ms)</b>']
             cell_values = [
                 table_data['tool_name'],
-                table_data['error_category'],
+                failure_type_data,
                 table_data['count'],
                 [f"{rate:.1%}" for rate in table_data['failure_rate']],
+                [f"{score:.1f}" for score in table_data['impact_score']],
                 [f"{time*1000:.2f}ms" for time in table_data['avg_execution_time']]
             ]
         else:
-            headers = ['<b>Tool</b>', '<b>Error Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Simulations</b>']
+            headers = ['<b>Tool</b>', '<b>Failure Type</b>', '<b>Count</b>', '<b>Failure Rate</b>', '<b>Simulations</b>', '<b>Impact Score</b>']
             cell_values = [
                 table_data['tool_name'],
-                table_data['error_category'],
+                failure_type_data,
                 table_data['count'],
                 [f"{rate:.1%}" for rate in table_data['failure_rate']],
-                table_data.get('simulations_affected', ['N/A'] * len(table_data))
+                table_data.get('simulations_affected', ['N/A'] * len(table_data)),
+                [f"{score:.1f}" for score in table_data['impact_score']]
             ]
 
         fig.add_trace(
             go.Table(
+                columnwidth=[3, 2, 1, 1.5, 1.5, 1.5] if len(headers) == 6 else [3, 2, 1, 1.5, 1.5, 1.5],  # Ratio-based widths
                 header=dict(
                     values=headers,
                     fill_color='lightcoral',
-                    align='center',
+                    align=['left', 'left', 'center', 'center', 'center', 'center'],
                     font=dict(color='white', size=12)
                 ),
                 cells=dict(
                     values=cell_values,
                     fill_color=[['white', 'lightgray']*len(table_data)],
-                    align='center',
+                    align=['left', 'left', 'center', 'center', 'center', 'center'],
                     font=dict(size=11)
                 )
             ),
-            row=2, col=2
+            row=2, col=1
         )
 
-        # Update layout
+        # Update layout - increase height to accommodate up to 25 rows without scrolling
         fig.update_layout(
             title_text="🔍 Comprehensive Failure Analysis Dashboard",
-            showlegend=False,
-            height=800
+            showlegend=True,  # Show legend for stacked bar colors
+            barmode='stack',  # Enable stacked bars
+            height=900,  # Increased height to fit more rows
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=1.01
+            )
         )
 
         # Update axes
-        fig.update_xaxes(title_text="Failure Count", row=1, col=1)
-        fig.update_yaxes(title_text="Tools", row=1, col=1)
-        fig.update_xaxes(title_text=x_title, row=1, col=2)
-        fig.update_yaxes(title_text="Failure Rate", row=1, col=2, tickformat='.0%')
-        fig.update_xaxes(title_text="Error Category", row=2, col=1)
-        fig.update_yaxes(title_text="Error Count", row=2, col=1)
+        fig.update_xaxes(title_text="Failure Type", row=1, col=1)
+        fig.update_yaxes(title_text="Percentage (%)", row=1, col=1, range=[0, 100])
+        fig.update_xaxes(title_text="Tools", row=1, col=2)
+        fig.update_yaxes(title_text="Failure Count", row=1, col=2)
 
         return fig
 
@@ -401,6 +434,7 @@ class LogVisualizer:
                 marker_cmax=1,
                 text=state_analysis_df[state_analysis_df['state_changed'] == True]['total_calls'],
                 textposition='outside',
+                orientation='v',
                 hovertemplate=(
                     '<b>%{x}</b><br>' +
                     'Calls: %{y}<br>' +
@@ -423,6 +457,7 @@ class LogVisualizer:
                 marker_cmax=1,
                 text=state_analysis_df[state_analysis_df['state_changed'] == False]['total_calls'],
                 textposition='outside',
+                orientation='v',
                 hovertemplate=(
                     '<b>%{x}</b><br>' +
                     'Calls: %{y}<br>' +
@@ -445,6 +480,7 @@ class LogVisualizer:
                     marker_color='lightgreen',
                     text=[f"{rate:.1%}" for rate in state_changing['success_rate']],
                     textposition='outside',
+                    orientation='v',
                     showlegend=False
                 ),
                 row=2, col=1
@@ -461,6 +497,7 @@ class LogVisualizer:
                     marker_color='lightblue',
                     text=[f"{rate:.1%}" for rate in read_only['success_rate']],
                     textposition='outside',
+                    orientation='v',
                     showlegend=False
                 ),
                 row=2, col=2
@@ -565,8 +602,12 @@ class LogVisualizer:
         state_analysis = self.analyzer.get_state_change_analysis()
         sequence_analysis = self.analyzer.get_tool_sequence_analysis()
 
+        # Get sequence comparison data (may be None if ground truth unavailable)
+        sequence_metrics = self.analyzer.get_sequence_comparison_metrics()
+        tool_sequence_stats = self.analyzer.get_per_tool_sequence_stats()
+
         # Generate all plots
-        summary_fig = self.create_summary_dashboard(include_task_success=False)  # Don't duplicate task success in tool report
+        summary_fig = self.create_summary_dashboard()  # Don't duplicate task success in tool report
         failure_fig = self.create_failure_analysis_plot()
         state_fig = self.create_state_change_plot()
         sankey_fig = self.create_tool_flow_sankey()
@@ -617,21 +658,23 @@ class LogVisualizer:
 
         .header {{
             text-align: center;
-            border-bottom: 3px solid #007bff;
-            padding-bottom: 20px;
             margin-bottom: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
         }}
 
         .header h1 {{
-            color: #2c3e50;
-            margin: 0;
+            margin: 0 0 10px 0;
             font-size: 2.5em;
+            font-weight: 300;
+            color: white;
         }}
 
         .header .subtitle {{
-            color: #6c757d;
             font-size: 1.1em;
-            margin: 10px 0;
+            opacity: 0.9;
         }}
 
         .section {{
@@ -727,18 +770,53 @@ class LogVisualizer:
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
+            table-layout: fixed;
         }}
 
         th, td {{
             border: 1px solid #ddd;
-            padding: 12px;
+            padding: 8px 10px;
             text-align: left;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }}
 
         th {{
             background-color: #007bff;
             color: white;
             font-weight: bold;
+            font-size: 0.9em;
+        }}
+
+        /* Optimized column widths to prevent scrolling */
+        th:first-child, td:first-child {{
+            width: 35%;
+            text-align: left;
+        }}
+
+        th:nth-child(2), td:nth-child(2) {{
+            width: 20%;
+            text-align: left;
+        }}
+
+        th:nth-child(3), td:nth-child(3) {{
+            width: 10%;
+            text-align: center;
+        }}
+
+        th:nth-child(4), td:nth-child(4) {{
+            width: 12%;
+            text-align: center;
+        }}
+
+        th:nth-child(5), td:nth-child(5) {{
+            width: 12%;
+            text-align: center;
+        }}
+
+        th:nth-child(6), td:nth-child(6) {{
+            width: 11%;
+            text-align: center;
         }}
 
         tr:nth-child(even) {{
@@ -985,6 +1063,9 @@ class LogVisualizer:
             </div>
         </div>
 
+        <!-- Action Sequence Accuracy Analysis -->
+        {self._generate_sequence_accuracy_section(sequence_metrics, tool_sequence_stats)}
+
         <!-- Tool Flow Analysis -->
         <div class="section page-break">
             <h2>🔗 Tool Flow Analysis</h2>
@@ -1058,18 +1139,81 @@ class LogVisualizer:
             </div>
             """
 
-        # Failure insights
+        # Failure insights with impact score, frequency, and failure types
         if not failures.empty:
             total_errors = failures['count'].sum()
-            error_types = failures['error_category'].nunique()
+            total_simulations = summary.get('total_simulations', 1)
+
+            # Calculate impact scores
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+
+            # Sort by impact and by count
+            highest_impact = failures_with_impact.nlargest(1, 'impact_score').iloc[0]
+            most_frequent = failures_with_impact.nlargest(1, 'count').iloc[0]
+
+            # Get failure type for highest impact (if available)
+            impact_failure_type = "Unknown"
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                impact_tool_failures = detailed_failures[detailed_failures['tool_name'] == highest_impact['tool_name']]
+                if not impact_tool_failures.empty:
+                    impact_failure_type = impact_tool_failures['failure_category'].mode()[0].replace('_', ' ').title()
+
+            # Get failure type for most frequent (if available)
+            freq_failure_type = "Unknown"
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                freq_tool_failures = detailed_failures[detailed_failures['tool_name'] == most_frequent['tool_name']]
+                if not freq_tool_failures.empty:
+                    freq_failure_type = freq_tool_failures['failure_category'].mode()[0].replace('_', ' ').title()
+
+            # Failure type distribution
+            failure_type_breakdown = ""
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                type_counts = detailed_failures['failure_category'].value_counts()
+                total_detailed = len(detailed_failures)
+                breakdown_items = []
+                for ftype, count in type_counts.items():
+                    if ftype and ftype not in ['ActionCheckFailure', 'unknown']:
+                        formatted_type = ftype.replace('_', ' ').title()
+                        pct = (count / total_detailed) * 100
+                        # Assign severity
+                        severity = "critical" if ftype == "never_called" else ("high" if ftype == "called_but_no_match" else "medium")
+                        breakdown_items.append(f"{pct:.0f}% {formatted_type} ({severity})")
+                if breakdown_items:
+                    failure_type_breakdown = f"<li><strong>Failure type breakdown:</strong> {', '.join(breakdown_items)}</li>"
+
+            # Analyze top 3 high-impact tools for overlapping simulations
+            top_3_tools = failures_with_impact.nlargest(3, 'impact_score')['tool_name'].tolist()
+            overlap_analysis = self.analyzer.get_unique_failed_simulations(top_3_tools)
+
+            overlap_info = ""
+            if overlap_analysis and len(top_3_tools) > 1:
+                sum_individual = overlap_analysis.get('sum_of_individual_counts', 0)
+                unique_sims = overlap_analysis.get('total_unique_sims', 0)
+                overlapping = overlap_analysis.get('overlapping_sims', 0)
+                pct_of_total = overlap_analysis.get('percentage_of_total', 0)
+
+                if sum_individual > unique_sims:
+                    overlap_info = f"<li><strong>Overlap analysis:</strong> Top 3 tools show {sum_individual} total failures, but only {unique_sims} unique simulations affected ({overlapping} sims failed multiple tools) = {pct_of_total:.1f}% of all simulations</li>"
+                else:
+                    overlap_info = f"<li><strong>Overlap analysis:</strong> Top 3 tools affect {unique_sims} unique simulations ({pct_of_total:.1f}% of all simulations) with no overlaps detected</li>"
 
             insights_html += f"""
             <div class="warning-box">
                 <h4>⚠️ Error Analysis</h4>
                 <ul>
-                    <li><strong>{total_errors}</strong> total errors across <strong>{error_types}</strong> error types</li>
-                    <li>Most problematic tool: <strong>{failures.iloc[0]['tool_name']}</strong> ({failures.iloc[0]['count']} errors)</li>
-                    <li>Primary error type: <strong>{failures.iloc[0]['error_category']}</strong></li>
+                    <li><strong>{total_errors}</strong> total errors affecting <strong>{failures_with_impact['simulations_affected'].max()}</strong> simulations</li>
+                    <li><strong>Highest impact:</strong> {highest_impact['tool_name']} - <em>{impact_failure_type}</em> (impact: {highest_impact['impact_score']:.1f}, {int(highest_impact['count'])} failures)</li>
+                    <li><strong>Most frequent:</strong> {most_frequent['tool_name']} - <em>{freq_failure_type}</em> ({int(most_frequent['count'])} failures)</li>
+                    {failure_type_breakdown}
+                    {overlap_info}
                 </ul>
             </div>
             """
@@ -1151,30 +1295,55 @@ class LogVisualizer:
         total_calls = summary.get('total_tool_calls', 0)
         avg_execution_time = summary.get('average_execution_time', 0)
 
-        # High Priority: Critical reliability issues
-        if success_rate < 0.8:
-            high_priority.append(f"<strong>Critical:</strong> System success rate is only {success_rate:.1%}. Immediate investigation required.")
-
         if not failures.empty:
-            # Analyze specific failure patterns
+            # Analyze specific failure patterns with impact score, frequency, and failure types
             total_failures = failures['count'].sum()
             failure_rate = total_failures / total_calls if total_calls > 0 else 0
+            total_simulations = summary.get('total_simulations', 1)
 
-            if failure_rate > 0.1:  # More than 10% failure rate
-                high_priority.append(f"<strong>High failure rate:</strong> {failure_rate:.1%} of calls are failing across the system.")
+            # Calculate impact scores
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
 
-            # Specific error type recommendations
-            error_types = failures['error_category'].unique()
-            for error_type in error_types:
-                error_count = failures[failures['error_category'] == error_type]['count'].sum()
-                affected_tools = failures[failures['error_category'] == error_type]['tool_name'].unique()
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
 
-                if error_type == 'ValidationError':
-                    high_priority.append(f"<strong>Input validation critical:</strong> {error_count} ValidationErrors across {len(affected_tools)} tools: {', '.join(affected_tools[:3])}")
-                elif error_type == 'TimeoutError':
-                    high_priority.append(f"<strong>Timeout issues:</strong> {error_count} timeouts detected across {len(affected_tools)} tools.")
-                elif error_type == 'ConnectionError':
-                    high_priority.append(f"<strong>Connection failures:</strong> {error_count} connection errors affecting {len(affected_tools)} tools.")
+            # HIGH PRIORITY: High-impact failures (impact_score > 5.0) with failure types
+            high_impact_failures = failures_with_impact[failures_with_impact['impact_score'] > 5.0].sort_values('impact_score', ascending=False)
+            if not high_impact_failures.empty:
+                for _, row in high_impact_failures.head(3).iterrows():
+                    tool_name = row['tool_name']
+                    impact = row['impact_score']
+                    sims = row.get('simulations_affected', 'N/A')
+
+                    # Get failure type if available
+                    failure_type = ""
+                    severity = ""
+                    if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                        tool_failures = detailed_failures[detailed_failures['tool_name'] == tool_name]
+                        if not tool_failures.empty:
+                            ftype = tool_failures['failure_category'].mode()[0]
+                            failure_type = f" - {ftype.replace('_', ' ').title()}"
+                            if ftype == "never_called":
+                                severity = " (Critical: tool never executed)"
+                            elif ftype == "called_but_no_match":
+                                severity = " (High: execution mismatch)"
+                            elif ftype == "called_with_wrong_args":
+                                severity = " (Medium: parameter issues)"
+
+                    high_priority.append(f"<strong>{tool_name}</strong>{failure_type}: Impact score {impact:.1f}, affecting {sims} simulations{severity}")
+
+            # HIGH PRIORITY: Critical failure types (never_called)
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                never_called_failures = detailed_failures[detailed_failures['failure_category'] == 'never_called']
+                if not never_called_failures.empty:
+                    never_called_tools = never_called_failures['tool_name'].unique()
+                    if len(never_called_tools) > 0:
+                        high_priority.append(f"<strong>Critical: Tools Never Executed:</strong> {len(never_called_tools)} tools have 'never_called' failures: {', '.join(never_called_tools[:5])}")
 
         # Analyze tool performance for medium priority recommendations
         if not tool_perf.empty:
@@ -1200,32 +1369,6 @@ class LogVisualizer:
             if not high_volume.empty and len(high_volume) > 0:
                 cache_candidates = high_volume['tool_name'].tolist()[:3]
                 medium_priority.append(f"<strong>High usage pattern:</strong> Top usage tools account for {len(high_volume)} of {len(tool_perf)} total tools: {', '.join(cache_candidates)}")
-
-        # State change analysis recommendations
-        if not state_analysis.empty:
-            state_changing = state_analysis[state_analysis['state_changed'] == True]
-            read_only = state_analysis[state_analysis['state_changed'] == False]
-
-            # Check if state-changing operations have different error patterns than read-only
-            if not state_changing.empty and not read_only.empty:
-                state_error_rate = state_changing['error_rate'].mean()
-                readonly_error_rate = read_only['error_rate'].mean()
-
-                if state_error_rate > readonly_error_rate * 2:  # State operations much more error-prone
-                    medium_priority.append(f"<strong>State operation pattern:</strong> State-changing operations have {state_error_rate:.1%} error rate vs {readonly_error_rate:.1%} for read-only operations.")
-
-        # Data pattern observations (no hardcoded recommendations)
-        if not tool_perf.empty:
-            most_used = tool_perf.iloc[0]
-            usage_ratio = most_used['total_calls'] / total_calls
-            if usage_ratio > 0.5:  # One tool dominates usage - just report the pattern
-                low_priority.append(f"<strong>Usage concentration:</strong> {most_used['tool_name']} accounts for {usage_ratio:.1%} of all calls.")
-
-        if success_rate > 0.95:  # Report excellent performance
-            low_priority.append(f"<strong>System performance:</strong> Excellent {success_rate:.1%} success rate achieved across {total_calls} calls.")
-
-        if len(tool_perf) > 5:  # Report system complexity
-            low_priority.append(f"<strong>System scope:</strong> Analysis covers {len(tool_perf)} different tools across {total_calls} total calls.")
 
         return {
             'high_priority': high_priority,
@@ -1289,6 +1432,16 @@ class LogVisualizer:
             </div>
             """
 
+        # Calculate impact score and sort by it
+        total_simulations = summary.get('total_simulations', 1)
+        failures_with_impact = failures.copy()
+        failures_with_impact['impact_score'] = (
+            failures_with_impact['failure_rate'] *
+            failures_with_impact.get('simulations_affected', 0) /
+            max(total_simulations, 1) * 100
+        )
+        failures = failures_with_impact.sort_values('impact_score', ascending=False)
+
         total_errors = failures['count'].sum()
         error_rate = total_errors / summary.get('total_tool_calls', 1)
 
@@ -1308,9 +1461,10 @@ class LogVisualizer:
                 <thead>
                     <tr>
                         <th>Tool Name</th>
-                        <th>Error Type</th>
+                        <th>Failure Type</th>
                         <th>Count</th>
-                        <th>Failure Rate</th>"""
+                        <th>Failure Rate</th>
+                        <th>Impact Score</th>"""
 
         # Determine which additional columns are available
         if 'avg_execution_time' in failures.columns:
@@ -1329,13 +1483,24 @@ class LogVisualizer:
                 <tbody>
         """
 
-        for _, row in failures.head(10).iterrows():
+        for _, row in failures.head(25).iterrows():
+            # Use detailed failure category if available, otherwise generic error_category
+            has_failure_category = 'primary_failure_category' in failures.columns
+            if has_failure_category:
+                failure_type = row.get('primary_failure_category', row['error_category'])
+                # Format the failure type to be more readable
+                if failure_type and failure_type not in ['ActionCheckFailure', 'unknown']:
+                    failure_type = failure_type.replace('_', ' ').title()
+            else:
+                failure_type = row['error_category']
+
             failure_html += f"""
             <tr>
                 <td><strong>{row['tool_name']}</strong></td>
-                <td>{row['error_category']}</td>
+                <td>{failure_type}</td>
                 <td>{int(row['count'])}</td>
-                <td>{row['failure_rate']:.1%}</td>"""
+                <td>{row['failure_rate']:.1%}</td>
+                <td>{row['impact_score']:.1f}</td>"""
 
             # Add available columns dynamically
             if 'avg_execution_time' in failures.columns:
@@ -1378,6 +1543,126 @@ class LogVisualizer:
             insights += f"<p><strong>Recursive patterns:</strong> {len(self_loops)} tools frequently call themselves, indicating iterative processing patterns.</p>"
 
         return insights
+
+    def _generate_sequence_accuracy_section(self, sequence_metrics, tool_sequence_stats):
+        """Generate HTML section for sequence accuracy analysis (only if ground truth available)."""
+        if sequence_metrics is None or tool_sequence_stats is None:
+            # Ground truth not available, return empty string (section will be omitted)
+            return ""
+
+        # Generate task distribution section
+        task_dist_html = f"""
+        <div class="section page-break">
+            <h2>📊 Action Sequence Accuracy</h2>
+
+            <div class="insight-box">
+                <h4>Overview</h4>
+                <p>This section compares the actual tool call sequences against expected action sequences from ground truth task definitions.</p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">{sequence_metrics['precision']:.2%}</div>
+                    <div class="metric-label">Precision</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{sequence_metrics['recall']:.2%}</div>
+                    <div class="metric-label">Recall</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{sequence_metrics['f1_score']:.2%}</div>
+                    <div class="metric-label">F1 Score</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{sequence_metrics['total_matched_actions']}/{sequence_metrics['total_expected_actions']}</div>
+                    <div class="metric-label">Matched Actions</div>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <h4>Task Distribution</h4>
+                <ul>
+                    <li>✅ <strong>Success + Ordered:</strong> {sequence_metrics['success_ordered']} tasks (correct sequence, task succeeded)</li>
+                    <li>⚠️  <strong>Success + Unordered:</strong> {sequence_metrics['success_unordered']} tasks (wrong order, task succeeded)</li>
+                    <li>❌ <strong>Failed + Ordered:</strong> {sequence_metrics['fail_ordered']} tasks (correct sequence, task failed)</li>
+                    <li>🔴 <strong>Failed + Unordered:</strong> {sequence_metrics['fail_unordered']} tasks (wrong sequence, task failed)</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <h4>Action-Level Metrics</h4>
+                <ul>
+                    <li><strong>Expected actions:</strong> {sequence_metrics['total_expected_actions']}</li>
+                    <li><strong>Actual actions executed:</strong> {sequence_metrics['total_actual_actions']}</li>
+                    <li><strong>Correctly matched:</strong> {sequence_metrics['total_matched_actions']}</li>
+                    <li><strong>Missing (omitted):</strong> {sequence_metrics['total_missing_actions']}</li>
+                    <li><strong>Extra (unexpected):</strong> {sequence_metrics['total_extra_actions']}</li>
+                    <li><strong>Argument mismatches:</strong> {sequence_metrics['total_argument_mismatches']}</li>
+                </ul>
+            </div>
+        """
+
+        # Add per-tool table if available
+        if not tool_sequence_stats.empty:
+            # Limit to top 10 tools for readability
+            top_tools = tool_sequence_stats.head(10)
+
+            task_dist_html += """
+            <div class="table-container">
+                <h3>Per-Tool Sequence Accuracy (Top 10)</h3>
+                <table style="table-layout: auto;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Tool</th>
+                            <th style="text-align: center;">Expected</th>
+                            <th style="text-align: center;">✅ Match</th>
+                            <th style="text-align: center;">❌ Miss</th>
+                            <th style="text-align: center;">🔧 Arg</th>
+                            <th style="text-align: center;">⚠️ Extra</th>
+                            <th style="text-align: center;">Precision</th>
+                            <th style="text-align: center;">Recall</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """
+
+            for _, row in top_tools.iterrows():
+                # Color code precision and recall
+                precision_color = '#27ae60' if row['precision'] >= 0.8 else ('#f39c12' if row['precision'] >= 0.5 else '#e74c3c')
+                recall_color = '#27ae60' if row['recall'] >= 0.8 else ('#f39c12' if row['recall'] >= 0.5 else '#e74c3c')
+
+                task_dist_html += f"""
+                        <tr>
+                            <td style="text-align: left;"><strong>{row['tool']}</strong></td>
+                            <td style="text-align: center;">{int(row['expected'])}</td>
+                            <td style="text-align: center; color: #27ae60;">{int(row['matched'])}</td>
+                            <td style="text-align: center; color: #e74c3c;">{int(row['missing'])}</td>
+                            <td style="text-align: center; color: #f39c12;">{int(row['arg_mismatch'])}</td>
+                            <td style="text-align: center; color: #95a5a6;">{int(row['extra'])}</td>
+                            <td style="text-align: center; color: {precision_color}; font-weight: 600;">{row['precision']:.1%}</td>
+                            <td style="text-align: center; color: {recall_color}; font-weight: 600;">{row['recall']:.1%}</td>
+                        </tr>
+                """
+
+            task_dist_html += """
+                    </tbody>
+                </table>
+            """
+
+            if len(tool_sequence_stats) > 10:
+                task_dist_html += f"""
+                <p style="color: #64748b; font-style: italic; margin-top: 10px; text-align: center;">
+                    Showing top 10 of {len(tool_sequence_stats)} tools. See simulation report for complete per-task details.
+                </p>
+                """
+
+            task_dist_html += """
+            </div>
+        """
+
+        task_dist_html += "</div>"  # Close section
+
+        return task_dist_html
 
     def create_comprehensive_report(self, output_path: str, log_file_name: str = "execution_logs") -> str:
         """
@@ -1484,6 +1769,10 @@ class LogVisualizer:
         state_analysis = self.analyzer.get_state_change_analysis()
         sequence_analysis = self.analyzer.get_tool_sequence_analysis()
 
+        # Get sequence comparison data (may be None if ground truth unavailable)
+        sequence_metrics = self.analyzer.get_sequence_comparison_metrics()
+        tool_sequence_stats = self.analyzer.get_per_tool_sequence_stats()
+
         # Generate insights and recommendations (markdown format)
         insights = self._generate_key_insights_md(summary, tool_perf, failures, state_analysis, sequence_analysis)
         recommendations = self._generate_recommendations_md(summary, tool_perf, failures, state_analysis)
@@ -1522,7 +1811,7 @@ class LogVisualizer:
             md_content += "| Tool Name | Calls | Success Rate | Avg Time (ms) | Category |\n"
             md_content += "|-----------|-------|--------------|---------------|----------|\n"
 
-            for _, row in tool_perf.head(10).iterrows():
+            for _, row in tool_perf.iterrows():
                 md_content += f"| {row['tool_name']} | {int(row['total_calls'])} | {row['success_rate']:.1%} | {row['avg_execution_time']*1000:.2f} | {row['performance_category'].title()} |\n"
 
             # Performance categories breakdown
@@ -1537,12 +1826,61 @@ class LogVisualizer:
         md_content += "\n---\n\n## 🔥 Failure Analysis\n\n"
 
         if not failures.empty:
-            md_content += "### Failure Overview\n\n"
-            md_content += "| Tool Name | Error Type | Count | Failure Rate |\n"
-            md_content += "|-----------|------------|-------|-------------|\n"
+            # Calculate impact score: failure_rate × simulations_affected / total_simulations × 100
+            total_simulations = summary.get('total_simulations', 1)
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+            # Sort by impact score for display
+            failures_with_impact = failures_with_impact.sort_values('impact_score', ascending=False)
 
-            for _, row in failures.head(10).iterrows():
-                md_content += f"| {row['tool_name']} | {row['error_category']} | {int(row['count'])} | {row['failure_rate']:.1%} |\n"
+            # Check if we're using action checks or execution failures
+            success_metric_source = summary.get('success_metric_source', 'unknown')
+
+            if success_metric_source == 'action_checks':
+                md_content += "### Failure Overview\n\n"
+                md_content += "**Note:** Failure rates below are calculated against **action-checked calls only**, not total calls. "
+                md_content += "See Performance Overview for overall success rates against all calls.\n\n"
+                md_content += "**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`\n\n"
+
+                # Check if we have detailed failure categories
+                has_failure_category = 'primary_failure_category' in failures.columns
+
+                if has_failure_category:
+                    md_content += "| Tool Name | Failure Type | Count | Failure Rate | Simulations | Impact Score | Checked Calls |\n"
+                    md_content += "|-----------|--------------|-------|--------------|-------------|--------------|---------------|\n"
+                else:
+                    md_content += "| Tool Name | Error Type | Count | Failure Rate | Simulations | Impact Score | Checked Calls |\n"
+                    md_content += "|-----------|------------|-------|--------------|-------------|--------------|---------------|\n"
+
+                # Get action check stats for each tool
+                tool_action_stats = getattr(self.analyzer, 'action_check_metrics', {}).get('tool_action_stats', {})
+
+                for _, row in failures_with_impact.iterrows():
+                    tool_name = row['tool_name']
+                    checked_calls = tool_action_stats.get(tool_name, {}).get('total', '?')
+                    simulations_affected = row.get('simulations_affected', 'N/A')
+
+                    # Use detailed failure category if available, otherwise use generic error_category
+                    failure_type = row.get('primary_failure_category', row['error_category']) if has_failure_category else row['error_category']
+
+                    # Format the failure type to be more readable
+                    if failure_type and failure_type != 'ActionCheckFailure':
+                        failure_type = failure_type.replace('_', ' ').title()
+
+                    md_content += f"| {tool_name} | {failure_type} | {int(row['count'])} | {row['failure_rate']:.1%} | {simulations_affected} | {row['impact_score']:.1f} | {checked_calls} |\n"
+            else:
+                md_content += "### Failure Overview\n\n"
+                md_content += "**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`\n\n"
+                md_content += "| Tool Name | Error Type | Count | Failure Rate | Simulations | Impact Score |\n"
+                md_content += "|-----------|------------|-------|--------------|-------------|-------------|\n"
+
+                for _, row in failures_with_impact.iterrows():
+                    simulations_affected = row.get('simulations_affected', 'N/A')
+                    md_content += f"| {row['tool_name']} | {row['error_category']} | {int(row['count'])} | {row['failure_rate']:.1%} | {simulations_affected} | {row['impact_score']:.1f} |\n"
 
             # Failure insights
             total_failures = failures['count'].sum()
@@ -1550,16 +1888,79 @@ class LogVisualizer:
             md_content += f"\n**Key Failure Metrics:**\n"
             md_content += f"- Total failures: **{total_failures}**\n"
             md_content += f"- Affected tools: **{affected_tools}**\n"
-            md_content += f"- Error categories: **{failures['error_category'].nunique()}**\n"
 
-            # Most problematic error types
-            error_types = failures.groupby('error_category')['count'].sum().sort_values(ascending=False)
-            md_content += f"\n**Most Common Error Types:**\n"
-            for error_type, count in error_types.head(5).items():
-                md_content += f"- {error_type}: {count} occurrences\n"
+            if success_metric_source == 'action_checks':
+                total_action_checks = sum(stats.get('total', 0) for stats in tool_action_stats.values())
+                md_content += f"- Total action checks performed: **{total_action_checks}**\n"
+                md_content += f"- Total tool calls (see Performance Overview): **{summary.get('total_tool_calls', 'N/A')}**\n"
+
+            # Breakdown by failure type if available
+            if success_metric_source == 'action_checks' and has_failure_category:
+                # Get detailed granular failure data
+                detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+                if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                    # Count individual failures by category
+                    failure_type_breakdown = detailed_failures['failure_category'].value_counts().sort_values(ascending=False)
+                    total_detailed_failures = len(detailed_failures)
+
+                    if not failure_type_breakdown.empty:
+                        md_content += f"\n**Failure Type Breakdown:**\n"
+                        for ftype, fcount in failure_type_breakdown.items():
+                            if ftype and ftype not in ['ActionCheckFailure', 'unknown']:
+                                formatted_type = ftype.replace('_', ' ').title()
+                                percentage = (fcount / total_detailed_failures) * 100
+                                # Show which tools have this failure type
+                                tools_with_type = detailed_failures[detailed_failures['failure_category'] == ftype]['tool_name'].unique().tolist()
+                                tools_str = ', '.join(tools_with_type[:5])  # Show first 5 tools
+                                if len(tools_with_type) > 5:
+                                    tools_str += f", ... ({len(tools_with_type) - 5} more)"
+                                md_content += f"- **{formatted_type}**: {int(fcount)} failures ({percentage:.1f}%)\n"
+                                md_content += f"  - Affected tools: {tools_str}\n"
 
         else:
             md_content += "🎉 **No failures detected!** All tool calls completed successfully.\n"
+
+        # Add sequence accuracy analysis section if ground truth available
+        if sequence_metrics is not None and tool_sequence_stats is not None:
+            md_content += "\n---\n\n## 📊 Action Sequence Accuracy\n\n"
+            md_content += "This section compares actual tool call sequences against expected action sequences from ground truth task definitions.\n\n"
+
+            md_content += "### Overview Metrics\n\n"
+            md_content += "| Metric | Value |\n"
+            md_content += "|--------|-------|\n"
+            md_content += f"| **Precision** | {sequence_metrics['precision']:.2%} |\n"
+            md_content += f"| **Recall** | {sequence_metrics['recall']:.2%} |\n"
+            md_content += f"| **F1 Score** | {sequence_metrics['f1_score']:.2%} |\n"
+            md_content += f"| **Total Tasks Analyzed** | {sequence_metrics['total_tasks']} |\n"
+            md_content += f"| **Matched Actions** | {sequence_metrics['total_matched_actions']}/{sequence_metrics['total_expected_actions']} |\n"
+
+            md_content += "\n### Task Distribution\n\n"
+            md_content += f"- ✅ **Success + Ordered:** {sequence_metrics['success_ordered']} tasks (correct sequence, task succeeded)\n"
+            md_content += f"- ⚠️  **Success + Unordered:** {sequence_metrics['success_unordered']} tasks (wrong order, but task succeeded)\n"
+            md_content += f"- ❌ **Failed + Ordered:** {sequence_metrics['fail_ordered']} tasks (correct sequence, but task failed)\n"
+            md_content += f"- 🔴 **Failed + Unordered:** {sequence_metrics['fail_unordered']} tasks (wrong sequence, task failed)\n"
+
+            md_content += "\n### Action-Level Metrics\n\n"
+            md_content += f"- **Expected actions:** {sequence_metrics['total_expected_actions']}\n"
+            md_content += f"- **Actual actions executed:** {sequence_metrics['total_actual_actions']}\n"
+            md_content += f"- **Correctly matched:** {sequence_metrics['total_matched_actions']}\n"
+            md_content += f"- **Missing (omitted):** {sequence_metrics['total_missing_actions']}\n"
+            md_content += f"- **Extra (unexpected):** {sequence_metrics['total_extra_actions']}\n"
+            md_content += f"- **Argument mismatches:** {sequence_metrics['total_argument_mismatches']}\n"
+
+            if not tool_sequence_stats.empty:
+                md_content += "\n### Per-Tool Sequence Accuracy\n\n"
+                # Limit to top 10 tools by expected count for readability
+                top_tools = tool_sequence_stats.head(10)
+
+                md_content += "| Tool | Expected | ✅ Matched | ❌ Missing | 🔧 Arg Err | ⚠️ Extra | Precision | Recall |\n"
+                md_content += "|------|----------|-----------|-----------|-----------|---------|-----------|--------|\n"
+
+                for _, row in top_tools.iterrows():
+                    md_content += f"| {row['tool']} | {int(row['expected'])} | {int(row['matched'])} | {int(row['missing'])} | {int(row['arg_mismatch'])} | {int(row['extra'])} | {row['precision']:.1%} | {row['recall']:.1%} |\n"
+
+                if len(tool_sequence_stats) > 10:
+                    md_content += f"\n*Showing top 10 of {len(tool_sequence_stats)} tools. See detailed reports for complete data.*\n"
 
         md_content += "\n---\n\n## 🔄 State Change Analysis\n\n"
 
@@ -1621,7 +2022,7 @@ class LogVisualizer:
         md_content += self._generate_communication_analysis_md(summary, tool_perf, sequence_analysis)
 
         # Add performance issues deep dive
-        md_content += self._generate_performance_deep_dive_md(tool_perf, sequence_analysis)
+        md_content += self._generate_performance_deep_dive_md(tool_perf, sequence_analysis, failures, summary)
 
         # Add execution patterns and termination analysis
         md_content += self._generate_execution_patterns_md(summary, tool_perf, sequence_analysis)
@@ -1719,8 +2120,62 @@ class LogVisualizer:
                 avg_success_rate = tool_perf['success_rate'].mean()
                 md_content += f"- **Average tool success rate:** {avg_success_rate:.1%}\n"
 
-                if avg_success_rate < 0.8:
-                    md_content += f"- **⚠️ Low overall success rate** suggests systemic issues requiring investigation\n"
+        # Failure Type Comparison
+        detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+        if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+            md_content += f"\n### 🔍 Failure Type Comparison\n\n"
+            md_content += "Side-by-side comparison of failure types and their characteristics:\n\n"
+
+            # Get failure type statistics
+            failure_types = ['never_called', 'called_but_no_match', 'called_with_wrong_args']
+            type_stats = {}
+
+            for ftype in failure_types:
+                type_failures = detailed_failures[detailed_failures['failure_category'] == ftype]
+                if not type_failures.empty:
+                    # Count unique tools affected
+                    affected_tools = type_failures['tool_name'].unique()
+                    total_count = len(type_failures)
+
+                    # Get top 3 tools by frequency for this type
+                    top_tools = type_failures['tool_name'].value_counts().head(3)
+
+                    type_stats[ftype] = {
+                        'count': total_count,
+                        'tools': len(affected_tools),
+                        'top_tools': top_tools,
+                        'severity': 'Critical' if ftype == 'never_called' else ('High' if ftype == 'called_but_no_match' else 'Medium')
+                    }
+
+            # Create comparison table
+            if type_stats:
+                md_content += "| Failure Type | Severity | Total Failures | Affected Tools | Top Failing Tools |\n"
+                md_content += "|--------------|----------|----------------|----------------|-------------------|\n"
+
+                for ftype in failure_types:
+                    if ftype in type_stats:
+                        stats = type_stats[ftype]
+                        formatted_type = ftype.replace('_', ' ').title()
+                        top_tools_str = ', '.join([f"{tool} ({count})" for tool, count in stats['top_tools'].items()])
+
+                        md_content += f"| **{formatted_type}** | {stats['severity']} | {stats['count']} | {stats['tools']} | {top_tools_str} |\n"
+
+                # Add insights about failure type distribution
+                total_detailed = len(detailed_failures)
+                md_content += f"\n**Key Insights:**\n\n"
+
+                for ftype in failure_types:
+                    if ftype in type_stats:
+                        stats = type_stats[ftype]
+                        percentage = (stats['count'] / total_detailed) * 100
+                        formatted_type = ftype.replace('_', ' ').title()
+
+                        if ftype == 'never_called':
+                            md_content += f"- **{formatted_type} ({percentage:.1f}%):** Critical severity - These tools were never executed at all, indicating the agent failed to recognize when to use them.\n"
+                        elif ftype == 'called_but_no_match':
+                            md_content += f"- **{formatted_type} ({percentage:.1f}%):** High severity - Tools were called but didn't produce expected results, suggesting execution logic issues.\n"
+                        elif ftype == 'called_with_wrong_args':
+                            md_content += f"- **{formatted_type} ({percentage:.1f}%):** Medium severity - Tools were called with incorrect parameters, indicating parameter validation or reasoning issues.\n"
 
         return md_content
 
@@ -1743,50 +2198,57 @@ class LogVisualizer:
         affected_tools = failures['tool_name'].nunique()
 
         html = f"""
-        <div class="failure-section">
-            <h3>🎯 Root Cause Analysis</h3>
-            <div class="failure-stats">
-                <div class="stat-card">
-                    <h4>Total Failures</h4>
-                    <div class="stat-value">{total_failures}</div>
+        <div class="failure-section" style="background: #fff; padding: 25px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-bottom: 20px;">🎯 Root Cause Analysis</h3>
+            <div class="failure-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                <div class="stat-card" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; color: white;">Total Failures</h4>
+                    <div class="stat-value" style="font-size: 2em; font-weight: bold; color: white;">{total_failures}</div>
                 </div>
-                <div class="stat-card">
-                    <h4>Error Rate</h4>
-                    <div class="stat-value">{error_rate:.1%}</div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; color: white;">Error Rate</h4>
+                    <div class="stat-value" style="font-size: 2em; font-weight: bold; color: white;">{error_rate:.1%}</div>
                 </div>
-                <div class="stat-card">
-                    <h4>Affected Tools</h4>
-                    <div class="stat-value">{affected_tools}</div>
-                </div>
-                <div class="stat-card">
-                    <h4>Error Categories</h4>
-                    <div class="stat-value">{failures['error_category'].nunique()}</div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.9em; opacity: 0.9; color: white;">Affected Tools</h4>
+                    <div class="stat-value" style="font-size: 2em; font-weight: bold; color: white;">{affected_tools}</div>
                 </div>
             </div>
         """
 
         # Primary failure modes analysis
         html += """
-            <div class="failure-modes">
-                <h4>🚨 Primary Failure Modes</h4>
+            <div class="failure-modes" style="margin-top: 30px;">
+                <h4 style="color: #c0392b; margin-bottom: 20px; font-size: 1.3em; display: flex; align-items: center;">
+                    <span style="display: inline-block; width: 4px; height: 24px; background: #c0392b; margin-right: 10px; border-radius: 2px;"></span>
+                    🚨 Primary Failure Modes
+                </h4>
         """
 
         if 'ActionCheckFailure' in failures['error_category'].values:
             action_failures = failures[failures['error_category'] == 'ActionCheckFailure']
+            has_failure_category = 'primary_failure_category' in failures.columns
+
             html += f"""
-                <div class="failure-mode">
-                    <h5>Action Check Failures</h5>
-                    <p><strong>{len(action_failures)} tools</strong> failed action validation checks:</p>
-                    <ul>
+                <div class="failure-mode" style="background: #fff3cd; border-left: 4px solid #e67e22; padding: 20px; margin-bottom: 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <h5 style="color: #856404; margin-top: 0; margin-bottom: 15px; font-size: 1.1em;">Action Check Failures</h5>
+                    <p style="margin-bottom: 15px;"><strong>{len(action_failures)} tools</strong> failed action validation checks:</p>
+                    <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
             """
             for _, row in action_failures.iterrows():
+                # Format failure type if available
+                failure_type = ""
+                if has_failure_category and 'primary_failure_category' in row and row['primary_failure_category'] not in ['ActionCheckFailure', 'unknown']:
+                    failure_category = row['primary_failure_category'].replace('_', ' ').title()
+                    failure_type = f' <span style="color: #666; font-style: italic;">[{failure_category}]</span>'
+
                 html += f"""
-                    <li><strong>{row['tool_name']}</strong>: {int(row['count'])} failures ({row['failure_rate']:.1%} rate)
+                    <li style="margin-bottom: 12px;"><strong style="color: #2c3e50;">{row['tool_name']}</strong>{failure_type}: {int(row['count'])} failures ({row['failure_rate']:.1%} rate)
                 """
                 if 'simulations_affected' in failures.columns:
-                    html += f"<br>→ Affected {row['simulations_affected']} simulation(s)"
+                    html += f'<br><span style="color: #666; margin-left: 15px;">→ Affected <strong>{row["simulations_affected"]}</strong> simulation(s)</span>'
                 if 'example_args' in failures.columns:
-                    html += f"<br>→ Example args: <code>{row['example_args']}</code>"
+                    html += f'<br><span style="color: #666; margin-left: 15px;">→ Example args: <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-size: 0.9em;">{row["example_args"]}</code></span>'
                 html += "</li>"
             html += "</ul></div>"
 
@@ -1877,76 +2339,21 @@ class LogVisualizer:
                 avg_success_rate = tool_perf['success_rate'].mean()
                 html += f"<li><strong>Average tool success rate:</strong> {avg_success_rate:.1%}</li>"
 
-                if avg_success_rate < 0.8:
-                    html += "<li><strong>⚠️ Low overall success rate</strong> suggests systemic issues requiring investigation</li>"
-
         html += "</ul></div>"
-
-        # Critical recommendations
-        html += """
-            <div class="recommendations">
-                <h4>🔧 Critical Recommendations</h4>
-                <ol>
-        """
-
-        if not failures.empty:
-            # Specific recommendations based on failure patterns
-            if 'ActionCheckFailure' in failures['error_category'].values:
-                html += "<li><strong>Action Validation:</strong> Review and strengthen argument validation logic for failing tools</li>"
-                html += "<li><strong>Error Handling:</strong> Implement more robust error recovery mechanisms</li>"
-
-            if not tool_perf.empty and len(tool_perf[tool_perf['performance_category'] == 'poor']) > 0:
-                html += "<li><strong>Performance Optimization:</strong> Focus on improving poor-performing tools with high usage</li>"
-
-            html += "<li><strong>Monitoring:</strong> Implement enhanced monitoring and alerting for tools with high failure rates</li>"
-            html += "<li><strong>Testing:</strong> Increase test coverage for identified problematic tool patterns</li>"
-
-        html += "</ol></div>"
 
         html += "</div></div>"  # Close failure-modes and failure-section
 
         return html
 
     def _generate_task_simulation_analysis_md(self, summary, tool_perf, state_analysis) -> str:
-        """Generate task and simulation analysis section."""
-        md_content = "\n---\n\n## 🎯 Task & Simulation Analysis\n\n"
+        """Generate simulation and task complexity analysis section."""
+        md_content = "\n---\n\n## 🎯 Simulation & Complexity Analysis\n\n"
 
-        # Simulation success analysis
+        # Simulation metrics (no success/failure assessment)
         total_sims = summary.get('total_simulations', 0)
-        successful_sims = summary.get('successful_simulations', 0)
-        failed_sims = total_sims - successful_sims
 
-        md_content += f"### 📊 Simulation Performance Breakdown\n\n"
+        md_content += f"### 📊 Simulation Metrics\n\n"
         md_content += f"- **Total simulations executed:** {total_sims}\n"
-        md_content += f"- **Successful completions:** {successful_sims} ({successful_sims/total_sims*100:.1f}%)\n"
-        md_content += f"- **Failed simulations:** {failed_sims} ({failed_sims/total_sims*100:.1f}%)\n"
-
-        if failed_sims > 0:
-            md_content += f"\n**Failure Impact Analysis:**\n"
-            md_content += f"- Each failure represents a complete task breakdown\n"
-            md_content += f"- {failed_sims/total_sims*100:.1f}% of tasks could not be completed successfully\n"
-
-            # Estimate impact based on action vs non-action tasks
-            if not tool_perf.empty:
-                state_changing_tools = len(tool_perf[tool_perf['state_change_rate'] > 0])
-                if state_changing_tools > 0:
-                    md_content += f"- {state_changing_tools} tools perform state-changing operations\n"
-                    md_content += f"- Failures likely impact real-world task completion\n"
-
-        # Success metrics analysis
-        success_source = summary.get('success_metric_source', 'unknown')
-        md_content += f"\n### 🎖️ Success Measurement\n\n"
-        md_content += f"- **Success metric source:** {success_source}\n"
-
-        if success_source == 'action_checks':
-            md_content += f"- Success determined by **action validation checks**\n"
-            md_content += f"- This measures whether the agent performed the correct actions with correct parameters\n"
-            md_content += f"- More reliable than execution-based success metrics\n"
-            md_content += f"- Failures indicate logical/reasoning issues rather than technical problems\n"
-        elif success_source == 'execution_success':
-            md_content += f"- Success determined by **tool execution success**\n"
-            md_content += f"- This measures whether tool calls completed without errors\n"
-            md_content += f"- May miss logical errors if tools execute but with wrong parameters\n"
 
         # Task complexity indicators
         md_content += f"\n### 🔧 Task Complexity Indicators\n\n"
@@ -1988,7 +2395,7 @@ class LogVisualizer:
 
         return md_content
 
-    def _generate_performance_deep_dive_md(self, tool_perf, sequence_analysis) -> str:
+    def _generate_performance_deep_dive_md(self, tool_perf, sequence_analysis, failures, summary) -> str:
         """Generate detailed performance analysis section."""
         md_content = "\n---\n\n## ⚡ Performance Deep Dive\n\n"
 
@@ -2005,31 +2412,64 @@ class LogVisualizer:
         md_content += f"### 🏆 Performance Tier Analysis\n\n"
 
         for tier, tools_df, description in [
-            ("Excellent", excellent_tools, "High success rate (≥95%) and fast execution (≤1s)"),
-            ("Good", good_tools, "Good success rate (≥90%) and reasonable execution (≤2s)"),
-            ("Fair", fair_tools, "Acceptable success rate (≥75%)"),
-            ("Poor", poor_tools, "Low success rate (<75%)")
+            ("Excellent", excellent_tools, "Success rate ≥95%"),
+            ("Good", good_tools, "Success rate ≥90%"),
+            ("Fair", fair_tools, "Success rate ≥75%"),
+            ("Poor", poor_tools, "Success rate <75%")
         ]:
             if not tools_df.empty:
                 md_content += f"**{tier} Performance ({len(tools_df)} tools)** - {description}:\n"
                 for _, tool in tools_df.iterrows():
-                    md_content += f"- `{tool['tool_name']}`: {tool['success_rate']:.1%} success, {tool['avg_execution_time']*1000:.2f}ms avg time, {int(tool['total_calls'])} calls\n"
+                    md_content += f"- `{tool['tool_name']}`: {tool['success_rate']:.1%} success, {int(tool['total_calls'])} calls\n"
                 md_content += f"\n"
 
-        # Critical performance issues
-        if not poor_tools.empty:
+        # Critical performance issues with proper impact score and failure types
+        if not poor_tools.empty and not failures.empty:
             md_content += f"### 🚨 Critical Performance Issues\n\n"
             high_usage_poor = poor_tools[poor_tools['total_calls'] >= 5]
 
             if not high_usage_poor.empty:
+                # Calculate proper impact scores
+                total_simulations = summary.get('total_simulations', 1)
+                failures_with_impact = failures.copy()
+                failures_with_impact['impact_score'] = (
+                    failures_with_impact['failure_rate'] *
+                    failures_with_impact.get('simulations_affected', 0) /
+                    max(total_simulations, 1) * 100
+                )
+
+                # Get detailed failure breakdown for failure types
+                detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+
                 md_content += f"**High-Usage Poor Performers** (≥5 calls with poor performance):\n\n"
                 for _, tool in high_usage_poor.iterrows():
-                    impact_score = tool['total_calls'] * (1 - tool['success_rate'])
-                    md_content += f"- **`{tool['tool_name']}`**:\n"
+                    tool_name = tool['tool_name']
+
+                    # Get impact score from failures data if available
+                    tool_failures = failures_with_impact[failures_with_impact['tool_name'] == tool_name]
+                    if not tool_failures.empty:
+                        impact_score = tool_failures.iloc[0]['impact_score']
+                        sims_affected = tool_failures.iloc[0].get('simulations_affected', 'N/A')
+                    else:
+                        impact_score = 0
+                        sims_affected = 'N/A'
+
+                    # Get failure type if available
+                    failure_type_info = ""
+                    if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                        tool_failure_types = detailed_failures[detailed_failures['tool_name'] == tool_name]
+                        if not tool_failure_types.empty:
+                            ftype = tool_failure_types['failure_category'].mode()[0]
+                            formatted_type = ftype.replace('_', ' ').title()
+                            severity = "critical" if ftype == "never_called" else ("high" if ftype == "called_but_no_match" else "medium")
+                            failure_type_info = f" ({formatted_type}, {severity} severity)"
+
+                    md_content += f"- **`{tool_name}`**{failure_type_info}:\n"
                     md_content += f"  - Success rate: {tool['success_rate']:.1%}\n"
                     md_content += f"  - Total calls: {int(tool['total_calls'])}\n"
                     md_content += f"  - Failed calls: {int(tool['total_calls'] * (1 - tool['success_rate']))}\n"
-                    md_content += f"  - Impact score: {impact_score:.1f} (calls × failure rate)\n"
+                    md_content += f"  - Impact score: {impact_score:.1f}\n"
+                    md_content += f"  - Simulations affected: {sims_affected}\n"
                     md_content += f"  - State changing: {'Yes' if tool['state_change_rate'] > 0 else 'No'}\n"
                 md_content += f"\n"
 
@@ -2066,7 +2506,7 @@ class LogVisualizer:
                     direction = "better" if performance_correlation > 0 else "worse"
                     md_content += f"- **Usage-performance correlation:** High-usage tools perform {abs(performance_correlation)*100:.1f}% {direction}\n"
 
-        # State-changing vs read-only performance
+        # State-changing vs read-only performance (data observation only)
         state_changing = tool_perf[tool_perf['state_change_rate'] > 0]
         read_only = tool_perf[tool_perf['state_change_rate'] == 0]
 
@@ -2077,11 +2517,8 @@ class LogVisualizer:
             state_avg_time = state_changing['avg_execution_time'].mean()
             readonly_avg_time = read_only['avg_execution_time'].mean()
 
-            md_content += f"- State-changing tools: {state_avg_success:.1%} success, {state_avg_time:.4f}s avg time\n"
-            md_content += f"- Read-only tools: {readonly_avg_success:.1%} success, {readonly_avg_time:.4f}s avg time\n"
-
-            if state_avg_success < readonly_avg_success - 0.1:
-                md_content += f"- ⚠️ State-changing tools show {(readonly_avg_success - state_avg_success)*100:.1f}% lower success rate\n"
+            md_content += f"- State-changing tools: {state_avg_success:.1%} success, {state_avg_time:.4f}s avg time ({len(state_changing)} tools)\n"
+            md_content += f"- Read-only tools: {readonly_avg_success:.1%} success, {readonly_avg_time:.4f}s avg time ({len(read_only)} tools)\n"
 
         return md_content
 
@@ -2207,18 +2644,11 @@ class LogVisualizer:
         total_failures = summary.get('failed_calls', 0) if failures.empty else failures['count'].sum()
         success_rate = summary.get('tool_success_rate', 0)
 
-        # Overall performance assessment
-        md_content += f"### Overall Performance Assessment\n\n"
-        if success_rate >= 0.9:
-            md_content += f"- **Overall success: {success_rate:.1%} (excellent)**\n"
-        elif success_rate >= 0.7:
-            md_content += f"- **Overall success: {success_rate:.1%} (good)**\n"
-        elif success_rate >= 0.5:
-            md_content += f"- **Overall success: {success_rate:.1%} (concerning)**\n"
-        else:
-            md_content += f"- **Overall success: {success_rate:.1%} (critical)**\n"
+        # Performance metrics (data only, no assessments)
+        md_content += f"### Performance Metrics\n\n"
+        md_content += f"- **Overall success rate: {success_rate:.1%}**\n"
 
-        # Analyze action vs read-only performance
+        # Analyze action vs read-only performance (data only)
         if not tool_perf.empty:
             state_changing = tool_perf[tool_perf['state_change_rate'] > 0]
             read_only = tool_perf[tool_perf['state_change_rate'] == 0]
@@ -2227,11 +2657,8 @@ class LogVisualizer:
                 state_avg_success = state_changing['success_rate'].mean()
                 read_avg_success = read_only['success_rate'].mean()
 
-                md_content += f"- **State-changing actions accuracy: {state_avg_success:.1%}**\n"
-                md_content += f"- **Read-only actions accuracy: {read_avg_success:.1%}**\n"
-
-                if state_avg_success < 0.5:
-                    md_content += f"- **Critical**: State-changing actions show severe accuracy issues\n"
+                md_content += f"- **State-changing actions: {state_avg_success:.1%} success rate**\n"
+                md_content += f"- **Read-only actions: {read_avg_success:.1%} success rate**\n"
 
                 performance_drop = read_avg_success - state_avg_success
                 if performance_drop > 0.2:
@@ -2416,20 +2843,61 @@ class LogVisualizer:
             if poor_tools > 0:
                 insights.append(f"**{poor_tools}** tools showing poor performance require attention")
 
-        # Failure insights
+        # Failure insights with impact score, frequency, and failure types
         if not failures.empty:
             total_failures = failures['count'].sum()
             total_calls = summary.get('total_tool_calls', 0)
+            total_simulations = summary.get('total_simulations', 1)
             error_rate = (total_failures / total_calls * 100) if total_calls > 0 else 0
+
+            # Calculate impact scores
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
 
             insights.append(f"**{error_rate:.1f}%** error rate across all tool executions")
 
-            most_failed = failures.iloc[0]['tool_name'] if len(failures) > 0 else "N/A"
-            insights.append(f"**{most_failed}** has the highest failure count with {failures.iloc[0]['count']} failures")
+            # Highest impact failure
+            highest_impact = failures_with_impact.nlargest(1, 'impact_score').iloc[0]
+            impact_failure_type = ""
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                impact_tool_failures = detailed_failures[detailed_failures['tool_name'] == highest_impact['tool_name']]
+                if not impact_tool_failures.empty:
+                    ftype = impact_tool_failures['failure_category'].mode()[0]
+                    impact_failure_type = f" ({ftype.replace('_', ' ').title()})"
 
-            if 'ActionCheckFailure' in failures['error_category'].values:
-                action_failures = failures[failures['error_category'] == 'ActionCheckFailure']['count'].sum()
-                insights.append(f"**{action_failures}** failures are due to action validation issues")
+            insights.append(f"**Highest impact:** {highest_impact['tool_name']}{impact_failure_type} - impact score {highest_impact['impact_score']:.1f}, affecting {highest_impact.get('simulations_affected', 'N/A')} simulations")
+
+            # Most frequent failure
+            most_frequent = failures_with_impact.nlargest(1, 'count').iloc[0]
+            freq_failure_type = ""
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                freq_tool_failures = detailed_failures[detailed_failures['tool_name'] == most_frequent['tool_name']]
+                if not freq_tool_failures.empty:
+                    ftype = freq_tool_failures['failure_category'].mode()[0]
+                    freq_failure_type = f" ({ftype.replace('_', ' ').title()})"
+
+            insights.append(f"**Most frequent failure:** {most_frequent['tool_name']}{freq_failure_type} with {int(most_frequent['count'])} failures")
+
+            # Failure type distribution
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                type_counts = detailed_failures['failure_category'].value_counts()
+                total_detailed = len(detailed_failures)
+                breakdown_parts = []
+                for ftype, count in type_counts.items():
+                    if ftype and ftype not in ['ActionCheckFailure', 'unknown']:
+                        formatted_type = ftype.replace('_', ' ').title()
+                        pct = (count / total_detailed) * 100
+                        severity = "critical" if ftype == "never_called" else ("high" if ftype == "called_but_no_match" else "medium")
+                        breakdown_parts.append(f"{pct:.0f}% {formatted_type} ({severity})")
+                if breakdown_parts:
+                    insights.append(f"**Failure type breakdown:** {', '.join(breakdown_parts)}")
 
         # State change insights
         if not state_analysis.empty:
@@ -2476,38 +2944,57 @@ class LogVisualizer:
 
                 recommendations.append(f"**Performance Pattern**: {len(poor_performers)} tools categorized as poor performers based on execution metrics")
 
-        # Failure recommendations
+        # Failure recommendations with impact score, frequency, and failure types
         if not failures.empty:
-            action_check_failures = failures[failures['error_category'] == 'ActionCheckFailure']
-            if not action_check_failures.empty:
-                failure_count = len(action_check_failures)
-                recommendations.append(f"**Action Check Pattern**: {failure_count} action validation failures detected across tool executions")
+            total_simulations = summary.get('total_simulations', 1)
 
+            # Calculate impact scores
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+
+            # HIGH PRIORITY: High-impact failures (impact_score > 5.0) with failure types
+            high_impact_failures = failures_with_impact[failures_with_impact['impact_score'] > 5.0].sort_values('impact_score', ascending=False)
+            if not high_impact_failures.empty:
+                high_impact_list = []
+                for _, row in high_impact_failures.head(5).iterrows():
+                    tool_name = row['tool_name']
+                    impact = row['impact_score']
+                    sims = row.get('simulations_affected', 'N/A')
+
+                    # Get failure type if available
+                    failure_type_info = ""
+                    if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                        tool_failures = detailed_failures[detailed_failures['tool_name'] == tool_name]
+                        if not tool_failures.empty:
+                            ftype = tool_failures['failure_category'].mode()[0]
+                            formatted_type = ftype.replace('_', ' ').title()
+                            severity = "critical" if ftype == "never_called" else ("high" if ftype == "called_but_no_match" else "medium")
+                            failure_type_info = f" ({formatted_type}, {severity} severity)"
+
+                    high_impact_list.append(f"{tool_name}{failure_type_info}: impact {impact:.1f}, {sims} simulations")
+
+                recommendations.append(f"**High-Impact Failures:** {', '.join(high_impact_list)}")
+
+            # HIGH PRIORITY: Critical failure types (never_called)
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                never_called_failures = detailed_failures[detailed_failures['failure_category'] == 'never_called']
+                if not never_called_failures.empty:
+                    never_called_tools = never_called_failures['tool_name'].unique()
+                    if len(never_called_tools) > 0:
+                        recommendations.append(f"**Critical: Tools Never Executed:** {len(never_called_tools)} tools with 'never_called' failures (critical severity): {', '.join(never_called_tools[:5])}")
+
+            # High failure rate tools (>50%)
             high_failure_tools = failures[failures['failure_rate'] > 0.5]
             if not high_failure_tools.empty:
                 tool_names = ', '.join(high_failure_tools['tool_name'].tolist())
-                recommendations.append(f"**High Failure Rate**: Tools with >50% failure rate detected: {tool_names}")
-
-        # State change recommendations
-        if not state_analysis.empty:
-            state_changing = state_analysis[state_analysis['state_changed'] == True]
-            if not state_changing.empty:
-                low_success_state = state_changing[state_changing['success_rate'] < 0.7]
-                if not low_success_state.empty:
-                    low_count = len(low_success_state)
-                    avg_success = low_success_state['success_rate'].mean()
-                    recommendations.append(f"**State Operation Pattern**: {low_count} state-changing operations show {avg_success:.1%} average success rate")
-
-        # General recommendations based on success rates
-        tool_success_rate = summary.get('tool_success_rate', 0)
-        if tool_success_rate < 0.8:
-            recommendations.append(f"**System Status**: Overall tool success rate at {tool_success_rate:.1%} indicates significant reliability challenges")
-        elif tool_success_rate < 0.95:
-            recommendations.append(f"**Performance Analysis**: Tool success rate at {tool_success_rate:.1%} indicates potential optimization opportunities")
-
-        task_success_rate = summary.get('task_success_rate', 0)
-        if task_success_rate < 0.7:
-            recommendations.append(f"**Task Analysis**: Task completion rate at {task_success_rate:.1%} indicates workflow execution challenges")
+                recommendations.append(f"**High Failure Rate:** Tools with >50% failure rate: {tool_names}")
 
         return recommendations
 
@@ -2532,7 +3019,7 @@ class LogVisualizer:
         recommendations = self._generate_recommendations(summary, tool_perf, failures, state_analysis)
 
         # Create summary dashboard
-        summary_html = self.create_summary_dashboard(include_task_success=True).to_html(full_html=False, include_plotlyjs=False)
+        summary_html = self.create_summary_dashboard().to_html(full_html=False, include_plotlyjs=True)
 
         # Create performance issues analysis plot
         perf_issues_html = self._create_performance_issues_plot(summary, tool_perf, failures).to_html(full_html=False, include_plotlyjs=False)
@@ -2644,6 +3131,35 @@ class LogVisualizer:
         .metric-label {{
             font-size: 0.9em;
             opacity: 0.9;
+        }}
+
+        .failure-stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+
+        .stat-card {{
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }}
+
+        .stat-card h4 {{
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #dc3545;
         }}
 
         .plot-container {{
@@ -2846,9 +3362,9 @@ class LogVisualizer:
             {self._generate_communication_analysis_html(summary, tool_perf, sequence_analysis)}
         </div>
 
-        <!-- Task & Simulation Analysis -->
+        <!-- Simulation & Complexity Analysis -->
         <div class="section page-break">
-            <h2>📋 Task & Simulation Analysis</h2>
+            <h2>📋 Simulation & Complexity Analysis</h2>
             <div class="plot-container">
                 {task_analysis_html}
             </div>
@@ -2867,7 +3383,7 @@ class LogVisualizer:
         <!-- Tool Performance Deep Dive -->
         <div class="section page-break">
             <h2>⚡ Performance Deep Dive</h2>
-            {self._generate_tool_performance_deep_dive_html(tool_perf, failures)}
+            {self._generate_tool_performance_deep_dive_html(tool_perf, failures, summary)}
         </div>
 
         <!-- Failure Analysis -->
@@ -2899,7 +3415,7 @@ class LogVisualizer:
             rows=2, cols=2,
             subplot_titles=("Performance by Category", "State-Changing vs Read-Only",
                           "Success Rate vs Calls", "Failure Rate Analysis"),
-            specs=[[{"type": "bar"}, {"type": "box"}],
+            specs=[[{"type": "bar"}, {"type": "bar"}],
                    [{"type": "scatter"}, {"type": "bar"}]]
         )
 
@@ -2909,60 +3425,193 @@ class LogVisualizer:
             fig.add_trace(
                 go.Bar(x=perf_categories.index, y=perf_categories.values,
                        marker_color=['#28a745', '#17a2b8', '#ffc107', '#dc3545'],
-                       name="Tools by Category"),
+                       name="Tools by Category", orientation='v'),
                 row=1, col=1
             )
 
-            # State-changing vs read-only performance
+            # State-changing vs read-only performance - using bar chart for better visibility
             state_changing = tool_perf[tool_perf['state_change_rate'] > 0]
             read_only = tool_perf[tool_perf['state_change_rate'] == 0]
 
             if not state_changing.empty:
                 fig.add_trace(
-                    go.Box(y=state_changing['success_rate'], name="State-Changing",
-                           marker_color="#ff6b6b"),
+                    go.Bar(
+                        x=['State-Changing'],
+                        y=[state_changing['success_rate'].mean()],
+                        name="State-Changing",
+                        marker_color="#ff6b6b",
+                        error_y=dict(
+                            type='data',
+                            array=[state_changing['success_rate'].std()] if len(state_changing) > 1 else [0]
+                        ),
+                        text=[f"{state_changing['success_rate'].mean():.1%}"],
+                        textposition='outside',
+                        hovertemplate=(
+                            '<b>State-Changing Tools</b><br>' +
+                            'Avg Success Rate: %{y:.2%}<br>' +
+                            f'Tool Count: {len(state_changing)}<br>' +
+                            f'Total Calls: {state_changing["total_calls"].sum()}<extra></extra>'
+                        )
+                    ),
                     row=1, col=2
                 )
             if not read_only.empty:
                 fig.add_trace(
-                    go.Box(y=read_only['success_rate'], name="Read-Only",
-                           marker_color="#4ecdc4"),
+                    go.Bar(
+                        x=['Read-Only'],
+                        y=[read_only['success_rate'].mean()],
+                        name="Read-Only",
+                        marker_color="#4ecdc4",
+                        error_y=dict(
+                            type='data',
+                            array=[read_only['success_rate'].std()] if len(read_only) > 1 else [0]
+                        ),
+                        text=[f"{read_only['success_rate'].mean():.1%}"],
+                        textposition='outside',
+                        hovertemplate=(
+                            '<b>Read-Only Tools</b><br>' +
+                            'Avg Success Rate: %{y:.2%}<br>' +
+                            f'Tool Count: {len(read_only)}<br>' +
+                            f'Total Calls: {read_only["total_calls"].sum()}<extra></extra>'
+                        )
+                    ),
                     row=1, col=2
                 )
 
-            # Success rate vs calls scatter
+            # Success rate vs calls scatter with better configuration
             fig.add_trace(
                 go.Scatter(
-                    x=tool_perf['total_calls'],
-                    y=tool_perf['success_rate'],
+                    x=tool_perf['total_calls'].tolist(),
+                    y=tool_perf['success_rate'].tolist(),
                     mode='markers+text',
                     marker=dict(
-                        size=10,
-                        color=tool_perf['success_rate'],
+                        size=12,
+                        color=tool_perf['success_rate'].tolist(),
                         colorscale='RdYlGn',
-                        showscale=True
+                        cmin=0,
+                        cmax=1,
+                        showscale=True,
+                        colorbar=dict(
+                            title="Success<br>Rate",
+                            x=0.47,
+                            len=0.35,
+                            y=0.1875,
+                            yanchor='middle',
+                            thickness=15
+                        )
                     ),
-                    text=tool_perf['tool_name'],
-                    textposition="top center",
-                    name="Success vs Usage"
+                    text=tool_perf['tool_name'].tolist(),
+                    textposition="top center",  # Auto positioning doesn't work well in subplots, but we've added buffer space
+                    textfont=dict(size=8),  # Slightly smaller font to reduce overlap
+                    name="Tools",
+                    hovertemplate=(
+                        '<b>%{text}</b><br>' +
+                        'Calls: %{x}<br>' +
+                        'Success Rate: %{y:.2%}<extra></extra>'
+                    )
                 ),
                 row=2, col=1
             )
 
-        # Failure rate analysis
-        if not failures.empty:
-            failure_rates = failures.nlargest(10, 'failure_rate')
-            fig.add_trace(
-                go.Bar(
-                    x=failure_rates['tool_name'],
-                    y=failure_rates['failure_rate'],
-                    marker_color='#dc3545',
-                    name="Failure Rate"
-                ),
-                row=2, col=2
-            )
+            # Update scatter plot axes for better visibility
+            fig.update_xaxes(title_text="Total Calls", type="log" if tool_perf['total_calls'].max() > 100 else "linear", row=2, col=1)
+            fig.update_yaxes(title_text="Success Rate", range=[-0.05, 1.15], tickformat='.0%', row=2, col=1)  # Extra 10% buffer at top for labels
 
-        fig.update_layout(height=800, showlegend=False, title_text="Performance Issues Analysis")
+            # Update state-changing vs read-only axes
+            fig.update_yaxes(title_text="Success Rate", range=[0, 1.1], tickformat='.0%', row=1, col=2)
+
+        # Failure rate analysis with failure type stacking
+        if not failures.empty:
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+
+            if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                # Get top 10 tools by failure rate
+                top_failing_tools = failures.nlargest(10, 'failure_rate')['tool_name'].tolist()
+
+                # Filter detailed failures to only these tools
+                detailed_top = detailed_failures[detailed_failures['tool_name'].isin(top_failing_tools)]
+
+                if not detailed_top.empty:
+                    # Create crosstab of tool_name vs failure_category
+                    failure_breakdown = detailed_top.groupby(['tool_name', 'failure_category']).size().unstack(fill_value=0)
+
+                    # Calculate failure rates (normalize by total calls for each tool)
+                    tool_calls = failures.set_index('tool_name')['count'] / failures.set_index('tool_name')['failure_rate']
+                    for col in failure_breakdown.columns:
+                        failure_breakdown[col] = failure_breakdown[col] / tool_calls
+
+                    # Sort by total failure rate
+                    failure_breakdown['_total'] = failure_breakdown.sum(axis=1)
+                    failure_breakdown = failure_breakdown.sort_values('_total', ascending=False).head(10)
+                    failure_breakdown = failure_breakdown.drop('_total', axis=1)
+
+                    # Severity-based color scheme
+                    severity_colors = {
+                        'never_called': '#c0392b',           # Crimson (Critical)
+                        'called_but_no_match': '#e67e22',    # Orange (High)
+                        'called_with_wrong_args': '#f1c40f', # Yellow (Medium)
+                        'unknown': '#95a5a6'                 # Gray (Unknown)
+                    }
+
+                    # Add a trace for each failure type (stacked bars)
+                    for failure_type in failure_breakdown.columns:
+                        formatted_type = failure_type.replace('_', ' ').title() if failure_type not in ['ActionCheckFailure', 'unknown'] else failure_type
+
+                        # Convert to percentages
+                        percentages = failure_breakdown[failure_type] * 100
+
+                        fig.add_trace(
+                            go.Bar(
+                                x=failure_breakdown.index,
+                                y=percentages,
+                                name=formatted_type,
+                                marker_color=severity_colors.get(failure_type, '#95a5a6'),
+                                text=[f"{val:.1f}%" if val > 5 else "" for val in percentages],  # Only show text if > 5%
+                                textposition='inside',
+                                orientation='v',
+                                showlegend=False
+                            ),
+                            row=2, col=2
+                        )
+                else:
+                    # Fallback to simple bar chart
+                    failure_rates = failures.nlargest(10, 'failure_rate')
+                    fig.add_trace(
+                        go.Bar(
+                            x=failure_rates['tool_name'],
+                            y=failure_rates['failure_rate'] * 100,
+                            marker_color='#dc3545',
+                            name="Failure Rate",
+                            orientation='v',
+                            text=[f"{val:.1f}%" for val in failure_rates['failure_rate'] * 100],
+                            textposition='outside'
+                        ),
+                        row=2, col=2
+                    )
+            else:
+                # Fallback to simple bar chart
+                failure_rates = failures.nlargest(10, 'failure_rate')
+                fig.add_trace(
+                    go.Bar(
+                        x=failure_rates['tool_name'],
+                        y=failure_rates['failure_rate'] * 100,
+                        marker_color='#dc3545',
+                        name="Failure Rate",
+                        orientation='v',
+                        text=[f"{val:.1f}%" for val in failure_rates['failure_rate'] * 100],
+                        textposition='outside'
+                    ),
+                    row=2, col=2
+                )
+
+        fig.update_layout(
+            height=800,
+            showlegend=False,
+            title_text="Performance Issues Analysis",
+            barmode='stack'
+        )
+        fig.update_yaxes(title_text="Failure Rate (%)", row=2, col=2)
         return fig
 
     def _create_communication_analysis_plot(self, summary, tool_perf, sequence_analysis):
@@ -2971,147 +3620,123 @@ class LogVisualizer:
         from plotly.subplots import make_subplots
 
         fig = make_subplots(
-            rows=2, cols=2,
-            subplot_titles=("Tool Usage Distribution", "Transfer vs Communication",
-                          "Tool Transition Patterns", "Execution Efficiency"),
-            specs=[[{"type": "pie"}, {"type": "bar"}],
-                   [{"type": "scatter"}, {"type": "indicator"}]]
+            rows=1, cols=2,
+            subplot_titles=("Tool Transition Patterns",
+                          "Tool Usage Distribution"),
+            specs=[[{"type": "bar"},{"type": "pie"}]],
+            horizontal_spacing=0.15  # Increase gap between charts (default is 0.2/cols = 0.1)
         )
 
-        if not tool_perf.empty:
-            # Tool usage pie chart
+        # Tool transition patterns - show top transitions as horizontal bar chart
+        if not sequence_analysis.empty:
+            top_transitions = sequence_analysis.head(10)
+            # Create readable labels for transitions
+            transition_labels = [f"{row['source'][:15]}→{row['target'][:15]}"
+                               for _, row in top_transitions.iterrows()]
+
             fig.add_trace(
-                go.Pie(labels=tool_perf['tool_name'], values=tool_perf['total_calls'],
-                       name="Tool Usage"),
+                go.Bar(
+                    x=top_transitions['count'],
+                    y=transition_labels,
+                    orientation='h',
+                    marker=dict(
+                        color=top_transitions['count'],
+                        colorscale='Reds',
+                        showscale=False
+                    ),
+                    name="Transition Frequency",
+                    text=top_transitions['count'],
+                    textposition='outside'
+                ),
                 row=1, col=1
             )
 
-            # Transfer vs communication tools
-            transfer_tools = tool_perf[tool_perf['tool_name'].str.contains('transfer|human', case=False, na=False)]
-            comm_tools = tool_perf[tool_perf['tool_name'].str.contains('send|message|communicate', case=False, na=False)]
+        if not tool_perf.empty:
+            
+            # Tool usage pie chart - group small slices for better visibility
+            # Sort by total calls descending
+            tool_perf_sorted = tool_perf.sort_values('total_calls', ascending=False)
 
-            categories = []
-            values = []
-            colors = []
+            # Group tools with < 3% into "Other Tools"
+            total_calls = tool_perf_sorted['total_calls'].sum()
+            threshold = total_calls * 0.03  # 3% threshold
 
-            if not transfer_tools.empty:
-                categories.extend(transfer_tools['tool_name'].tolist())
-                values.extend(transfer_tools['total_calls'].tolist())
-                colors.extend(['#007bff'] * len(transfer_tools))
+            major_tools = tool_perf_sorted[tool_perf_sorted['total_calls'] >= threshold]
+            minor_tools = tool_perf_sorted[tool_perf_sorted['total_calls'] < threshold]
 
-            if not comm_tools.empty:
-                categories.extend(comm_tools['tool_name'].tolist())
-                values.extend(comm_tools['total_calls'].tolist())
-                colors.extend(['#28a745'] * len(comm_tools))
+            labels = major_tools['tool_name'].tolist()
+            values = major_tools['total_calls'].tolist()
 
-            if categories:
-                fig.add_trace(
-                    go.Bar(x=categories, y=values, marker_color=colors,
-                           name="Communication Tools"),
-                    row=1, col=2
-                )
+            if not minor_tools.empty:
+                labels.append('Other Tools')
+                values.append(minor_tools['total_calls'].sum())
 
-        # Tool transition patterns
-        if not sequence_analysis.empty:
-            top_transitions = sequence_analysis.head(10)
             fig.add_trace(
-                go.Scatter(
-                    x=list(range(len(top_transitions))),
-                    y=top_transitions['count'],
-                    mode='markers+lines',
-                    marker=dict(size=8, color='#ff6b6b'),
-                    name="Transition Frequency"
+                go.Pie(
+                    labels=labels,
+                    values=values,
+                    name="Tool Usage",
+                    textinfo='label+percent',
+                    textposition='auto',
+                    hovertemplate='<b>%{label}</b><br>' +
+                                  'Calls: %{value}<br>' +
+                                  'Percentage: %{percent}<extra></extra>'
                 ),
-                row=2, col=1
+                row=1, col=2
             )
 
-        # Execution efficiency gauge
-        execution_timespan = summary.get('execution_timespan', 1)
-        total_execution_time = summary.get('total_execution_time', 0)
-        efficiency = (total_execution_time / execution_timespan * 100) if execution_timespan > 0 else 0
 
-        fig.add_trace(
-            go.Indicator(
-                mode="gauge+number+delta",
-                value=efficiency,
-                domain={'x': [0, 1], 'y': [0, 1]},
-                title={'text': "Efficiency %"},
-                gauge={
-                    'axis': {'range': [None, 100]},
-                    'bar': {'color': "#4A90E2"},
-                    'steps': [
-                        {'range': [0, 25], 'color': "#FFF0F0"},
-                        {'range': [25, 50], 'color': "#FFF8E7"},
-                        {'range': [50, 75], 'color': "#F0FFF4"},
-                        {'range': [75, 100], 'color': "#E8F5E8"}
-                    ],
-                    'threshold': {
-                        'line': {'color': "#E74C3C", 'width': 2},
-                        'thickness': 0.75,
-                        'value': 10
-                    }
-                }
-            ),
-            row=2, col=2
+        fig.update_layout(
+            height=400,
+            showlegend=False,
+            title_text="Communication Analysis: Tool Usage & Transitions"
         )
-
-        fig.update_layout(height=800, title_text="Communication vs Tool Call Analysis")
         return fig
 
     def _create_task_analysis_plot(self, summary, tool_perf, state_analysis):
-        """Create a plot showing task success correlation with complexity."""
+        """Create a plot showing tool complexity and state operations."""
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
 
         fig = make_subplots(
-            rows=1, cols=3,
-            subplot_titles=("Task Success Overview", "Complexity vs Success", "State Operations Impact"),
-            specs=[[{"type": "indicator"}, {"type": "scatter"}, {"type": "bar"}]]
+            rows=1, cols=2,
+            subplot_titles=("Tool Usage Complexity", "State Operations Impact"),
+            specs=[[{"type": "scatter"}, {"type": "bar"}]],
+            horizontal_spacing=0.15
         )
 
-        # Task success gauge
-        task_success_rate = summary.get('task_success_rate', 0)
-        fig.add_trace(
-            go.Indicator(
-                mode="gauge+number",
-                value=task_success_rate * 100,
-                title={'text': "Task Success Rate"},
-                gauge={
-                    'axis': {'range': [None, 100]},
-                    'bar': {'color': "#4A90E2"},
-                    'steps': [
-                        {'range': [0, 40], 'color': "#FFF0F0"},
-                        {'range': [40, 70], 'color': "#FFF8E7"},
-                        {'range': [70, 100], 'color': "#F0FFF4"}
-                    ],
-                    'threshold': {
-                        'line': {'color': "#E74C3C", 'width': 2},
-                        'thickness': 0.75,
-                        'value': 80
-                    }
-                }
-            ),
-            row=1, col=1
-        )
-
-        # Complexity vs success scatter
+        # Complexity scatter (tool calls vs success rate)
         if not tool_perf.empty:
+            # Scale marker sizes to be visible (min 10, max 50)
+            marker_sizes = (tool_perf['total_calls'] / tool_perf['total_calls'].max() * 40 + 10).tolist()
+
             fig.add_trace(
                 go.Scatter(
-                    x=tool_perf['total_calls'],
-                    y=tool_perf['success_rate'],
+                    x=tool_perf['total_calls'].tolist(),
+                    y=tool_perf['success_rate'].tolist(),
                     mode='markers+text',
                     marker=dict(
-                        size=tool_perf['total_calls'] / 2,
-                        color=tool_perf['state_change_rate'],
+                        size=marker_sizes,
+                        color=tool_perf['state_change_rate'].tolist(),
                         colorscale='Viridis',
                         showscale=True,
-                        colorbar=dict(title="State Change Rate")
+                        colorbar=dict(
+                            title="State<br>Change<br>Rate",
+                            x=0.47,
+                            len=0.9,
+                            thickness=15,
+                            yanchor='middle',
+                            y=0.5
+                        ),
+                        line=dict(width=1, color='white')
                     ),
-                    text=tool_perf['tool_name'],
-                    name="Tools"
+                    text=tool_perf['tool_name'].tolist(),
+                    textposition='top center',
+                    textfont=dict(size=8),
+                    name="Tools",
+                    showlegend=False
                 ),
-                row=1, col=2
+                row=1, col=1
             )
 
             # State operations impact
@@ -3136,11 +3761,11 @@ class LogVisualizer:
                 if categories:
                     fig.add_trace(
                         go.Bar(x=categories, y=success_rates, marker_color=colors,
-                               name="Success by Type"),
-                        row=1, col=3
+                               name="Success by Type", orientation='v', showlegend=False),
+                        row=1, col=2
                     )
 
-        fig.update_layout(height=400, title_text="Task & Simulation Success Analysis")
+        fig.update_layout(height=400, title_text="Simulation & Complexity Analysis", showlegend=False)
         return fig
 
     def _create_execution_patterns_plot(self, summary, tool_perf, sequence_analysis):
@@ -3164,7 +3789,8 @@ class LogVisualizer:
                     y=tool_perf['total_calls'],
                     marker_color=tool_perf['success_rate'],
                     marker_colorscale='RdYlGn',
-                    name="Call Frequency"
+                    name="Call Frequency",
+                    orientation='v'
                 ),
                 row=1, col=1
             )
@@ -3178,18 +3804,29 @@ class LogVisualizer:
                     x=['Most Used Tool', 'Other Tools'],
                     y=[most_used_pct, 100 - most_used_pct],
                     marker_color=['#ff6b6b', '#4ecdc4'],
-                    name="Usage Distribution"
+                    name="Usage Distribution",
+                    orientation='v'
                 ),
                 row=2, col=1
             )
 
             # Performance distribution histogram
+            # Use fewer bins for small datasets and add explicit binning
+            num_tools = len(tool_perf)
+            nbins = min(5, num_tools)  # Use fewer bins for small datasets
+
             fig.add_trace(
                 go.Histogram(
-                    x=tool_perf['success_rate'],
-                    nbinsx=10,
+                    x=tool_perf['success_rate'].tolist(),
+                    nbinsx=nbins,
                     marker_color='#007bff',
-                    name="Success Rate Distribution"
+                    name="Success Rate Distribution",
+                    autobinx=False,
+                    xbins=dict(
+                        start=0,
+                        end=1,
+                        size=0.2  # 5 bins: 0-0.2, 0.2-0.4, 0.4-0.6, 0.6-0.8, 0.8-1.0
+                    )
                 ),
                 row=2, col=2
             )
@@ -3227,7 +3864,7 @@ class LogVisualizer:
 
         html = f"""
         <div class="key-metric">
-            Overall Performance Assessment: {success_rate:.1%} ({self._get_performance_category(success_rate)})
+            Overall Success Rate: {success_rate:.1%}
         </div>
         """
 
@@ -3238,21 +3875,12 @@ class LogVisualizer:
             if not state_changing.empty and not read_only.empty:
                 state_avg = state_changing['success_rate'].mean()
                 read_avg = read_only['success_rate'].mean()
-                performance_drop = read_avg - state_avg
 
-                if performance_drop > 0.2:
-                    html += f"""
-                    <div class="performance-issue">
-                        <strong>Critical Performance Drop:</strong> {performance_drop:.0%}pp drop when state changes are required
-                        ({read_avg:.1%} → {state_avg:.1%} success)
-                    </div>
-                    """
-                else:
-                    html += f"""
-                    <div class="performance-good">
-                        <strong>Consistent Performance:</strong> State-changing and read-only operations show similar success rates
-                    </div>
-                    """
+                html += f"""
+                <div class="key-metric">
+                    State-changing: {state_avg:.1%} | Read-only: {read_avg:.1%}
+                </div>
+                """
 
         return html
 
@@ -3316,28 +3944,10 @@ class LogVisualizer:
         return html
 
     def _generate_task_analysis_html(self, summary, tool_perf, state_analysis):
-        """Generate HTML content for task analysis."""
+        """Generate HTML content for simulation and complexity analysis."""
         total_sims = summary.get('total_simulations', 0)
-        task_success_rate = summary.get('task_success_rate', 0)
 
-        html = f"""
-        <div class="key-metric">
-            Task Completion: {task_success_rate:.1%} success rate across {total_sims} simulations
-        </div>
-        """
-
-        if task_success_rate >= 0.8:
-            html += f"""
-            <div class="performance-good">
-                <strong>Excellent Task Performance:</strong> System demonstrates high reliability
-            </div>
-            """
-        elif task_success_rate < 0.5:
-            html += f"""
-            <div class="performance-issue">
-                <strong>Critical Task Issues:</strong> Low success rate requires immediate attention
-            </div>
-            """
+        html = ""
 
         # Complexity analysis
         if not tool_perf.empty and total_sims > 0:
@@ -3358,13 +3968,11 @@ class LogVisualizer:
                     state_calls = state_changing['total_calls'].sum()
                     state_call_rate = (state_calls / total_tool_calls * 100) if total_tool_calls > 0 else 0
 
-                    if task_success_rate < 0.5 and state_call_rate > 20:
-                        html += f"""
-                        <div class="performance-issue">
-                            <strong>State Change Correlation:</strong> High state-change rate ({state_call_rate:.1f}%)
-                            with low success suggests action execution issues
-                        </div>
-                        """
+                    html += f"""
+                    <div class="key-metric">
+                        State-changing operations: {state_call_rate:.1f}% of all tool calls
+                    </div>
+                    """
 
         return html
 
@@ -3420,7 +4028,7 @@ class LogVisualizer:
 
         return html
 
-    def _generate_tool_performance_deep_dive_html(self, tool_perf, failures):
+    def _generate_tool_performance_deep_dive_html(self, tool_perf, failures, summary):
         """Generate HTML content for tool performance deep dive."""
         if tool_perf.empty:
             return "<p>No tool performance data available.</p>"
@@ -3440,7 +4048,7 @@ class LogVisualizer:
                 <ul>
             """
             for _, tool in excellent_tools.head(5).iterrows():
-                html += f"<li><strong>{tool['tool_name']}</strong>: {tool['success_rate']:.1%} success, {tool['avg_execution_time']*1000:.2f}ms avg time</li>"
+                html += f"<li><strong>{tool['tool_name']}</strong>: {tool['success_rate']:.1%} success, {int(tool['total_calls'])} calls</li>"
             html += "</ul></div>"
 
         if not poor_tools.empty:
@@ -3450,24 +4058,56 @@ class LogVisualizer:
                 <ul>
             """
             for _, tool in poor_tools.head(5).iterrows():
-                html += f"<li><strong>{tool['tool_name']}</strong>: {tool['success_rate']:.1%} success, {tool['avg_execution_time']*1000:.2f}ms avg time</li>"
+                html += f"<li><strong>{tool['tool_name']}</strong>: {tool['success_rate']:.1%} success, {int(tool['total_calls'])} calls</li>"
             html += "</ul></div>"
 
-        # High-impact poor performers
+        # High-impact poor performers with proper impact score and failure types
         high_usage_poor = poor_tools[poor_tools['total_calls'] >= 5]
-        if not high_usage_poor.empty:
+        if not high_usage_poor.empty and not failures.empty:
+            # Calculate proper impact scores
+            total_simulations = summary.get('total_simulations', 1)
+            failures_with_impact = failures.copy()
+            failures_with_impact['impact_score'] = (
+                failures_with_impact['failure_rate'] *
+                failures_with_impact.get('simulations_affected', 0) /
+                max(total_simulations, 1) * 100
+            )
+
+            # Get detailed failure breakdown for failure types
+            detailed_failures = self.analyzer.get_detailed_failure_breakdown()
+
             html += """
             <h3>🚨 Critical Performance Issues</h3>
             <div class="performance-issue">
                 <h4>High-Usage Poor Performers</h4>
             """
             for _, tool in high_usage_poor.iterrows():
+                tool_name = tool['tool_name']
                 failed_calls = int(tool['total_calls'] * (1 - tool['success_rate']))
-                impact_score = tool['total_calls'] * (1 - tool['success_rate'])
+
+                # Get impact score from failures data if available
+                tool_failures = failures_with_impact[failures_with_impact['tool_name'] == tool_name]
+                if not tool_failures.empty:
+                    impact_score = tool_failures.iloc[0]['impact_score']
+                    sims_affected = tool_failures.iloc[0].get('simulations_affected', 'N/A')
+                else:
+                    impact_score = 0
+                    sims_affected = 'N/A'
+
+                # Get failure type if available
+                failure_type_info = ""
+                if not detailed_failures.empty and 'failure_category' in detailed_failures.columns:
+                    tool_failure_types = detailed_failures[detailed_failures['tool_name'] == tool_name]
+                    if not tool_failure_types.empty:
+                        ftype = tool_failure_types['failure_category'].mode()[0]
+                        formatted_type = ftype.replace('_', ' ').title()
+                        severity = "critical" if ftype == "never_called" else ("high" if ftype == "called_but_no_match" else "medium")
+                        failure_type_info = f" <em>({formatted_type}, {severity} severity)</em>"
+
                 html += f"""
-                <p><strong>{tool['tool_name']}</strong>: {tool['success_rate']:.1%} success rate,
+                <p><strong>{tool_name}</strong>{failure_type_info}: {tool['success_rate']:.1%} success rate,
                 {int(tool['total_calls'])} total calls, {failed_calls} failed calls,
-                Impact Score: {impact_score:.1f}</p>
+                Impact Score: {impact_score:.1f}, Simulations: {sims_affected}</p>
                 """
             html += "</div>"
 
@@ -3483,4 +4123,1280 @@ class LogVisualizer:
             return "concerning"
         else:
             return "critical"
+
+    def create_comprehensive_simulation_report_html(self, output_path: str) -> str:
+        """
+        Create comprehensive simulation report with collapsible tasks,
+        full message logs, and action check details with diffs.
+
+        Args:
+            output_path: Path to save the HTML report
+
+        Returns:
+            Path to the generated report
+        """
+        import json
+        from datetime import datetime
+        from pathlib import Path
+
+        # Get simulation data with action check analysis
+        sim_data = self.analyzer.get_simulation_report_data()
+
+        if not sim_data:
+            print("No simulation data available for report")
+            return output_path
+
+        # Calculate summary stats
+        summary = self.analyzer.get_summary_metrics()
+        total_sims = len(sim_data)
+        successful_sims = sum(1 for s in sim_data if s['reward'] > 0)
+        task_success_rate = (successful_sims / total_sims * 100) if total_sims > 0 else 0
+
+        # Count action check stats
+        total_action_checks = sum(len(s['action_checks']) for s in sim_data)
+        failed_action_checks = sum(
+            sum(1 for ac in s['action_checks'] if not ac['action_match'])
+            for s in sim_data
+        )
+        action_success_rate = ((total_action_checks - failed_action_checks) / total_action_checks * 100) if total_action_checks > 0 else 0
+
+        # Build HTML
+        html = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Simulation Report</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }}
+
+        .container {{
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }}
+
+        .header h1 {{
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+            color: white;
+        }}
+
+        .header .subtitle {{
+            font-size: 1.1em;
+            opacity: 0.9;
+        }}
+
+        .summary-stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+
+        .stat-card {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }}
+
+        .stat-card.success {{ background: #52c41a; }}
+        .stat-card.error {{ background: #ff4d4f; }}
+        .stat-card.info {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+
+        .stat-value {{ font-size: 2.2em; font-weight: bold; margin-bottom: 5px; }}
+        .stat-label {{ font-size: 0.9em; opacity: 0.9; }}
+
+        .controls {{ margin-bottom: 20px; }}
+        .btn {{ padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .btn:hover {{ background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%); }}
+
+        .task-section {{
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }}
+
+        .task-header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }}
+
+        .task-header:hover {{ background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%); }}
+        .task-header.failed {{ background: #ff4d4f; }}
+        .task-header.failed:hover {{ background: #ff7875; }}
+
+        .task-title {{ font-size: 1.2em; font-weight: 600; }}
+        .expand-icon {{ transition: transform 0.3s; font-size: 1.5em; }}
+        .task-section.expanded .expand-icon {{ transform: rotate(180deg); }}
+
+        .task-content {{
+            display: none;
+            padding: 20px;
+            background: #fafafa;
+        }}
+
+        .task-section.expanded .task-content {{ display: block; }}
+
+        .section-title {{
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 20px 0 15px 0;
+            padding-left: 15px;
+            border-left: 4px solid #667eea;
+        }}
+
+        .detail-grid {{
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 10px 20px;
+            margin-bottom: 20px;
+        }}
+
+        .detail-label {{ font-weight: 600; color: #7f8c8d; }}
+        .detail-value {{ color: #2c3e50; }}
+
+        .action-failure {{
+            background: white;
+            border: 2px solid #e74c3c;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 15px 0;
+        }}
+
+        .action-success {{
+            background: white;
+            border: 2px solid #27ae60;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+        }}
+
+        .expected-section, .actual-section {{
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+        }}
+
+        .expected-section {{ background: #fff3cd; border-left: 4px solid #ffc107; }}
+        .actual-section {{ background: #f8d7da; border-left: 4px solid #e74c3c; }}
+
+        .code-block {{
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin: 8px 0;
+        }}
+
+        .diff-match {{ color: #27ae60; margin: 5px 0; }}
+        .diff-different {{ color: #e74c3c; margin: 5px 0; }}
+        .diff-missing {{ color: #f39c12; margin: 5px 0; }}
+
+        .similarity-badge {{
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }}
+
+        .similarity-high {{ background: #d5f4e6; color: #27ae60; }}
+        .similarity-medium {{ background: #ffeaa7; color: #d68910; }}
+        .similarity-low {{ background: #fab1a0; color: #e74c3c; }}
+
+        .message-log {{
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }}
+
+        .message {{
+            margin: 10px 0;
+            padding: 12px;
+            border-left: 4px solid #3498db;
+            background: #f9f9f9;
+        }}
+
+        .message.assistant {{ border-left-color: #3498db; }}
+        .message.user {{ border-left-color: #27ae60; }}
+        .message.tool {{ border-left-color: #9b59b6; }}
+
+        .message-role {{ font-weight: bold; margin-bottom: 8px; color: #2c3e50; }}
+        .message-content {{ white-space: pre-wrap; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🔍 Comprehensive Simulation Report</h1>
+            <div class="subtitle">
+                Detailed task-by-task analysis with action checks and message logs<br>
+                Generated on {datetime.now().strftime("%B %d, %Y at %I:%M %p")}
+            </div>
+        </div>
+
+        <div class="summary-stats">
+            <div class="stat-card info">
+                <div class="stat-value">{total_sims}</div>
+                <div class="stat-label">Total Simulations</div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-value">{task_success_rate:.1f}%</div>
+                <div class="stat-label">Task Success Rate</div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-value">{total_action_checks}</div>
+                <div class="stat-label">Action Checks</div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-value">{action_success_rate:.1f}%</div>
+                <div class="stat-label">Action Success Rate</div>
+            </div>
+        </div>
+
+        <!-- Action Check Failures Summary Table -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e74c3c; cursor: pointer; user-select: none;"
+                onclick="toggleSection('action-failures-section')">
+                <span id="action-failures-toggle">▶</span> 🚨 Action Check Failures Summary
+            </h2>
+            <div id="action-failures-section" style="display: none;">
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Task ID</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Trial</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Task Success</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Action</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Tool</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Failure Type</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Similarity</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+        # Collect all action check failures
+        action_failure_rows = []
+        for sim in sim_data:
+            task_id = sim.get('task_id', 'N/A')
+            trial = sim.get('trial', 'N/A')
+            task_success = '✅' if sim['reward'] > 0 else '❌'
+            task_success_class = 'success' if sim['reward'] > 0 else 'failed'
+
+            for ac in sim['action_checks']:
+                if not ac['action_match']:
+                    action = ac['action']
+                    detailed = ac.get('detailed_analysis', {})
+                    closest = detailed.get('closest_match')
+
+                    failure_type = 'Never Called'
+                    similarity = 'N/A'
+                    similarity_class = 'similarity-low'
+
+                    if closest:
+                        failure_type = 'Called with Different Args'
+                        sim_val = closest.get('similarity', 0)
+                        similarity = f"{sim_val:.0%}"
+                        if sim_val >= 0.8:
+                            similarity_class = 'similarity-high'
+                        elif sim_val >= 0.5:
+                            similarity_class = 'similarity-medium'
+                        else:
+                            similarity_class = 'similarity-low'
+
+                    action_failure_rows.append({
+                        'task_id': task_id,
+                        'trial': trial,
+                        'task_success': task_success,
+                        'task_success_class': task_success_class,
+                        'action_name': action.get('action_id', 'N/A'),
+                        'tool_name': action.get('name', 'N/A'),
+                        'failure_type': failure_type,
+                        'similarity': similarity,
+                        'similarity_class': similarity_class
+                    })
+
+        # Generate table rows
+        for i, row in enumerate(action_failure_rows[:100]):  # Limit to first 100 for performance
+            row_class = 'background: #fef2f2;' if row['task_success_class'] == 'failed' else 'background: #f0fdf4;'
+            html += f"""
+                    <tr style="{row_class} border-bottom: 1px solid #e1e8ed;">
+                        <td style="padding: 10px 12px;"><code>{row['task_id']}</code></td>
+                        <td style="padding: 10px 12px;">{row['trial']}</td>
+                        <td style="padding: 10px 12px; text-align: center;">{row['task_success']}</td>
+                        <td style="padding: 10px 12px; font-size: 0.9em;">{row['action_name']}</td>
+                        <td style="padding: 10px 12px;"><code>{row['tool_name']}</code></td>
+                        <td style="padding: 10px 12px;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; background: #fee2e2; color: #991b1b;">
+                                {row['failure_type']}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span class="{row['similarity_class']}" style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">
+                                {row['similarity']}
+                            </span>
+                        </td>
+                    </tr>
+"""
+
+        html += """
+                </tbody>
+            </table>
+"""
+
+        if len(action_failure_rows) > 100:
+            html += f"""
+            <p style="color: #64748b; font-style: italic; margin-top: 10px;">
+                Showing first 100 of {len(action_failure_rows)} total action check failures.
+                See individual task details below for complete information.
+            </p>
+"""
+
+        html += """
+            </div>
+        </div>
+
+        <!-- Error Clustering Section -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #e67e22; cursor: pointer; user-select: none;"
+                onclick="toggleSection('error-clustering-section')">
+                <span id="error-clustering-toggle">▶</span> 🔍 Error Pattern Clustering
+            </h2>
+            <div id="error-clustering-section" style="display: none;">
+"""
+
+        # Cluster errors by pattern
+        from collections import Counter, defaultdict
+        error_patterns = Counter()
+        error_pattern_details = defaultdict(list)
+
+        for sim in sim_data:
+            task_id = sim.get('task_id', 'N/A')
+            trial = sim.get('trial', 'N/A')
+            sim_id = f"Task {task_id} | Trial {trial}"
+
+            # Look for tool execution errors in messages
+            for msg in sim.get('messages', []):
+                if msg.get('role') == 'tool' and (msg.get('tool_call_status') == 'error' or msg.get('error') is True):
+                    content = str(msg.get('content', ''))
+                    tool_name = msg.get('tool_name', msg.get('requestor', 'unknown'))
+
+                    # Extract error type
+                    if 'Error:' in content:
+                        import re
+                        error_match = re.search(r'Error: (.+?)(?:\\n|$)', content)
+                        if error_match:
+                            error_msg = error_match.group(1).strip()[:60]
+                            pattern_key = f"{tool_name}: {error_msg}"
+                        else:
+                            pattern_key = f"{tool_name}: GenericError"
+                    else:
+                        pattern_key = f"{tool_name}: GenericError"
+
+                    error_patterns[pattern_key] += 1
+                    error_pattern_details[pattern_key].append({
+                        'sim_id': sim_id,
+                        'sample': content[:120]
+                    })
+
+        if error_patterns:
+            html += """
+            <div style="margin-bottom: 20px; padding: 15px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px;">
+                <strong style="color: #ea580c;">📊 Common Error Patterns:</strong>
+                <div style="margin-top: 10px;">
+"""
+            for pattern, count in error_patterns.most_common(5):
+                html += f"""
+                    <div style="margin: 8px 0; padding: 10px; background: white; border-radius: 4px; border-left: 3px solid #f97316;">
+                        <strong>{pattern}</strong>: {count} occurrence(s)
+                        <br>
+                        <em style="color: #64748b; font-size: 0.9em;">Sample: {error_pattern_details[pattern][0]['sample']}</em>
+                    </div>
+"""
+            html += """
+                </div>
+            </div>
+"""
+
+            # Error details table
+            html += """
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Pattern</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Count</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Affected Simulations</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+            for pattern, count in error_patterns.most_common(20):  # Show top 20
+                affected_sims = ', '.join([d['sim_id'] for d in error_pattern_details[pattern][:3]])
+                if len(error_pattern_details[pattern]) > 3:
+                    affected_sims += f", ... (+{len(error_pattern_details[pattern]) - 3} more)"
+
+                html += f"""
+                    <tr style="background: #fff7ed; border-bottom: 1px solid #fdba74;">
+                        <td style="padding: 10px 12px;"><code style="font-size: 0.85em;">{pattern}</code></td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; background: #fed7aa; color: #9a3412; font-weight: 600;">
+                                {count}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">{affected_sims}</td>
+                    </tr>
+"""
+
+            html += """
+                </tbody>
+            </table>
+"""
+        else:
+            html += """
+            <p style="color: #64748b; font-style: italic;">No execution errors found in tool messages.</p>
+"""
+
+        html += """
+            </div>
+        </div>
+
+        <!-- Full Error List Section -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #dc2626; cursor: pointer; user-select: none;"
+                onclick="toggleSection('full-error-list-section')">
+                <span id="full-error-list-toggle">▶</span> 📋 Complete Error List
+            </h2>
+            <div id="full-error-list-section" style="display: none;">
+"""
+
+        # Collect all errors with full details
+        all_errors = []
+        for sim in sim_data:
+            task_id = sim.get('task_id', 'N/A')
+            trial = sim.get('trial', 'N/A')
+            sim_id = f"Task {task_id} | Trial {trial}"
+
+            # Look for tool execution errors in messages
+            for msg_idx, msg in enumerate(sim.get('messages', [])):
+                if msg.get('role') == 'tool' and (msg.get('tool_call_status') == 'error' or msg.get('error') is True):
+                    content = str(msg.get('content', ''))
+                    tool_name = msg.get('tool_name', msg.get('requestor', 'unknown'))
+
+                    # Extract error type
+                    if 'Error:' in content:
+                        import re
+                        error_match = re.search(r'Error: (.+?)(?:\\n|$)', content)
+                        if error_match:
+                            error_msg = error_match.group(1).strip()[:60]
+                            error_type = f"{tool_name}: {error_msg}"
+                        else:
+                            error_type = f"{tool_name}: GenericError"
+                    else:
+                        error_type = f"{tool_name}: GenericError"
+
+                    all_errors.append({
+                        'sim_id': sim_id,
+                        'task_id': task_id,
+                        'trial': trial,
+                        'msg_index': msg_idx,
+                        'tool_name': tool_name,
+                        'error_type': error_type,
+                        'content': content,
+                        'timestamp': msg.get('timestamp', 'N/A')
+                    })
+
+        if all_errors:
+            html += f"""
+            <div style="margin-bottom: 20px; padding: 15px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;">
+                <strong style="color: #dc2626;">📊 Total Errors Found: {len(all_errors)}</strong>
+                <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">
+                    This section shows all tool execution errors encountered during simulations.
+                </p>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white;">
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Simulation</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Tool Name</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Type</th>
+                        <th style="padding: 12px; text-align: center; font-weight: 600;">Message Index</th>
+                        <th style="padding: 12px; text-align: left; font-weight: 600;">Error Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+            for idx, err in enumerate(all_errors):
+                # Alternate row colors
+                bg_color = '#ffffff' if idx % 2 == 0 else '#fef2f2'
+
+                # Truncate error content for display
+                error_display = err['content'].replace('\\n', ' ')[:200]
+                if len(err['content']) > 200:
+                    error_display += '...'
+
+                # Escape HTML special characters
+                error_display = error_display.replace('<', '&lt;').replace('>', '&gt;')
+
+                html += f"""
+                    <tr style="background: {bg_color}; border-bottom: 1px solid #fca5a5;">
+                        <td style="padding: 10px 12px;">
+                            <strong>{err['sim_id']}</strong>
+                        </td>
+                        <td style="padding: 10px 12px;">
+                            <code style="background: #fee2e2; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; color: #991b1b;">
+                                {err['tool_name']}
+                            </code>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 250px;">
+                                {err['error_type']}
+                            </div>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="display: inline-block; padding: 4px 8px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600; font-size: 0.85em;">
+                                #{err['msg_index']}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 0.85em;">
+                            <div style="word-wrap: break-word; max-width: 400px; font-family: monospace; background: #f9fafb; padding: 8px; border-radius: 4px; border-left: 3px solid #dc2626;">
+                                {error_display}
+                            </div>
+                        </td>
+                    </tr>
+"""
+
+            html += """
+                </tbody>
+            </table>
+"""
+        else:
+            html += """
+            <p style="color: #64748b; font-style: italic;">No errors found in tool messages.</p>
+"""
+
+        html += """
+            </div>
+        </div>
+"""
+
+        # Add sequence comparison summary section if ground truth is available (BEFORE filters)
+        task_sequence_comparisons = self.analyzer.get_task_sequence_comparisons()
+        if task_sequence_comparisons:
+            html += """
+        <!-- Sequence Comparison Summary -->
+        <div style="margin: 30px 0;">
+            <h2 style="color: #2c3e50; margin-bottom: 20px; padding-left: 15px; border-left: 4px solid #3b82f6; cursor: pointer; user-select: none;"
+                onclick="toggleSection('sequence-summary-section')">
+                <span id="sequence-summary-toggle">▶</span> 📊 Sequence Comparison Summary
+            </h2>
+            <div id="sequence-summary-section" style="display: none;">
+                <div style="margin-bottom: 20px; padding: 15px; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 8px;">
+                    <strong style="color: #1e40af;">📋 Overview:</strong>
+                    <p style="color: #64748b; font-size: 0.9em; margin-top: 5px;">
+                        This table compares expected action sequences (from ground truth) against actual executed sequences for each task.
+                    </p>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white;">
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Task ID</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Trial</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Status</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Seq Order</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Expected</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">Actual</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">✅ Match</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">❌ Miss</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">⚠️ Extra</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600;">🔧 Arg Err</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+"""
+
+            for comp in task_sequence_comparisons:
+                # Determine status icon and color
+                status_icon = '✅' if comp['task_success'] else '❌'
+                status_color = '#27ae60' if comp['task_success'] else '#e74c3c'
+
+                # Determine sequence order icon and color
+                order_icon = '✅' if comp['sequence_order_match'] else '⚠️'
+                order_color = '#27ae60' if comp['sequence_order_match'] else '#f39c12'
+
+                # Row background color
+                row_idx = task_sequence_comparisons.index(comp)
+                bg_color = '#ffffff' if row_idx % 2 == 0 else '#f8fafc'
+
+                # Format sequences for display
+                expected_seq = comp['expected_sequence']
+                actual_seq = comp['actual_sequence']
+                # Filter out None values and convert to strings
+                expected_seq_filtered = [str(s) for s in expected_seq if s is not None] if expected_seq else []
+                actual_seq_filtered = [str(s) for s in actual_seq if s is not None] if actual_seq else []
+                expected_seq_str = ' → '.join(expected_seq_filtered) if expected_seq_filtered else '(none)'
+                actual_seq_str = ' → '.join(actual_seq_filtered) if actual_seq_filtered else '(none)'
+
+                # Get trial
+                trial = comp.get('trial', 'N/A')
+
+                html += f"""
+                        <tr style="background: {bg_color}; border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <strong style="font-size: 1.1em; color: #2c3e50;">#{comp['task_id']}</strong>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; background: #f3f4f6; color: #374151; font-weight: 600; font-size: 0.9em;">
+                                    {trial}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="font-size: 1.5em;">{status_icon}</span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="font-size: 1.5em;">{order_icon}</span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #dbeafe; color: #1e40af; font-weight: 600;">
+                                    {comp['expected_count']}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #fef3c7; color: #92400e; font-weight: 600;">
+                                    {comp['actual_count']}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #d1fae5; color: #065f46; font-weight: 600;">
+                                    {len(comp['matched_actions'])}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #fee2e2; color: #991b1b; font-weight: 600;">
+                                    {len(comp['missing_actions'])}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #fef3c7; color: #92400e; font-weight: 600;">
+                                    {len(comp['extra_actions'])}
+                                </span>
+                            </td>
+                            <td style="padding: 10px 12px; text-align: center;">
+                                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #dbeafe; color: #1e40af; font-weight: 600;">
+                                    {len(comp['argument_mismatches'])}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr style="background: {bg_color};">
+                            <td colspan="10" style="padding: 20px; border-bottom: 2px solid #cbd5e1;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                    <div>
+                                        <div style="font-weight: 600; color: #1e40af; margin-bottom: 10px; font-size: 1.05em;">
+                                            📋 Expected Sequence:
+                                        </div>
+                                        <div style="padding: 15px; background: #eff6ff; border: 1px solid #3b82f6; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.9em; word-wrap: break-word;">
+                                            {expected_seq_str}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; color: #92400e; margin-bottom: 10px; font-size: 1.05em;">
+                                            🔧 Actual Sequence:
+                                        </div>
+                                        <div style="padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 0.9em; word-wrap: break-word;">
+                                            {actual_seq_str}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+"""
+
+            html += """
+                    </tbody>
+                </table>
+
+                <div style="margin-top: 15px; padding: 12px; background: #f1f5f9; border-radius: 6px; font-size: 0.9em; color: #475569;">
+                    <strong>Legend:</strong>
+                    <span style="margin-left: 10px;">✅ Success/Match</span>
+                    <span style="margin-left: 10px;">❌ Failure/Missing</span>
+                    <span style="margin-left: 10px;">⚠️ Wrong Order/Extra</span>
+                    <span style="margin-left: 10px;">🔧 Argument Errors</span>
+                </div>
+            </div>
+        </div>
+"""
+
+        # Add filter controls and task counter
+        html += """
+        <div class="controls">
+            <button class="btn" onclick="toggleAll()">Expand/Collapse All</button>
+            <button class="btn" onclick="showTaskFailedOnly()">Show Task Failed Only</button>
+            <button class="btn" onclick="showActionFailedOnly()">Show Action Failed Only</button>
+            <button class="btn" onclick="showCalledWithDiff()">Show Called w/ Diff Only</button>
+            <button class="btn" onclick="showAll()">Show All</button>
+        </div>
+
+        <div style="margin: 15px 0; padding: 15px; background: #f8f9ff; border: 1px solid #e1e8ed; border-radius: 8px; border-left: 4px solid #667eea;">
+            <span style="font-weight: 600; color: #2c3e50;">Showing:</span>
+            <span id="task-counter" style="font-size: 1.1em; font-weight: bold; color: #667eea;">0 / 0 tasks</span>
+        </div>
+
+        <div id="simulations">
+"""
+
+        # Generate task sections
+        for idx, sim in enumerate(sim_data):
+            has_failures = any(not ac['action_match'] for ac in sim['action_checks'])
+
+            # Check if any failures have the tool actually called (not "never_called")
+            has_called_failures = False
+            for ac in sim['action_checks']:
+                if not ac['action_match'] and ac.get('detailed_analysis'):
+                    category = ac['detailed_analysis'].get('category', 'unknown')
+                    if category != 'never_called':
+                        has_called_failures = True
+                        break
+
+            # Check if task failed (reward == 0)
+            task_failed = sim['reward'] == 0
+
+            header_class = 'task-header failed' if has_failures else 'task-header'
+            status_icon = '❌' if task_failed else '✅'
+
+            failed_checks = sum(1 for ac in sim['action_checks'] if not ac['action_match'])
+            total_checks = len(sim['action_checks'])
+
+            html += f"""
+        <div class="task-section" data-has-failures="{str(has_failures).lower()}" data-has-called-failures="{str(has_called_failures).lower()}" data-task-failed="{str(task_failed).lower()}" id="task-{idx}">
+            <div class="{header_class}">
+                <div class="task-title">{status_icon} Task {sim['task_id']} | Trial {sim['trial']}</div>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <span style="background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px;">
+                        Actions: {failed_checks}/{total_checks} Failed
+                    </span>
+                    <span class="expand-icon">▼</span>
+                </div>
+            </div>
+
+            <div class="task-content">
+                <div class="section-title">📋 Task Details</div>
+                <div class="detail-grid">
+                    <div class="detail-label">Task ID:</div>
+                    <div class="detail-value"><code>{sim['task_id']}</code></div>
+                    <div class="detail-label">Trial:</div>
+                    <div class="detail-value">{sim['trial']}</div>
+                    <div class="detail-label">Reward:</div>
+                    <div class="detail-value" style="color: {'#27ae60' if sim['reward'] > 0 else '#e74c3c'};">{sim['reward']:.2f}</div>
+                    <div class="detail-label">Duration:</div>
+                    <div class="detail-value">{sim['duration']:.2f}s</div>
+                    <div class="detail-label">Termination:</div>
+                    <div class="detail-value">{sim['termination_reason']}</div>
+"""
+
+            # Add agent and user costs if available
+            if sim.get('agent_cost') is not None:
+                html += f"""
+                    <div class="detail-label">Agent Cost:</div>
+                    <div class="detail-value">${sim['agent_cost']:.4f}</div>
+"""
+            if sim.get('user_cost') is not None:
+                html += f"""
+                    <div class="detail-label">User Cost:</div>
+                    <div class="detail-value">${sim['user_cost']:.4f}</div>
+"""
+
+            if 'task_description' in sim:
+                html += f"""
+                    <div class="detail-label">Description:</div>
+                    <div class="detail-value">{sim['task_description']}</div>
+"""
+
+            html += """
+                </div>
+"""
+
+            # Add reward breakdown section
+            if sim.get('reward_breakdown'):
+                html += """
+                <div class="section-title">💰 Reward Breakdown</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+"""
+                breakdown = sorted(sim['reward_breakdown'].items())
+                for reward_type, reward_value in breakdown:
+                    html += f"""
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                        <span style="font-weight: 600; color: #2c3e50;">{reward_type}:</span>
+                        <span style="color: {'#27ae60' if reward_value > 0 else '#7f8c8d'};">{reward_value:.2f}</span>
+                    </div>
+"""
+                html += """
+                </div>
+"""
+
+            # Add DB check section
+            if sim.get('db_check') is not None:
+                db_check = sim['db_check']
+                status_icon = '✅' if db_check['db_match'] else '❌'
+                status_color = '#27ae60' if db_check['db_match'] else '#e74c3c'
+                html += f"""
+                <div class="section-title">🗄️ Database Check</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid {status_color};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 1.1em;"><strong>Status:</strong> {status_icon} {'Match' if db_check['db_match'] else 'No Match'}</span>
+                        <span style="font-weight: 600; color: {status_color};">Reward: {db_check['db_reward']:.2f}</span>
+                    </div>
+                </div>
+"""
+
+            # Add communication checks section
+            if sim.get('communicate_checks'):
+                html += """
+                <div class="section-title">💬 Communication Checks</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+"""
+                for i, check in enumerate(sim['communicate_checks']):
+                    status_icon = '✅' if check['met'] else '❌'
+                    status_color = '#27ae60' if check['met'] else '#e74c3c'
+                    html += f"""
+                    <div style="padding: 10px; margin: 8px 0; border-left: 4px solid {status_color}; background: #fafafa;">
+                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">
+                            {status_icon} Check {i}: {check['info']}
+                        </div>
+"""
+                    if check.get('justification'):
+                        html += f"""
+                        <div style="color: #7f8c8d; font-size: 0.9em; margin-left: 20px;">
+                            {check['justification']}
+                        </div>
+"""
+                    html += """
+                    </div>
+"""
+                html += """
+                </div>
+"""
+
+            # Add expected actions section (full list from task)
+            if sim.get('expected_actions'):
+                html += """
+                <div class="section-title">📝 Expected Actions (Ground Truth)</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+"""
+                for i, action in enumerate(sim['expected_actions']):
+                    html += f"""
+                    <div style="padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; background: #fafafa;">
+                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">
+                            {i + 1}. {action['action_id']} - <code>{action['name']}</code>
+                        </div>
+                        <div style="margin-left: 20px;">
+                            <strong>Arguments:</strong>
+                            <div class="code-block">{json.dumps(action['arguments'], indent=2)}</div>
+                        </div>
+                    </div>
+"""
+                html += """
+                </div>
+"""
+
+                # Add sequence comparison visualization if ground truth is available
+                task_sequence_comparison = self.analyzer.get_task_sequence_comparisons()
+                if task_sequence_comparison:
+                    # Find the comparison for this specific task
+                    task_comparison = next(
+                        (c for c in task_sequence_comparison if str(c['task_id']) == str(sim['task_id'])),
+                        None
+                    )
+
+                    if task_comparison:
+                        expected_seq = task_comparison['expected_sequence']
+                        actual_seq = task_comparison['actual_sequence']
+                        order_match = task_comparison['sequence_order_match']
+                        missing = task_comparison['missing_actions']
+                        extra = task_comparison['extra_actions']
+                        arg_mismatches = task_comparison['argument_mismatches']
+
+                        # Filter out None values and convert to strings
+                        expected_seq_filtered = [str(s) for s in expected_seq if s is not None] if expected_seq else []
+                        actual_seq_filtered = [str(s) for s in actual_seq if s is not None] if actual_seq else []
+
+                        # Color code based on match status
+                        order_color = '#27ae60' if order_match else '#e67e22'
+                        order_icon = '✅' if order_match else '⚠️'
+
+                        html += f"""
+                <div class="section-title">📊 Sequence Comparison</div>
+                <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid {order_color};">
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <strong>{order_icon} Sequence Order Match:</strong> <span style="color: {order_color};">{'Yes' if order_match else 'No'}</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <strong style="color: #2c3e50;">Expected Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                {' → '.join(expected_seq_filtered) if expected_seq_filtered else '(none)'}
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: #2c3e50;">Actual Sequence:</strong>
+                            <div style="margin-top: 10px; padding: 15px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; font-family: monospace; font-size: 0.9em;">
+                                {' → '.join(actual_seq_filtered) if actual_seq_filtered else '(none)'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+"""
+
+                        if missing:
+                            html += f"""
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fee2e2; border-radius: 4px;">
+                            <strong style="color: #dc2626;">❌ Missing ({len(missing)}):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+"""
+                            for action in missing[:5]:
+                                html += f"<li>{action['tool']}</li>"
+                            if len(missing) > 5:
+                                html += f"<li>... and {len(missing) - 5} more</li>"
+                            html += """
+                            </ul>
+                        </div>
+"""
+
+                        if extra:
+                            html += f"""
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #fef3c7; border-radius: 4px;">
+                            <strong style="color: #f59e0b;">⚠️ Extra ({len(extra)}):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+"""
+                            for action in extra[:5]:
+                                html += f"<li>{action['tool']}</li>"
+                            if len(extra) > 5:
+                                html += f"<li>... and {len(extra) - 5} more</li>"
+                            html += """
+                            </ul>
+                        </div>
+"""
+
+                        if arg_mismatches:
+                            html += f"""
+                        <div style="flex: 1; min-width: 200px; padding: 10px; background: #e0f2fe; border-radius: 4px;">
+                            <strong style="color: #0284c7;">🔧 Arg Mismatches ({len(arg_mismatches)}):</strong>
+                            <ul style="margin: 5px 0 0 20px; font-size: 0.9em;">
+"""
+                            for action in arg_mismatches[:5]:
+                                html += f"<li>{action['tool']}</li>"
+                            if len(arg_mismatches) > 5:
+                                html += f"<li>... and {len(arg_mismatches) - 5} more</li>"
+                            html += """
+                            </ul>
+                        </div>
+"""
+
+                        html += """
+                    </div>
+                </div>
+"""
+
+            html += """
+                <div class="section-title">🎯 Action Checks</div>
+"""
+
+            # Action checks
+            if sim['action_checks']:
+                for ac in sim['action_checks']:
+                    if not ac['action_match']:
+                        # Failed action check with detailed analysis
+                        action = ac['action']
+                        detailed = ac.get('detailed_analysis')
+
+                        html += f"""
+                <div class="action-failure">
+                    <div style="font-size: 1.1em; font-weight: 600; margin-bottom: 15px; color: #e74c3c;">
+                        ❌ Action Check Failure: {action['name']}
+                    </div>
+
+                    <div class="expected-section">
+                        <div style="font-weight: 600; margin-bottom: 10px;">📋 EXPECTED</div>
+                        <div><strong>Action ID:</strong> {action['action_id']}</div>
+                        <div><strong>Tool:</strong> <code>{action['name']}</code></div>
+                        <div><strong>Expected Arguments:</strong></div>
+                        <div class="code-block">{json.dumps(action['arguments'], indent=2)}</div>
+                    </div>
+"""
+
+                        if detailed and detailed.get('closest_match'):
+                            closest = detailed['closest_match']
+                            similarity = closest.get('similarity', 0)
+                            sim_class = 'similarity-high' if similarity >= 0.8 else ('similarity-medium' if similarity >= 0.5 else 'similarity-low')
+
+                            html += f"""
+                    <div class="actual-section">
+                        <div style="font-weight: 600; margin-bottom: 10px;">🔍 ACTUAL BEHAVIOR</div>
+                        <div>Tool was called but with incorrect arguments</div>
+                        <div style="margin: 10px 0;">
+                            Similarity: <span class="{sim_class} similarity-badge">{similarity:.0%}</span>
+                        </div>
+
+                        <div style="margin-top: 15px;"><strong>Argument Comparison:</strong></div>
+"""
+
+                            if closest['comparison']['matches']:
+                                html += "<div style='margin-top: 10px;'><strong style='color: #27ae60;'>✓ Matching:</strong></div>"
+                                for key, val in closest['comparison']['matches'].items():
+                                    html += f"<div class='diff-match'>  ✓ {key}: {json.dumps(val)}</div>"
+
+                            if closest['comparison']['different']:
+                                html += "<div style='margin-top: 10px;'><strong style='color: #e74c3c;'>✗ Different:</strong></div>"
+                                for key, vals in closest['comparison']['different'].items():
+                                    html += f"""
+                        <div class='diff-different'>
+                            ✗ {key}:<br>
+                            &nbsp;&nbsp;Expected: {json.dumps(vals['expected'])}<br>
+                            &nbsp;&nbsp;Actual: {json.dumps(vals['actual'])}
+                        </div>
+"""
+
+                            if closest['comparison']['missing']:
+                                html += "<div style='margin-top: 10px;'><strong style='color: #f39c12;'>⚠ Missing:</strong></div>"
+                                for key, val in closest['comparison']['missing'].items():
+                                    html += f"<div class='diff-missing'>  ⚠ {key}: {json.dumps(val)} (not provided)</div>"
+
+                            html += f"""
+                        <div style="margin-top: 15px;"><strong>Full Actual Arguments:</strong></div>
+                        <div class="code-block">{json.dumps(closest['tool_call']['arguments'], indent=2)}</div>
+                    </div>
+"""
+                        else:
+                            # Tool never called or no match
+                            category = detailed.get('category', 'unknown') if detailed else 'unknown'
+                            html += f"""
+                    <div class="actual-section">
+                        <div style="font-weight: 600; margin-bottom: 10px;">🔍 ACTUAL BEHAVIOR</div>
+                        <div style="color: #e74c3c; font-weight: 600;">
+                            ❌ Tool '{action['name']}' was {'NEVER called' if category == 'never_called' else 'called but did not match'}
+                        </div>
+                    </div>
+"""
+
+                        html += "</div>"
+
+                    else:
+                        # Successful action check
+                        action = ac['action']
+                        html += f"""
+                <div class="action-success">
+                    ✅ <strong>Action Passed:</strong> {action['action_id']} - <code>{action['name']}</code>
+                </div>
+"""
+
+            else:
+                html += "<div style='padding: 20px; text-align: center; color: #7f8c8d;'>No action checks for this simulation</div>"
+
+            # Message log
+            html += """
+                <div class="section-title">💬 Message Log</div>
+                <div class="message-log">
+"""
+
+            for msg in sim['messages']:
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+
+                html += f"""
+                    <div class="message {role}">
+                        <div class="message-role">{role.capitalize()}</div>
+                        <div class="message-content">{content if content else '(empty)'}</div>
+"""
+
+                if msg.get('tool_calls'):
+                    for tc in msg['tool_calls']:
+                        html += f"""
+                        <div style="background: #eee; padding: 8px; margin-top: 8px; border-radius: 4px;">
+                            <strong>🔧 Tool Call:</strong> {tc.get('name')}<br>
+                            <code style="font-size: 0.85em;">{json.dumps(tc.get('arguments', {}), indent=2)}</code>
+                        </div>
+"""
+
+                html += "                    </div>\n"
+
+            html += """
+                </div>
+            </div>
+        </div>
+"""
+
+        # Close HTML
+        html += """
+        </div>
+    </div>
+
+    <script>
+        // Toggle collapsible sections
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const toggleId = sectionId.replace('-section', '-toggle');
+            const toggle = document.getElementById(toggleId);
+
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                section.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+
+        // Toggle sequence detail row in summary table
+        function toggleSeqDetail(detailId, rowElement) {
+            const detailRow = document.getElementById(detailId);
+            const toggleSpan = rowElement.querySelector('.seq-toggle');
+
+            if (detailRow.style.display === 'none') {
+                detailRow.style.display = 'table-row';
+                toggleSpan.textContent = '▼';
+            } else {
+                detailRow.style.display = 'none';
+                toggleSpan.textContent = '▶';
+            }
+        }
+
+        // Update task counter
+        function updateTaskCounter() {
+            const allTasks = document.querySelectorAll('.task-section');
+            const visibleTasks = Array.from(allTasks).filter(task => {
+                return task.style.display !== 'none';
+            });
+
+            const counter = document.getElementById('task-counter');
+            counter.textContent = `${visibleTasks.length} / ${allTasks.length} tasks`;
+        }
+
+        // Toggle individual task
+        document.querySelectorAll('.task-header').forEach(header => {
+            header.addEventListener('click', function() {
+                this.parentElement.classList.toggle('expanded');
+            });
+        });
+
+        // Toggle all tasks
+        function toggleAll() {
+            const allTasks = document.querySelectorAll('.task-section');
+            const anyExpanded = Array.from(allTasks).some(task => task.classList.contains('expanded'));
+
+            allTasks.forEach(task => {
+                if (anyExpanded) {
+                    task.classList.remove('expanded');
+                } else {
+                    task.classList.add('expanded');
+                }
+            });
+        }
+
+        // Show only tasks that failed (reward == 0)
+        function showTaskFailedOnly() {
+            document.querySelectorAll('.task-section').forEach(task => {
+                if (task.dataset.taskFailed === 'true') {
+                    task.style.display = 'block';
+                } else {
+                    task.style.display = 'none';
+                }
+            });
+            updateTaskCounter();
+        }
+
+        // Show only tasks with action failures
+        function showActionFailedOnly() {
+            document.querySelectorAll('.task-section').forEach(task => {
+                if (task.dataset.hasFailures === 'true') {
+                    task.style.display = 'block';
+                } else {
+                    task.style.display = 'none';
+                }
+            });
+            updateTaskCounter();
+        }
+
+        // Show only tasks with called failures (tool was called but with wrong args - excludes "NEVER called")
+        function showCalledWithDiff() {
+            document.querySelectorAll('.task-section').forEach(task => {
+                if (task.dataset.hasCalledFailures === 'true') {
+                    task.style.display = 'block';
+                } else {
+                    task.style.display = 'none';
+                }
+            });
+            updateTaskCounter();
+        }
+
+        // Show all tasks
+        function showAll() {
+            document.querySelectorAll('.task-section').forEach(task => {
+                task.style.display = 'block';
+            });
+            updateTaskCounter();
+        }
+
+        // Initialize counter on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTaskCounter();
+        });
+    </script>
+</body>
+</html>
+"""
+
+        # Write to file
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_path, 'w') as f:
+            f.write(html)
+
+        return str(output_path)
 

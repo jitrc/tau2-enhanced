@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
 **Source File:** `airline_gemini2_5_flash_10tasks_2t_enhanced_agent_enhanced_logs.json`
-**Generated:** 2025-09-29 02:48:53
+**Generated:** 2025-10-23 11:48:18
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -36,8 +36,8 @@
 | cancel_reservation | 8 | 12.5% | 0.11 | Poor |
 | get_flight_status | 8 | 100.0% | 0.04 | Excellent |
 | update_reservation_flights | 4 | 0.0% | 0.10 | Poor |
-| send_certificate | 2 | 0.0% | 0.05 | Poor |
 | search_onestop_flight | 2 | 100.0% | 2.86 | Excellent |
+| send_certificate | 2 | 0.0% | 0.05 | Poor |
 
 ### Performance Distribution
 
@@ -50,22 +50,81 @@
 
 ### Failure Overview
 
-| Tool Name | Error Type | Count | Failure Rate |
-|-----------|------------|-------|-------------|
-| cancel_reservation | ActionCheckFailure | 5 | 83.3% |
-| get_user_details | ActionCheckFailure | 4 | 33.3% |
-| book_reservation | ActionCheckFailure | 2 | 100.0% |
-| send_certificate | ActionCheckFailure | 2 | 100.0% |
-| update_reservation_flights | ActionCheckFailure | 2 | 100.0% |
-| search_direct_flight | ActionCheckFailure | 1 | 25.0% |
+**Note:** Failure rates below are calculated against **action-checked calls only**, not total calls. See Performance Overview for overall success rates against all calls.
+
+**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`
+
+| Tool Name | Failure Type | Count | Failure Rate | Simulations | Impact Score | Checked Calls |
+|-----------|--------------|-------|--------------|-------------|--------------|---------------|
+| cancel_reservation | Never Called | 5 | 83.3% | 4 | 16.7 | 6 |
+| book_reservation | Called With Wrong Args | 2 | 100.0% | 2 | 10.0 | 2 |
+| send_certificate | Never Called | 2 | 100.0% | 2 | 10.0 | 2 |
+| update_reservation_flights | Called With Wrong Args | 2 | 100.0% | 2 | 10.0 | 2 |
+| get_user_details | Never Called | 4 | 33.3% | 4 | 6.7 | 12 |
+| search_direct_flight | Never Called | 1 | 25.0% | 1 | 1.2 | 4 |
 
 **Key Failure Metrics:**
 - Total failures: **16**
 - Affected tools: **6**
-- Error categories: **1**
+- Total action checks performed: **54**
+- Total tool calls (see Performance Overview): **240**
 
-**Most Common Error Types:**
-- ActionCheckFailure: 16 occurrences
+**Failure Type Breakdown:**
+- **Never Called**: 12 failures (75.0%)
+  - Affected tools: send_certificate, get_user_details, cancel_reservation, search_direct_flight, update_reservation_flights
+- **Called With Wrong Args**: 3 failures (18.8%)
+  - Affected tools: update_reservation_flights, book_reservation
+- **Called But No Match**: 1 failures (6.2%)
+  - Affected tools: cancel_reservation
+
+---
+
+## 📊 Action Sequence Accuracy
+
+This section compares actual tool call sequences against expected action sequences from ground truth task definitions.
+
+### Overview Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Precision** | 3.78% |
+| **Recall** | 37.04% |
+| **F1 Score** | 6.86% |
+| **Total Tasks Analyzed** | 18 |
+| **Matched Actions** | 20/54 |
+
+### Task Distribution
+
+- ✅ **Success + Ordered:** 8 tasks (correct sequence, task succeeded)
+- ⚠️  **Success + Unordered:** 1 tasks (wrong order, but task succeeded)
+- ❌ **Failed + Ordered:** 8 tasks (correct sequence, but task failed)
+- 🔴 **Failed + Unordered:** 1 tasks (wrong sequence, task failed)
+
+### Action-Level Metrics
+
+- **Expected actions:** 54
+- **Actual actions executed:** 529
+- **Correctly matched:** 20
+- **Missing (omitted):** 7
+- **Extra (unexpected):** 482
+- **Argument mismatches:** 27
+
+### Per-Tool Sequence Accuracy
+
+| Tool | Expected | ✅ Matched | ❌ Missing | 🔧 Arg Err | ⚠️ Extra | Precision | Recall |
+|------|----------|-----------|-----------|-----------|---------|-----------|--------|
+| get_reservation_details | 26 | 13 | 0 | 13 | 240 | 5.1% | 50.0% |
+| get_user_details | 12 | 5 | 2 | 5 | 63 | 7.4% | 41.7% |
+| cancel_reservation | 6 | 0 | 2 | 4 | 10 | 0.0% | 0.0% |
+| search_direct_flight | 4 | 2 | 0 | 2 | 22 | 8.3% | 50.0% |
+| send_certificate | 2 | 0 | 2 | 0 | 3 | 0.0% | 0.0% |
+| update_reservation_flights | 2 | 0 | 1 | 1 | 8 | 0.0% | 0.0% |
+| book_reservation | 2 | 0 | 0 | 2 | 25 | 0.0% | 0.0% |
+| get_flight_status | 0 | 0 | 0 | 0 | 19 | 0.0% | 0.0% |
+| transfer_to_human_agents | 0 | 0 | 0 | 0 | 51 | 0.0% | 0.0% |
+| None | 0 | 0 | 0 | 0 | 37 | 0.0% | 0.0% |
+
+*Showing top 10 of 11 tools. See detailed reports for complete data.*
 
 ---
 
@@ -75,19 +134,19 @@
 
 | Tool Name | Calls | Success Rate | Avg Time (ms) |
 |-----------|-------|--------------|---------------|
-| cancel_reservation | 8 | 100.0% | 0.11 |
-| book_reservation | 6 | 100.0% | 0.16 |
-| update_reservation_flights | 4 | 100.0% | 0.10 |
-| send_certificate | 2 | 100.0% | 0.05 |
+| cancel_reservation | 8 | 12.5% | 0.11 |
+| book_reservation | 6 | 0.0% | 0.16 |
+| update_reservation_flights | 4 | 0.0% | 0.10 |
+| send_certificate | 2 | 0.0% | 0.05 |
 
 ### Read-Only Tools (7 tools)
 
 | Tool Name | Calls | Success Rate | Avg Time (ms) |
 |-----------|-------|--------------|---------------|
-| get_reservation_details | 128 | 89.1% | 0.04 |
-| get_user_details | 34 | 100.0% | 0.04 |
+| get_reservation_details | 128 | 20.3% | 0.04 |
+| get_user_details | 34 | 23.5% | 0.04 |
 | transfer_to_human_agents | 24 | 100.0% | 0.03 |
-| search_direct_flight | 16 | 100.0% | 0.19 |
+| search_direct_flight | 16 | 18.8% | 0.19 |
 | book_reservation | 8 | 0.0% | 0.08 |
 | get_flight_status | 8 | 100.0% | 0.04 |
 | search_onestop_flight | 2 | 100.0% | 2.86 |
@@ -120,9 +179,11 @@
 - Overall system reliability: **70.4%**
 - **7** tools showing poor performance require attention
 - **6.7%** error rate across all tool executions
-- **cancel_reservation** has the highest failure count with 5 failures
-- **16** failures are due to action validation issues
+- **Highest impact:** cancel_reservation (Never Called) - impact score 16.7, affecting 4 simulations
+- **Most frequent failure:** cancel_reservation (Never Called) with 5 failures
+- **Failure type breakdown:** 75% Never Called (critical), 19% Called With Wrong Args (medium), 6% Called But No Match (high)
 - Tool distribution: **4** state-changing, **7** read-only
+- State-changing tools underperform read-only tools (3.1% vs 51.8%)
 - High self-loop rate (42.7%) indicates potential retry patterns
 - Most common pattern: **get_reservation_details** → **get_reservation_details** (82 times)
 
@@ -130,13 +191,11 @@
 
 ## 💡 Recommendations
 
-- **Priority**: Investigate high-usage poor performers: get_reservation_details, get_user_details, search_direct_flight, book_reservation
-- **Optimize** 7 tools with poor performance categories
-- **Action Validation**: Review argument validation logic for action check failures
-- **Database Consistency**: Ensure action execution aligns with database state expectations
-- **Critical Fix**: Address tools with >50% failure rate: cancel_reservation, book_reservation, send_certificate, update_reservation_flights
-- **System Reliability**: Overall tool success rate below 80% requires immediate attention
-- **Task Success**: Low task completion rate suggests fundamental workflow issues
+- **High Impact Pattern**: High-usage poor performers identified: get_reservation_details, get_user_details, search_direct_flight, book_reservation
+- **Performance Pattern**: 7 tools categorized as poor performers based on execution metrics
+- **High-Impact Failures:** cancel_reservation (Never Called, critical severity): impact 16.7, 4 simulations, book_reservation (Called With Wrong Args, medium severity): impact 10.0, 2 simulations, send_certificate (Never Called, critical severity): impact 10.0, 2 simulations, update_reservation_flights (Called With Wrong Args, medium severity): impact 10.0, 2 simulations, get_user_details (Never Called, critical severity): impact 6.7, 4 simulations
+- **Critical: Tools Never Executed:** 5 tools with 'never_called' failures (critical severity): send_certificate, get_user_details, cancel_reservation, search_direct_flight, update_reservation_flights
+- **High Failure Rate:** Tools with >50% failure rate: cancel_reservation, book_reservation, send_certificate, update_reservation_flights
 
 ---
 
@@ -197,18 +256,32 @@
 - **Most problematic tool:** cancel_reservation (5 failures)
 - **Primary failure mode:** Action validation failures suggest issues with tool argument validation or execution logic
 - **Average tool success rate:** 37.5%
-- **⚠️ Low overall success rate** suggests systemic issues requiring investigation
+
+### 🔍 Failure Type Comparison
+
+Side-by-side comparison of failure types and their characteristics:
+
+| Failure Type | Severity | Total Failures | Affected Tools | Top Failing Tools |
+|--------------|----------|----------------|----------------|-------------------|
+| **Never Called** | Critical | 12 | 5 | get_user_details (4), cancel_reservation (4), send_certificate (2) |
+| **Called But No Match** | High | 1 | 1 | cancel_reservation (1) |
+| **Called With Wrong Args** | Medium | 3 | 2 | book_reservation (2), update_reservation_flights (1) |
+
+**Key Insights:**
+
+- **Never Called (75.0%):** Critical severity - These tools were never executed at all, indicating the agent failed to recognize when to use them.
+- **Called But No Match (6.2%):** High severity - Tools were called but didn't produce expected results, suggesting execution logic issues.
+- **Called With Wrong Args (18.8%):** Medium severity - Tools were called with incorrect parameters, indicating parameter validation or reasoning issues.
 
 ---
 
 ## 🎯 Performance Issues Analysis
 
-### Overall Performance Assessment
+### Performance Metrics
 
-- **Overall success: 70.4% (good)**
-- **State-changing actions accuracy: 3.1%**
-- **Read-only actions accuracy: 60.4%**
-- **Critical**: State-changing actions show severe accuracy issues
+- **Overall success rate: 70.4%**
+- **State-changing actions: 3.1% success rate**
+- **Read-only actions: 60.4% success rate**
 - **57%pp performance drop when actions are required** (60.4% → 3.1% success)
 
 ### 🔍 Failure Patterns
@@ -276,19 +349,19 @@
 
 ### 🏆 Performance Tier Analysis
 
-**Excellent Performance (3 tools)** - High success rate (≥95%) and fast execution (≤1s):
-- `transfer_to_human_agents`: 100.0% success, 0.03ms avg time, 24 calls
-- `get_flight_status`: 100.0% success, 0.04ms avg time, 8 calls
-- `search_onestop_flight`: 100.0% success, 2.86ms avg time, 2 calls
+**Excellent Performance (3 tools)** - Success rate ≥95%:
+- `transfer_to_human_agents`: 100.0% success, 24 calls
+- `get_flight_status`: 100.0% success, 8 calls
+- `search_onestop_flight`: 100.0% success, 2 calls
 
-**Poor Performance (7 tools)** - Low success rate (<75%):
-- `get_reservation_details`: 20.3% success, 0.04ms avg time, 128 calls
-- `get_user_details`: 23.5% success, 0.04ms avg time, 34 calls
-- `search_direct_flight`: 18.8% success, 0.19ms avg time, 16 calls
-- `book_reservation`: 0.0% success, 0.11ms avg time, 14 calls
-- `cancel_reservation`: 12.5% success, 0.11ms avg time, 8 calls
-- `update_reservation_flights`: 0.0% success, 0.10ms avg time, 4 calls
-- `send_certificate`: 0.0% success, 0.05ms avg time, 2 calls
+**Poor Performance (7 tools)** - Success rate <75%:
+- `get_reservation_details`: 20.3% success, 128 calls
+- `get_user_details`: 23.5% success, 34 calls
+- `search_direct_flight`: 18.8% success, 16 calls
+- `book_reservation`: 0.0% success, 14 calls
+- `cancel_reservation`: 12.5% success, 8 calls
+- `update_reservation_flights`: 0.0% success, 4 calls
+- `send_certificate`: 0.0% success, 2 calls
 
 ### 🚨 Critical Performance Issues
 
@@ -298,31 +371,36 @@
   - Success rate: 20.3%
   - Total calls: 128
   - Failed calls: 102
-  - Impact score: 102.0 (calls × failure rate)
+  - Impact score: 0.0
+  - Simulations affected: N/A
   - State changing: No
-- **`get_user_details`**:
+- **`get_user_details`** (Never Called, critical severity):
   - Success rate: 23.5%
   - Total calls: 34
   - Failed calls: 26
-  - Impact score: 26.0 (calls × failure rate)
+  - Impact score: 6.7
+  - Simulations affected: 4
   - State changing: No
-- **`search_direct_flight`**:
+- **`search_direct_flight`** (Never Called, critical severity):
   - Success rate: 18.8%
   - Total calls: 16
   - Failed calls: 13
-  - Impact score: 13.0 (calls × failure rate)
+  - Impact score: 1.2
+  - Simulations affected: 1
   - State changing: No
-- **`book_reservation`**:
+- **`book_reservation`** (Called With Wrong Args, medium severity):
   - Success rate: 0.0%
   - Total calls: 14
   - Failed calls: 14
-  - Impact score: 14.0 (calls × failure rate)
+  - Impact score: 10.0
+  - Simulations affected: 2
   - State changing: Yes
-- **`cancel_reservation`**:
+- **`cancel_reservation`** (Never Called, critical severity):
   - Success rate: 12.5%
   - Total calls: 8
   - Failed calls: 7
-  - Impact score: 7.0 (calls × failure rate)
+  - Impact score: 16.7
+  - Simulations affected: 4
   - State changing: Yes
 
 ### ⏱️ Execution Time Analysis
@@ -337,9 +415,8 @@
 - Low-usage tools (<10 calls) average success rate: 42.5%
 
 **State-Changing vs Read-Only Performance:**
-- State-changing tools: 3.1% success, 0.0001s avg time
-- Read-only tools: 60.4% success, 0.0005s avg time
-- ⚠️ State-changing tools show 57.3% lower success rate
+- State-changing tools: 3.1% success, 0.0001s avg time (4 tools)
+- Read-only tools: 60.4% success, 0.0005s avg time (6 tools)
 
 ---
 
@@ -384,15 +461,20 @@
 
 ## 📈 Visualization Files
 
-The following interactive visualizations have been generated:
+The following core visualizations are generated by default:
+
+- `analysis_report.md` - This markdown summary report
+- `tool_report.html` - Comprehensive HTML tool analysis report
+- `enhanced_analysis_report.html` - Enhanced analysis report with interactive plots
+
+**Additional visualizations available** (enable by uncommenting in analysis script):
 
 - `summary_dashboard.html` - Executive dashboard with key metrics
 - `failure_analysis.html` - Detailed failure analysis charts
 - `state_change_analysis.html` - State change patterns and performance
 - `tool_flow_sankey.html` - Tool usage flow diagram
 - `performance_bottlenecks.html` - Performance analysis scatter plot
-- `tool_report.html` - Comprehensive HTML tool analysis report
-- `report.html` - Comprehensive HTML simulation report
+- `simulation_report.html` - Comprehensive HTML simulation report
 
 ---
 

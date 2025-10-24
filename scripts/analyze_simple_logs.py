@@ -212,10 +212,11 @@ def analyze_logs(log_file: Path, output_dir: Path):
         # bottleneck_path = output_dir / "performance_bottlenecks.html"
         # bottleneck_fig.write_html(bottleneck_path)
         # print(f"  ✅ Performance bottleneck plot saved to: {bottleneck_path}")
-        #
-        # report_path = output_dir / "simulation_report.html"
-        # visualizer.create_comprehensive_report(str(report_path), log_file.name)
-        # print(f"  ✅ Comprehensive simulation report saved to: {report_path}")
+
+        # Comprehensive simulation report with action check analysis
+        sim_report_path = output_dir / "simulation_report.html"
+        visualizer.create_comprehensive_simulation_report_html(str(sim_report_path))
+        print(f"  ✅ Comprehensive simulation report saved to: {sim_report_path}")
 
     except Exception as e:
         print(f"  ❌ Error during visualization: {e}")
@@ -224,6 +225,7 @@ def analyze_logs(log_file: Path, output_dir: Path):
     print(f"\n🛠️ For a detailed tool analysis, open: {output_dir / 'tool_report.html'}")
     print(f"🚀 For enhanced analysis with interactive plots, open: {output_dir / 'enhanced_analysis_report.html'}")
     print(f"📋 For a markdown summary report, see: {output_dir / 'analysis_report.md'}")
+    print(f"📊 For simulation-level action check analysis, open: {output_dir / 'simulation_report.html'}")
 
 
 def main():
@@ -238,13 +240,27 @@ def main():
     parser.add_argument(
         "-o", "--output",
         type=Path,
-        default=Path("analysis_results"),
-        help="Base directory to save analysis plots."
+        default=None,
+        help="Output directory to save analysis results. If not specified, uses 'analysis_results/<log_file_stem>'."
+    )
+    parser.add_argument(
+        "-n", "--name",
+        type=str,
+        default=None,
+        help="Custom name for the output subdirectory. If not specified, uses the log file stem."
     )
     args = parser.parse_args()
 
-    # Create a subfolder in the output directory named after the input file
-    output_subdir = args.output / args.log_file.stem
+    # Determine output directory
+    if args.output:
+        # User specified output directory - use it directly
+        output_subdir = args.output
+    else:
+        # Default behavior: create subfolder based on log file name or custom name
+        base_dir = Path("analysis_results")
+        subdir_name = args.name if args.name else args.log_file.stem
+        output_subdir = base_dir / subdir_name
+
     print(f"💾 Output will be saved to: {output_subdir}")
 
     analyze_logs(args.log_file, output_subdir)

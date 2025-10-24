@@ -1,7 +1,7 @@
 # Enhanced Tau2 Execution Analysis Report
 
-**Source File:** `baseline_airline_xai_grok3_gemini2_5_flash.json`
-**Generated:** 2025-09-29 08:44:14
+**Source File:** `baseline_airline_xai_grok3_gemini2_5_flash_reduced.json`
+**Generated:** 2025-10-23 11:48:07
 **Analysis Framework:** Enhanced Tau2 Logging & Analytics
 
 ---
@@ -33,11 +33,14 @@
 | get_user_details | 158 | 35.4% | 0.82 | Poor |
 | search_onestop_flight | 100 | 100.0% | 0.68 | Excellent |
 | update_reservation_flights | 62 | 61.3% | 0.13 | Poor |
-| transfer_to_human_agents | 56 | 0.0% | 0.06 | Poor |
 | get_flight_status | 56 | 100.0% | 0.06 | Excellent |
+| transfer_to_human_agents | 56 | 0.0% | 0.06 | Poor |
 | cancel_reservation | 39 | 74.4% | 0.15 | Poor |
 | update_reservation_baggages | 16 | 56.2% | 0.08 | Poor |
+| book_reservation | 9 | 55.6% | 0.22 | Poor |
 | update_reservation_passengers | 9 | 100.0% | 0.12 | Excellent |
+| send_certificate | 4 | 100.0% | 0.16 | Excellent |
+| calculate | 1 | 0.0% | 0.11 | Poor |
 
 ### Performance Distribution
 
@@ -50,26 +53,85 @@
 
 ### Failure Overview
 
-| Tool Name | Error Type | Count | Failure Rate |
-|-----------|------------|-------|-------------|
-| search_direct_flight | ActionCheckFailure | 63 | 78.8% |
-| update_reservation_flights | ActionCheckFailure | 46 | 54.8% |
-| book_reservation | ActionCheckFailure | 28 | 84.8% |
-| cancel_reservation | ActionCheckFailure | 22 | 43.1% |
-| update_reservation_baggages | ActionCheckFailure | 15 | 62.5% |
-| get_reservation_details | ActionCheckFailure | 11 | 4.8% |
-| send_certificate | ActionCheckFailure | 8 | 66.7% |
-| calculate | ActionCheckFailure | 4 | 100.0% |
-| transfer_to_human_agents | ActionCheckFailure | 4 | 100.0% |
-| update_reservation_passengers | ActionCheckFailure | 3 | 25.0% |
+**Note:** Failure rates below are calculated against **action-checked calls only**, not total calls. See Performance Overview for overall success rates against all calls.
+
+**Impact Score Formula:** `failure_rate × simulations_affected / total_simulations × 100`
+
+| Tool Name | Failure Type | Count | Failure Rate | Simulations | Impact Score | Checked Calls |
+|-----------|--------------|-------|--------------|-------------|--------------|---------------|
+| book_reservation | Never Called | 28 | 84.8% | 22 | 9.3 | 33 |
+| update_reservation_flights | Never Called | 46 | 54.8% | 29 | 7.9 | 84 |
+| search_direct_flight | Never Called | 63 | 78.8% | 19 | 7.5 | 80 |
+| update_reservation_baggages | Never Called | 15 | 62.5% | 15 | 4.7 | 24 |
+| cancel_reservation | Never Called | 22 | 43.1% | 15 | 3.2 | 51 |
+| send_certificate | Never Called | 8 | 66.7% | 8 | 2.7 | 12 |
+| calculate | Never Called | 4 | 100.0% | 4 | 2.0 | 4 |
+| transfer_to_human_agents | Never Called | 4 | 100.0% | 4 | 2.0 | 4 |
+| update_reservation_passengers | Never Called | 3 | 25.0% | 3 | 0.4 | 12 |
+| get_reservation_details | Called But No Match | 11 | 4.8% | 5 | 0.1 | 228 |
 
 **Key Failure Metrics:**
 - Total failures: **204**
 - Affected tools: **10**
-- Error categories: **1**
+- Total action checks performed: **588**
+- Total tool calls (see Performance Overview): **1162**
 
-**Most Common Error Types:**
-- ActionCheckFailure: 204 occurrences
+**Failure Type Breakdown:**
+- **Never Called**: 163 failures (79.9%)
+  - Affected tools: update_reservation_flights, transfer_to_human_agents, search_direct_flight, calculate, book_reservation, ... (4 more)
+- **Called With Wrong Args**: 27 failures (13.2%)
+  - Affected tools: update_reservation_flights, update_reservation_baggages, book_reservation, search_direct_flight
+- **Called But No Match**: 14 failures (6.9%)
+  - Affected tools: cancel_reservation, get_reservation_details
+
+---
+
+## 📊 Action Sequence Accuracy
+
+This section compares actual tool call sequences against expected action sequences from ground truth task definitions.
+
+### Overview Metrics
+
+| Metric | Value |
+|--------|-------|
+| **Precision** | 33.39% |
+| **Recall** | 61.15% |
+| **F1 Score** | 43.20% |
+| **Total Tasks Analyzed** | 172 |
+| **Matched Actions** | 362/592 |
+
+### Task Distribution
+
+- ✅ **Success + Ordered:** 75 tasks (correct sequence, task succeeded)
+- ⚠️  **Success + Unordered:** 12 tasks (wrong order, but task succeeded)
+- ❌ **Failed + Ordered:** 78 tasks (correct sequence, but task failed)
+- 🔴 **Failed + Unordered:** 7 tasks (wrong sequence, task failed)
+
+### Action-Level Metrics
+
+- **Expected actions:** 592
+- **Actual actions executed:** 1084
+- **Correctly matched:** 362
+- **Missing (omitted):** 184
+- **Extra (unexpected):** 676
+- **Argument mismatches:** 46
+
+### Per-Tool Sequence Accuracy
+
+| Tool | Expected | ✅ Matched | ❌ Missing | 🔧 Arg Err | ⚠️ Extra | Precision | Recall |
+|------|----------|-----------|-----------|-----------|---------|-----------|--------|
+| get_reservation_details | 228 | 203 | 11 | 14 | 246 | 45.2% | 89.0% |
+| update_reservation_flights | 84 | 32 | 37 | 15 | 15 | 68.1% | 38.1% |
+| search_direct_flight | 80 | 17 | 60 | 3 | 136 | 11.1% | 21.2% |
+| get_user_details | 56 | 56 | 0 | 0 | 86 | 39.4% | 100.0% |
+| cancel_reservation | 52 | 27 | 22 | 3 | 9 | 75.0% | 51.9% |
+| book_reservation | 36 | 5 | 27 | 4 | 0 | 100.0% | 13.9% |
+| update_reservation_baggages | 24 | 9 | 8 | 7 | 0 | 100.0% | 37.5% |
+| send_certificate | 12 | 4 | 8 | 0 | 0 | 100.0% | 33.3% |
+| update_reservation_passengers | 12 | 9 | 3 | 0 | 0 | 100.0% | 75.0% |
+| transfer_to_human_agents | 4 | 0 | 4 | 0 | 44 | 0.0% | 0.0% |
+
+*Showing top 10 of 13 tools. See detailed reports for complete data.*
 
 ---
 
@@ -79,10 +141,10 @@
 
 | Tool Name | Calls | Success Rate | Avg Time (ms) |
 |-----------|-------|--------------|---------------|
-| update_reservation_flights | 62 | 79.0% | 0.13 |
-| cancel_reservation | 39 | 100.0% | 0.15 |
-| update_reservation_baggages | 16 | 100.0% | 0.08 |
-| book_reservation | 9 | 88.9% | 0.22 |
+| update_reservation_flights | 62 | 61.3% | 0.13 |
+| cancel_reservation | 39 | 74.4% | 0.15 |
+| update_reservation_baggages | 16 | 56.2% | 0.08 |
+| book_reservation | 9 | 55.6% | 0.22 |
 | update_reservation_passengers | 9 | 100.0% | 0.12 |
 | send_certificate | 4 | 100.0% | 0.16 |
 
@@ -90,13 +152,13 @@
 
 | Tool Name | Calls | Success Rate | Avg Time (ms) |
 |-----------|-------|--------------|---------------|
-| get_reservation_details | 488 | 100.0% | 0.10 |
-| search_direct_flight | 164 | 100.0% | 0.24 |
-| get_user_details | 158 | 100.0% | 0.82 |
+| get_reservation_details | 488 | 44.5% | 0.10 |
+| search_direct_flight | 164 | 10.4% | 0.24 |
+| get_user_details | 158 | 35.4% | 0.82 |
 | search_onestop_flight | 100 | 100.0% | 0.68 |
 | get_flight_status | 56 | 100.0% | 0.06 |
-| transfer_to_human_agents | 56 | 100.0% | 0.06 |
-| calculate | 1 | 100.0% | 0.11 |
+| transfer_to_human_agents | 56 | 0.0% | 0.06 |
+| calculate | 1 | 0.0% | 0.11 |
 
 ---
 
@@ -126,8 +188,9 @@
 - Overall system reliability: **65.3%**
 - **9** tools showing poor performance require attention
 - **17.6%** error rate across all tool executions
-- **search_direct_flight** has the highest failure count with 63 failures
-- **204** failures are due to action validation issues
+- **Highest impact:** book_reservation (Never Called) - impact score 9.3, affecting 22 simulations
+- **Most frequent failure:** search_direct_flight (Never Called) with 63 failures
+- **Failure type breakdown:** 80% Never Called (critical), 13% Called With Wrong Args (medium), 7% Called But No Match (high)
 - Tool distribution: **6** state-changing, **7** read-only
 - High self-loop rate (37.3%) indicates potential retry patterns
 - Most common pattern: **get_reservation_details** → **get_reservation_details** (287 times)
@@ -138,10 +201,9 @@
 
 - **High Impact Pattern**: High-usage poor performers identified: get_reservation_details, search_direct_flight, get_user_details, update_reservation_flights, transfer_to_human_agents, cancel_reservation, update_reservation_baggages
 - **Performance Pattern**: 9 tools categorized as poor performers based on execution metrics
-- **Action Check Pattern**: 10 action validation failures detected across tool executions
-- **High Failure Rate**: Tools with >50% failure rate detected: search_direct_flight, update_reservation_flights, book_reservation, update_reservation_baggages, send_certificate, calculate, transfer_to_human_agents
-- **System Status**: Overall tool success rate at 65.3% indicates significant reliability challenges
-- **Task Analysis**: Task completion rate at 57.5% indicates workflow execution challenges
+- **High-Impact Failures:** book_reservation (Never Called, critical severity): impact 9.3, 22 simulations, update_reservation_flights (Never Called, critical severity): impact 7.9, 29 simulations, search_direct_flight (Never Called, critical severity): impact 7.5, 19 simulations
+- **Critical: Tools Never Executed:** 9 tools with 'never_called' failures (critical severity): update_reservation_flights, transfer_to_human_agents, search_direct_flight, calculate, book_reservation
+- **High Failure Rate:** Tools with >50% failure rate: search_direct_flight, update_reservation_flights, book_reservation, update_reservation_baggages, send_certificate, calculate, transfer_to_human_agents
 
 ---
 
@@ -217,17 +279,32 @@
 - **Most problematic tool:** search_direct_flight (63 failures)
 - **Primary failure mode:** Action validation failures suggest issues with tool argument validation or execution logic
 - **Average tool success rate:** 56.7%
-- **⚠️ Low overall success rate** suggests systemic issues requiring investigation
+
+### 🔍 Failure Type Comparison
+
+Side-by-side comparison of failure types and their characteristics:
+
+| Failure Type | Severity | Total Failures | Affected Tools | Top Failing Tools |
+|--------------|----------|----------------|----------------|-------------------|
+| **Never Called** | Critical | 163 | 9 | search_direct_flight (60), update_reservation_flights (37), book_reservation (20) |
+| **Called But No Match** | High | 14 | 2 | get_reservation_details (11), cancel_reservation (3) |
+| **Called With Wrong Args** | Medium | 27 | 4 | update_reservation_flights (9), book_reservation (8), update_reservation_baggages (7) |
+
+**Key Insights:**
+
+- **Never Called (79.9%):** Critical severity - These tools were never executed at all, indicating the agent failed to recognize when to use them.
+- **Called But No Match (6.9%):** High severity - Tools were called but didn't produce expected results, suggesting execution logic issues.
+- **Called With Wrong Args (13.2%):** Medium severity - Tools were called with incorrect parameters, indicating parameter validation or reasoning issues.
 
 ---
 
 ## 🎯 Performance Issues Analysis
 
-### Overall Performance Assessment
+### Performance Metrics
 
-- **Overall success: 65.3% (concerning)**
-- **State-changing actions accuracy: 74.6%**
-- **Read-only actions accuracy: 41.5%**
+- **Overall success rate: 65.3%**
+- **State-changing actions: 74.6% success rate**
+- **Read-only actions: 41.5% success rate**
 
 ### 🔍 Failure Patterns
 
@@ -293,74 +370,82 @@
 
 ### 🏆 Performance Tier Analysis
 
-**Excellent Performance (4 tools)** - High success rate (≥95%) and fast execution (≤1s):
-- `search_onestop_flight`: 100.0% success, 0.68ms avg time, 100 calls
-- `get_flight_status`: 100.0% success, 0.06ms avg time, 56 calls
-- `update_reservation_passengers`: 100.0% success, 0.12ms avg time, 9 calls
-- `send_certificate`: 100.0% success, 0.16ms avg time, 4 calls
+**Excellent Performance (4 tools)** - Success rate ≥95%:
+- `search_onestop_flight`: 100.0% success, 100 calls
+- `get_flight_status`: 100.0% success, 56 calls
+- `update_reservation_passengers`: 100.0% success, 9 calls
+- `send_certificate`: 100.0% success, 4 calls
 
-**Poor Performance (9 tools)** - Low success rate (<75%):
-- `get_reservation_details`: 44.5% success, 0.10ms avg time, 488 calls
-- `search_direct_flight`: 10.4% success, 0.24ms avg time, 164 calls
-- `get_user_details`: 35.4% success, 0.82ms avg time, 158 calls
-- `update_reservation_flights`: 61.3% success, 0.13ms avg time, 62 calls
-- `transfer_to_human_agents`: 0.0% success, 0.06ms avg time, 56 calls
-- `cancel_reservation`: 74.4% success, 0.15ms avg time, 39 calls
-- `update_reservation_baggages`: 56.2% success, 0.08ms avg time, 16 calls
-- `book_reservation`: 55.6% success, 0.22ms avg time, 9 calls
-- `calculate`: 0.0% success, 0.11ms avg time, 1 calls
+**Poor Performance (9 tools)** - Success rate <75%:
+- `get_reservation_details`: 44.5% success, 488 calls
+- `search_direct_flight`: 10.4% success, 164 calls
+- `get_user_details`: 35.4% success, 158 calls
+- `update_reservation_flights`: 61.3% success, 62 calls
+- `transfer_to_human_agents`: 0.0% success, 56 calls
+- `cancel_reservation`: 74.4% success, 39 calls
+- `update_reservation_baggages`: 56.2% success, 16 calls
+- `book_reservation`: 55.6% success, 9 calls
+- `calculate`: 0.0% success, 1 calls
 
 ### 🚨 Critical Performance Issues
 
 **High-Usage Poor Performers** (≥5 calls with poor performance):
 
-- **`get_reservation_details`**:
+- **`get_reservation_details`** (Called But No Match, high severity):
   - Success rate: 44.5%
   - Total calls: 488
   - Failed calls: 271
-  - Impact score: 271.0 (calls × failure rate)
+  - Impact score: 0.1
+  - Simulations affected: 5
   - State changing: No
-- **`search_direct_flight`**:
+- **`search_direct_flight`** (Never Called, critical severity):
   - Success rate: 10.4%
   - Total calls: 164
   - Failed calls: 147
-  - Impact score: 147.0 (calls × failure rate)
+  - Impact score: 7.5
+  - Simulations affected: 19
   - State changing: No
 - **`get_user_details`**:
   - Success rate: 35.4%
   - Total calls: 158
   - Failed calls: 102
-  - Impact score: 102.0 (calls × failure rate)
+  - Impact score: 0.0
+  - Simulations affected: N/A
   - State changing: No
-- **`update_reservation_flights`**:
+- **`update_reservation_flights`** (Never Called, critical severity):
   - Success rate: 61.3%
   - Total calls: 62
   - Failed calls: 24
-  - Impact score: 24.0 (calls × failure rate)
+  - Impact score: 7.9
+  - Simulations affected: 29
   - State changing: Yes
-- **`transfer_to_human_agents`**:
+- **`transfer_to_human_agents`** (Never Called, critical severity):
   - Success rate: 0.0%
   - Total calls: 56
   - Failed calls: 56
-  - Impact score: 56.0 (calls × failure rate)
+  - Impact score: 2.0
+  - Simulations affected: 4
   - State changing: No
-- **`cancel_reservation`**:
+- **`cancel_reservation`** (Never Called, critical severity):
   - Success rate: 74.4%
   - Total calls: 39
   - Failed calls: 10
-  - Impact score: 10.0 (calls × failure rate)
+  - Impact score: 3.2
+  - Simulations affected: 15
   - State changing: Yes
-- **`update_reservation_baggages`**:
+- **`update_reservation_baggages`** (Never Called, critical severity):
   - Success rate: 56.2%
   - Total calls: 16
   - Failed calls: 7
-  - Impact score: 7.0 (calls × failure rate)
+  - Impact score: 4.7
+  - Simulations affected: 15
   - State changing: Yes
-- **`book_reservation`**:
+- **`book_reservation`** (Never Called, critical severity):
   - Success rate: 55.6%
   - Total calls: 9
   - Failed calls: 4
-  - Impact score: 4.0 (calls × failure rate)
+  - Impact score: 9.3
+  - Simulations affected: 22
   - State changing: Yes
 
 ### ⏱️ Execution Time Analysis
@@ -376,8 +461,8 @@
 - **Usage-performance correlation:** High-usage tools perform 10.3% worse
 
 **State-Changing vs Read-Only Performance:**
-- State-changing tools: 74.6% success, 0.0001s avg time
-- Read-only tools: 41.5% success, 0.0003s avg time
+- State-changing tools: 74.6% success, 0.0001s avg time (6 tools)
+- Read-only tools: 41.5% success, 0.0003s avg time (7 tools)
 
 ---
 
